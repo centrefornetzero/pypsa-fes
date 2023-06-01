@@ -1,6 +1,4 @@
 
-[comment]: # (PyPSA README)
-
 <!--
 SPDX-FileCopyrightText: 2017-2023 The PyPSA-Eur Authors
 SPDX-License-Identifier: CC-BY-4.0
@@ -16,7 +14,7 @@ SPDX-License-Identifier: CC-BY-4.0
 [![REUSE status](https://api.reuse.software/badge/github.com/pypsa/pypsa-eur)](https://api.reuse.software/info/github.com/pypsa/pypsa-eur)
 [![Stack Exchange questions](https://img.shields.io/stackexchange/stackoverflow/t/pypsa)](https://stackoverflow.com/questions/tagged/pypsa).
 
-# Modelling Flexibility in a Whole-System Power Model:
+# Modelling Flexibility in a Whole-System Power Model
 
 In this repo we explore whole-system implications of demand flexibility events as in [The Big Dirty Turn Down](https://www.centrefornetzero.org/work/energy-flexibility-domestic-research-octopus-energy/).
 
@@ -38,24 +36,9 @@ to 50-200 nodes.
 Already-built versions of the model can be found in the accompanying [Zenodo
 repository](https://doi.org/10.5281/zenodo.3601881).
 
-
 # Licence
 
 The code in this repository is released as free software under the [MIT License](https://opensource.org/licenses/MIT), see `LICENSE.txt`.  However, different licenses and terms of use may apply to the various input data.
-
-[comment]: # (CentreForNetZero Python template)
-
-# Python-Template
-
-Centre for Net Zero's template for Python projects.
-
-Tools:
-
-* [Pipenv](https://github.com/pypa/pipenv) for dependency management
-* [Pytest](https://github.com/pytest-dev/pytest/) for testing
-* [Mypy](https://mypy.readthedocs.io/en/stable/) for type checking
-* [Flake8](https://flake8.pycqa.org/en/latest/) for linting
-* [isort](https://github.com/PyCQA/isort) and [black](https://github.com/psf/black) for formatting
 
 There are two Github Actions workflows:
 
@@ -69,16 +52,11 @@ If you want to use the Docker workflow, you need to set the following secrets:
 * `GCP_ARTIFACT_REGISTRY`, e.g. `LOCATION-docker.pkg.dev/PROJECT-ID`
 * `GCP_ARTIFACT_REGISTRY_SA_KEY`, the key for a service account with the roles to push and pull images.
 
-## Python Setup
+## Repo Setup
 
 You need to [set up your Python environment](https://docs.google.com/document/d/1Tg0eKalqOp-IJEeH7aShc9fYF5zn95H6jxEk25BLLUE/) first.
 
 1. Clone this repo.
-2. Run `make setup` in your terminal.
-
-In step 2 this will:
-
-* Run `pipenv sync --dev` to install dependencies.
-* `cp .env.template .env` to create your local `.env` file - make sure you fill in any blanks.
-* Install your local pre-commit environment which will be used to maintain code standards
-* Check the tests work by running `pipenv run pytest`
+2. Install `micromamba`. If you're on a mac, use `brew install micromamba`
+3. Run `micromamba env create -f envs/environment.yaml`
+4. Run `micromamba activate pypsa-eur`
