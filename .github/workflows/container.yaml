@@ -1,39 +1,40 @@
-name: Containers
-on: [push]
-env:
-  ARTIFACT_REGISTRY: ${{ secrets.GCP_ARTIFACT_REGISTRY }}
-jobs:
-  build-test-push:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: google-github-actions/setup-gcloud@v0.2.0
-        with:
-          service_account_key: ${{ secrets.GCP_ARTIFACT_REGISTRY_SA_KEY }}
-      - run: gcloud auth configure-docker "$(echo "$ARTIFACT_REGISTRY" | awk -F/ '{print $1}')"
-      - run: docker buildx install
-      - name: Build images
-        run: |
-          docker build . --target runtime \
-            -t "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA" \
-            --cache-from "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest \
-            --build-arg BUILDKIT_INLINE_CACHE=1
-          docker build . --target testrunner \
-            -t "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner \
-            --cache-from "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest-testrunner \
-            --build-arg BUILDKIT_INLINE_CACHE=1
-      - name: Run pytest
-        run: docker run "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner pytest
-      - name: Check formatting
-        run: docker run "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner pre-commit run --all-files --show-diff-on-failure
-      - name: Push images
-        run: |
-          docker push "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"
-          docker push "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner
-      - name: Tag latest images
-        if: ${{ github.ref == 'refs/heads/main' }}
-        run: |
-          gcloud artifacts docker tags add "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA" \
-            "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest
-          gcloud artifacts docker tags add "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner \
-            "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest-testrunner
+# Ignore containers workflow for now, since the dockerfile doesnt work with mamba
+# name: Containers
+# on: [push]
+# env:
+#   ARTIFACT_REGISTRY: ${{ secrets.GCP_ARTIFACT_REGISTRY }}
+# jobs:
+#   build-test-push:
+#     runs-on: ubuntu-latest
+#     steps:
+#     - uses: actions/checkout@v2
+#     - uses: google-github-actions/setup-gcloud@v0.2.0
+#       with:
+#         service_account_key: ${{ secrets.GCP_ARTIFACT_REGISTRY_SA_KEY }}
+#     - run: gcloud auth configure-docker "$(echo "$ARTIFACT_REGISTRY" | awk -F/ '{print $1}')"
+#     - run: docker buildx install
+#     - name: Build images
+#       run: |
+#         docker build . --target runtime \
+#           -t "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA" \
+#           --cache-from "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest \
+#           --build-arg BUILDKIT_INLINE_CACHE=1
+#         docker build . --target testrunner \
+#           -t "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner \
+#           --cache-from "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest-testrunner \
+#           --build-arg BUILDKIT_INLINE_CACHE=1
+#     - name: Run pytest
+#       run: docker run "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner pytest
+#     - name: Check formatting
+#       run: docker run "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner pre-commit run --all-files --show-diff-on-failure
+#     - name: Push images
+#       run: |
+#         docker push "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"
+#         docker push "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner
+#     - name: Tag latest images
+#       if: ${{ github.ref == 'refs/heads/main' }}
+#       run: |
+#         gcloud artifacts docker tags add "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA" \
+#           "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest
+#         gcloud artifacts docker tags add "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":"$GITHUB_SHA"-testrunner \
+#           "$ARTIFACT_REGISTRY"/docker/"${GITHUB_REPOSITORY#*/}":latest-testrunner
