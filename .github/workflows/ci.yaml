@@ -1,13 +1,14 @@
 # Commenting out - we don't need to run the tests for now.
-# # SPDX-FileCopyrightText: : 2021-2023 The PyPSA-Eur Authors
-# #
-# # SPDX-License-Identifier: CC0-1.0
+
+# SPDX-FileCopyrightText: : 2021-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: CC0-1.0
 
 # name: CI
 
-# # Caching method based on and described by:
-# # epassaro (2021): https://dev.to/epassaro/caching-anaconda-environments-in-github-actions-5hde
-# # and code in GitHub repo: https://github.com/epassaro/cache-conda-envs
+# Caching method based on and described by:
+# epassaro (2021): https://dev.to/epassaro/caching-anaconda-environments-in-github-actions-5hde
+# and code in GitHub repo: https://github.com/epassaro/cache-conda-envs
 
 # on:
 #   push:
