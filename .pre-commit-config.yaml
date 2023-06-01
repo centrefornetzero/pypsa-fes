@@ -14,6 +14,7 @@ repos:
   - id: trailing-whitespace
   - id: check-added-large-files
   - id: check-json
+    exclude: data/attributed_ports.json # Excluding since this is latin-1 encoding, not utf-8
   - id: check-yaml
   - id: check-toml
   - id: check-merge-conflict
@@ -94,8 +95,9 @@ repos:
   - id: jupyter-notebook-cleanup
     exclude: examples/solve-on-remote.ipynb
 
-  # Check for FSFE REUSE compliance (licensing)
-- repo: https://github.com/fsfe/reuse-tool
-  rev: v1.1.2
-  hooks:
-  - id: reuse
+# Ignoring this check for now as this isnt an official PyPSA repo
+#   # Check for FSFE REUSE compliance (licensing)
+# - repo: https://github.com/fsfe/reuse-tool
+#   rev: v1.1.2
+#   hooks:
+#   - id: reuse

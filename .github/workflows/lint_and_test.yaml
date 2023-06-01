@@ -6,23 +6,23 @@ jobs:
   lint_and_test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        id: setup-python
-        with:
-          python-version: "3.9"
-      - run: pip install pipenv
-      - name: Cache virtualenvs
-        uses: actions/cache@v2
-        with:
-          path: ~/.local/share/virtualenvs/
-          key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
-      - run: pipenv sync --dev
-      - name: Cache Pre-commit for format checking
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
-      - name: Check formatting
-        run: pipenv run pre-commit run --all-files --show-diff-on-failure
-      - run: pipenv run pytest
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      id: setup-python
+      with:
+        python-version: "3.9"
+    - run: pip install pipenv
+    - name: Cache virtualenvs
+      uses: actions/cache@v2
+      with:
+        path: ~/.local/share/virtualenvs/
+        key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
+    - run: pipenv sync --dev
+    - name: Cache Pre-commit for format checking
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
+    - name: Check formatting
+      run: pipenv run pre-commit run --all-files --show-diff-on-failure
+    - run: pipenv run pytest
