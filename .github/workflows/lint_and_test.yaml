@@ -27,5 +27,6 @@ jobs:
     - name: Check formatting
       run: pre-commit run --all-files --show-diff-on-failure
       shell: micromamba-shell {0}
-    - run: pytest
-      shell: micromamba-shell {0}
+    # Don't run the tests in the repo now, that will be covered by the ci.yaml and updated in a future PR
+    # - run: pytest
+    #   shell: micromamba-shell {0}
