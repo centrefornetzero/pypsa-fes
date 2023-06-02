@@ -561,12 +561,14 @@ def _set_countries_and_substations(n, config, country_shapes, offshore_shapes):
         graph = n.graph(weight="length")
         n.transformers.drop("length", axis=1, inplace=True)
 
+
         for b in n.buses.index[c_tag_nan_b]:
             df = (
                 pd.DataFrame(
                     dict(
                         pathlength=nx.single_source_dijkstra_path_length(
-                            graph, b, cutoff=200
+                            # graph, b, cutoff=200
+                            graph, b, cutoff=400
                         )
                     )
                 )

@@ -140,6 +140,7 @@ from pypsa.networkclustering import (
     busmap_by_kmeans,
     get_clustering_from_busmap,
 )
+from pprint import pprint
 
 warnings.filterwarnings(action="ignore", category=UserWarning)
 
@@ -462,7 +463,17 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input.network)
 
-    focus_weights = snakemake.config.get("focus_weights", None)
+    countries = snakemake.config.get("countries")
+    focus_country = snakemake.config.get("focus_country", None)
+    
+    if focus_country is not None:
+        weights = [0.01, 1 - (len(countries) - 1) * .01]
+        focus_weights = {
+            country: weights[int(country == "GB")] for country in countries
+        }
+        logger.info(f"Only modelling country {focus_country} with multiple nodes.")
+    else:
+        focus_weights = None
 
     renewable_carriers = pd.Index(
         [
