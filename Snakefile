@@ -53,6 +53,7 @@ include: "rules/build_electricity.smk"
 include: "rules/build_sector.smk"
 include: "rules/solve_electricity.smk"
 include: "rules/postprocess.smk"
+include: "rules/gb_summary.smk"
 
 
 if config["foresight"] == "overnight":
