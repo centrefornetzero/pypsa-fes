@@ -404,6 +404,10 @@ def clustering_for_n_clusters(
         busmap = busmap_for_n_clusters(
             n, n_clusters, solver_name, focus_weights, algorithm, feature
         )
+        print("Built busmap!")
+        print(busmap)
+        print(type(busmap))
+
     else:
         busmap = custom_busmap
 
