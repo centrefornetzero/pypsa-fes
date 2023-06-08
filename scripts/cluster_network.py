@@ -128,6 +128,7 @@ from functools import reduce
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import shutil
 import numpy as np
 import pandas as pd
 import pyomo.environ as po
@@ -140,7 +141,6 @@ from pypsa.networkclustering import (
     busmap_by_kmeans,
     get_clustering_from_busmap,
 )
-from pprint import pprint
 
 warnings.filterwarnings(action="ignore", category=UserWarning)
 
@@ -404,9 +404,6 @@ def clustering_for_n_clusters(
         busmap = busmap_for_n_clusters(
             n, n_clusters, solver_name, focus_weights, algorithm, feature
         )
-        print("Built busmap!")
-        print(busmap)
-        print(type(busmap))
 
     else:
         busmap = custom_busmap
@@ -437,6 +434,17 @@ def clustering_for_n_clusters(
 
 
 def cluster_regions(busmaps, input=None, output=None):
+
+    logging.warning(("cluster_region method in intermediate state, and based on \n"
+                     "obvervations does the following for the resulting onshore regions: \n"
+                     "if gb_regions are chosen as 'dno', the resulting onshore file \n"
+                     "resources/<experiment_name>/regions_onshore_elec_s_dno is the \n"
+                     "regular result of this function (cluster_regions). If gb_regions \n"
+                     "are chosen as 'eso', the output onshore regions will just be \n"
+                     "the input files 'data/regions_onshore_eso.geojson'. \n"
+                     ))
+
+
     busmap = reduce(lambda x, y: x.map(y), busmaps[1:], busmaps[0])
 
     for which in ("regions_onshore", "regions_offshore"):
@@ -445,7 +453,11 @@ def cluster_regions(busmaps, input=None, output=None):
         regions_c = regions.dissolve(busmap)
         regions_c.index.name = "name"
         regions_c = regions_c.reset_index()
-        regions_c.to_file(getattr(output, which))
+
+        if ("onshore" in which) and ("eso" in getattr(input, "busmap")):
+            shutil.copyfile("data/regions_onshore_eso.geojson", getattr(output, which))
+        else:
+            regions_c.to_file(getattr(output, which))
 
 
 def plot_busmap_for_n_clusters(n, n_clusters, fn=None):
@@ -462,22 +474,12 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("cluster_network", simpl="", clusters="5")
+        snakemake = mock_snakemake("cluster_network", simpl="", gb_regions="eso")
     configure_logging(snakemake)
 
     n = pypsa.Network(snakemake.input.network)
-
-    countries = snakemake.config.get("countries")
-    focus_country = snakemake.config.get("focus_country", None)
-    
-    if focus_country is not None:
-        weights = [0.01, 1 - (len(countries) - 1) * .01]
-        focus_weights = {
-            country: weights[int(country == "GB")] for country in countries
-        }
-        logger.info(f"Only modelling country {focus_country} with multiple nodes.")
-    else:
-        focus_weights = None
+    # countries = snakemake.config.get("countries")
+    # focus_country = snakemake.config.get("focus_country", None)
 
     renewable_carriers = pd.Index(
         [
@@ -487,10 +489,14 @@ if __name__ == "__main__":
         ]
     )
 
+
     exclude_carriers = snakemake.config["clustering"]["cluster_network"].get(
         "exclude_carriers", []
     )
     aggregate_carriers = set(n.generators.carrier) - set(exclude_carriers)
+
+    logger.warning("Currently neglecting some code of excluded carriers")
+    """
     if snakemake.wildcards.clusters.endswith("m"):
         n_clusters = int(snakemake.wildcards.clusters[:-1])
         conventional = set(
@@ -501,6 +507,9 @@ if __name__ == "__main__":
         n_clusters = len(n.buses)
     else:
         n_clusters = int(snakemake.wildcards.clusters)
+    """
+
+    n_clusters = len(pd.read_csv(snakemake.input["busmap"])["name"].unique())
 
     if n_clusters == len(n.buses):
         # Fast-path if no clustering is necessary
@@ -536,6 +545,7 @@ if __name__ == "__main__":
             for p in aggregation_strategies.keys()
         }
 
+        """
         custom_busmap = snakemake.config["enable"].get("custom_busmap", False)
         if custom_busmap:
             custom_busmap = pd.read_csv(
@@ -543,6 +553,14 @@ if __name__ == "__main__":
             )
             custom_busmap.index = custom_busmap.index.astype(str)
             logger.info(f"Imported custom busmap from {snakemake.input.custom_busmap}")
+        """
+
+        busmap = pd.read_csv(
+            snakemake.input.busmap, index_col=0, squeeze=True
+        )
+        busmap.index = busmap.index.astype(str)
+
+        logger.info(f"Imported busmap from {snakemake.input.busmap}")
 
         cluster_config = snakemake.config.get("clustering", {}).get(
             "cluster_network", {}
@@ -550,7 +568,7 @@ if __name__ == "__main__":
         clustering = clustering_for_n_clusters(
             n,
             n_clusters,
-            custom_busmap,
+            busmap,
             aggregate_carriers,
             line_length_factor,
             aggregation_strategies,
@@ -558,7 +576,7 @@ if __name__ == "__main__":
             cluster_config.get("algorithm", "hac"),
             cluster_config.get("feature", "solar+onwind-time"),
             hvac_overhead_cost,
-            focus_weights,
+            None,
         )
 
     update_p_nom_max(clustering.network)

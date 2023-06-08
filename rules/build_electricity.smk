@@ -314,25 +314,24 @@ rule simplify_network:
 rule cluster_network:
     input:
         network=RESOURCES + "networks/elec_s{simpl}.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
-        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
-        busmap=ancient(RESOURCES + "busmap_elec_s{simpl}.csv"),
-        custom_busmap=(
-            "data/custom_busmap_elec_s{simpl}_{clusters}.csv"
-            if config["enable"].get("custom_busmap", False)
-            else []
-        ),
+        # regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        # regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
+        # busmap = "data/custom_busmap_elec_s{simpl}_{gb_regions}.csv",
+        # network=RESOURCES + "networks/elec.nc",
+        regions_onshore=RESOURCES + "regions_onshore.geojson",
+        regions_offshore=RESOURCES + "regions_offshore.geojson",
+        busmap = "data/custom_busmap_elec_{gb_regions}.csv",
         tech_costs=COSTS,
     output:
-        network=RESOURCES + "networks/elec_s{simpl}_{clusters}.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}_{clusters}.geojson",
-        busmap=RESOURCES + "busmap_elec_s{simpl}_{clusters}.csv",
-        linemap=RESOURCES + "linemap_elec_s{simpl}_{clusters}.csv",
+        network=RESOURCES + "networks/elec_s{simpl}_{gb_regions}.nc",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
+        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}_{gb_regions}.geojson",
+        busmap=RESOURCES + "busmap_elec_s{simpl}_{gb_regions}.csv",
+        linemap=RESOURCES + "linemap_elec_s{simpl}_{gb_regions}.csv",
     log:
-        LOGS + "cluster_network/elec_s{simpl}_{clusters}.log",
+        LOGS + "cluster_network/elec_s{simpl}_{gb_regions}.log",
     benchmark:
-        BENCHMARKS + "cluster_network/elec_s{simpl}_{clusters}"
+        BENCHMARKS + "cluster_network/elec_s{simpl}_{gb_regions}"
     threads: 1
     resources:
         mem_mb=6000,
@@ -342,6 +341,7 @@ rule cluster_network:
         "../scripts/cluster_network.py"
 
 
+"""
 rule add_extra_components:
     input:
         network=RESOURCES + "networks/elec_s{simpl}_{clusters}.nc",
@@ -359,8 +359,28 @@ rule add_extra_components:
         "../envs/environment.yaml"
     script:
         "../scripts/add_extra_components.py"
+"""
+
+rule add_extra_components:
+    input:
+        network=RESOURCES + "networks/elec_s{simpl}_{gb_regions}.nc",
+        tech_costs=COSTS,
+    output:
+        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
+    log:
+        LOGS + "add_extra_components/elec_s{simpl}_{gb_regions}.log",
+    benchmark:
+        BENCHMARKS + "add_extra_components/elec_s{simpl}_{gb_regions}_ec"
+    threads: 1
+    resources:
+        mem_mb=3000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/add_extra_components.py"
 
 
+"""
 rule prepare_network:
     input:
         RESOURCES + "networks/elec_s{simpl}_{clusters}_ec.nc",
@@ -371,6 +391,25 @@ rule prepare_network:
         LOGS + "prepare_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.log",
     benchmark:
         (BENCHMARKS + "prepare_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}")
+    threads: 1
+    resources:
+        mem_mb=4000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/prepare_network.py"
+"""
+
+rule prepare_network:
+    input:
+        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
+        tech_costs=COSTS,
+    output:
+        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}.nc",
+    log:
+        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}.log",
+    benchmark:
+        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}")
     threads: 1
     resources:
         mem_mb=4000,

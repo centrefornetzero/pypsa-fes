@@ -40,10 +40,11 @@ localrules:
 
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
-    clusters="[0-9]+m?|all",
     ll="(v|c)([0-9\.]+|opt)",
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
+    gb_regions="[a-zA-Z]*",
+    # clusters="[0-9]+m?|all",
 
 
 include: "rules/common.smk"
