@@ -15,12 +15,23 @@ def memory(w):
         if m is not None:
             factor *= int(m.group(1)) / 8760
             break
-    if w.clusters.endswith("m"):
-        return int(factor * (18000 + 180 * int(w.clusters[:-1])))
-    elif w.clusters == "all":
+    # if w.clusters.endswith("m"):
+    #     return int(factor * (18000 + 180 * int(w.clusters[:-1])))
+    # elif w.clusters == "all":
+    #     return int(factor * (18000 + 180 * 4000))
+    # else:
+    #     return int(factor * (10000 + 195 * int(w.clusters)))
+    if w.gb_regions.endswith("m"):
+        return int(factor * (18000 + 180 * int(w.gb_regions[:-1])))
+    elif w.gb_regions == "all":
         return int(factor * (18000 + 180 * 4000))
+    elif w.gb_regions == "eso":
+        return int(factor * (10000 + 195 * 31))
+    elif w.gb_regions == "dno":
+        return int(factor * (10000 + 195 * 25))
     else:
-        return int(factor * (10000 + 195 * int(w.clusters)))
+        return int(factor * (10000 + 195 * 50))
+
 
 
 def input_eurostat(w):
@@ -35,7 +46,7 @@ def solved_previous_horizon(wildcards):
     planning_horizon_p = str(planning_horizons[i - 1])
     return (
         RESULTS
-        + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_"
+        + "postnetworks/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_"
         + planning_horizon_p
         + ".nc"
     )
