@@ -341,26 +341,6 @@ rule cluster_network:
         "../scripts/cluster_network.py"
 
 
-"""
-rule add_extra_components:
-    input:
-        network=RESOURCES + "networks/elec_s{simpl}_{clusters}.nc",
-        tech_costs=COSTS,
-    output:
-        RESOURCES + "networks/elec_s{simpl}_{clusters}_ec.nc",
-    log:
-        LOGS + "add_extra_components/elec_s{simpl}_{clusters}.log",
-    benchmark:
-        BENCHMARKS + "add_extra_components/elec_s{simpl}_{clusters}_ec"
-    threads: 1
-    resources:
-        mem_mb=3000,
-    conda:
-        "../envs/environment.yaml"
-    script:
-        "../scripts/add_extra_components.py"
-"""
-
 rule add_extra_components:
     input:
         network=RESOURCES + "networks/elec_s{simpl}_{gb_regions}.nc",
@@ -380,26 +360,6 @@ rule add_extra_components:
         "../scripts/add_extra_components.py"
 
 
-"""
-rule prepare_network:
-    input:
-        RESOURCES + "networks/elec_s{simpl}_{clusters}_ec.nc",
-        tech_costs=COSTS,
-    output:
-        RESOURCES + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-    log:
-        LOGS + "prepare_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.log",
-    benchmark:
-        (BENCHMARKS + "prepare_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}")
-    threads: 1
-    resources:
-        mem_mb=4000,
-    conda:
-        "../envs/environment.yaml"
-    script:
-        "../scripts/prepare_network.py"
-"""
-
 rule prepare_network:
     input:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
@@ -417,3 +377,5 @@ rule prepare_network:
         "../envs/environment.yaml"
     script:
         "../scripts/prepare_network.py"
+
+
