@@ -62,8 +62,8 @@ scenario:
 # countries = ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
 
 snapshots:
-  start: "2013-01-01"
-  end: "2014-01-01"
+  start: "2022-03-01"
+  end: "2023-01-01"
   inclusive: 'left' # include start, not end
 
 enable:
