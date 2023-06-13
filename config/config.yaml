@@ -60,6 +60,7 @@ scenario:
 
 # here is a list of all possible countries: 
 # countries = ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
+countries: ['BE', 'DE', 'DK', 'FR', 'GB', 'IE', 'LU', 'NL', 'NO', 'SE']
 
 snapshots:
   start: "2022-03-01"
