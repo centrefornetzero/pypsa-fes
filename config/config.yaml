@@ -72,7 +72,7 @@ enable:
   retrieve_databundle: true
   retrieve_sector_databundle: true
   retrieve_cost_data: true
-  build_cutout: false
+  build_cutout: true
   retrieve_cutout: false
   build_natura_raster: false
   retrieve_natura_raster: true
@@ -216,7 +216,7 @@ renewable:
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
   solar:
-    cutout: europe-2022-sarah
+    cutout: europe-2022-era5
     resource:
       method: pv
       panel: CSi
