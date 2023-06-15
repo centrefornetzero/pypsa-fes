@@ -57,6 +57,7 @@ def build_flex_network(n, td_file, event_length=pd.Timedelta(30, unit="min")):
         base.loc[td.index] = base.loc[td.index].values - turndown_shares.values * factor * td.values * 1e-3
 
         n.loads_t.p_set[gb_buses] = base
+
     else:
         logging.error("Format of turndown data currently not supported; load unchanged!")
 
@@ -68,7 +69,6 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_flex_network")
-    
+
     n = pypsa.Network(snakemake.input["network"])
-    
     n = build_flex_network(n, snakemake.input["flex_data"]) 

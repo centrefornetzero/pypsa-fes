@@ -44,6 +44,7 @@ wildcard_constraints:
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
     gb_regions="[a-zA-Z]*",
+    td_event="[0-9]*"
 
 
 include: "rules/common.smk"
