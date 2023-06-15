@@ -57,6 +57,7 @@ publications.jrc.ec.europa.eu/
 /cutouts
 /tmp
 /pypsa
+/notebooks
 
 *.xlsx
 
