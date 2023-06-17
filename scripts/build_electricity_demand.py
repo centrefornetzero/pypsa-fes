@@ -3,6 +3,11 @@
 #
 # SPDX-License-Identifier: MIT
 """
+In the Octopus / Centre for Net Zero implementation, this scripts obtains the default 
+time series, that are used as backup when time series from 2022 are not available
+
+Please see `build_2022_octopus_demand.py` for more details.
+
 This rule downloads the load data from `Open Power System Data Time series.
 
 <https://data.open-power-system-data.org/time_series/>`_. For all countries in
@@ -282,10 +287,14 @@ if __name__ == "__main__":
     powerstatistics = snakemake.config["load"]["power_statistics"]
     interpolate_limit = snakemake.config["load"]["interpolate_limit"]
     countries = snakemake.config["countries"]
-    snapshots = pd.date_range(freq="h", **snakemake.config["snapshots"])
+
+    snapshot_cfg = snakemake.config["snapshots"]
+    del snapshot_cfg['start']
+    del snapshot_cfg['end']
+    snapshots = pd.date_range('2013', '2013-12-31 23:00:00', freq='h', **snapshot_cfg)
+
     years = slice(snapshots[0], snapshots[-1])
     time_shift = snakemake.config["load"]["time_shift_for_large_gaps"]
-
     load = load_timeseries(snakemake.input[0], years, countries, powerstatistics)
 
     if snakemake.config["load"]["manual_adjustments"]:

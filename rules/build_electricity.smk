@@ -22,7 +22,7 @@ rule build_electricity_demand:
     input:
         ancient("data/load_raw.csv"),
     output:
-        RESOURCES + "load.csv",
+        RESOURCES + "default_load.csv",
     log:
         LOGS + "build_electricity_demand.log",
     resources:
@@ -31,6 +31,21 @@ rule build_electricity_demand:
         "../envs/environment.yaml"
     script:
         "../scripts/build_electricity_demand.py"
+
+
+rule build_2022_octopus_demand:
+    input:
+        default_load=RESOURCES + "default_load.csv"
+    output:
+        load=RESOURCES + "load.csv",
+    log:
+        LOGS + "build_2022_octopus_demand.log",
+    resources:
+        mem_mb=5000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_2022_octopus_demand.py"
 
 
 rule build_powerplants:
