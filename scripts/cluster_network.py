@@ -503,7 +503,6 @@ if __name__ == "__main__":
         ]
     )
 
-
     exclude_carriers = snakemake.config["clustering"]["cluster_network"].get(
         "exclude_carriers", []
     )
@@ -584,22 +583,13 @@ if __name__ == "__main__":
             lambda geom: target_regions.loc[target_regions.geometry.intersection(geom).area.argmax(), "name"])
         overlap.index = remainers.bus.values
         
+        logging.warning("Currently hard coded bus assignment!")
         overlap.loc["5676"]  = "DK2 0"      
         overlap.loc["7429"]  = "DK2 0"      
 
         busmap = pd.concat((
             busmap, overlap
         ), axis=0)
-
-        # print(overlap)        
-        # print(n.buses.loc[overlap.index].country)
-
-        is_it_true = pd.concat((
-            n.buses.loc[overlap.index, ["x", "y", "country"]],
-            overlap,
-        ), axis=1)
-        print(is_it_true)
-
 
         busmap.index = busmap.index.astype(str)
         assert set(busmap.index) == set(n.buses.index), "Busmap does not map all buses in network!"

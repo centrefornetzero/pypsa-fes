@@ -61,36 +61,9 @@ def aggregategenerators(
         aggregate_buses = busmap.astype(bool)
     aggregate_buses = aggregate_buses.loc[aggregate_buses].index
     
-    print(set(network.generators.bus.unique()) == set(busmap.index))
-    print(len(network.buses))
-    print(len(busmap))
-
     agg_carriers = network.generators.carrier.isin(carriers)
-
-    print("++++++++++++++++++++++++++++++++++++++++=")
-    print("shape")
-    print(carriers)
-    print(agg_carriers.shape)
-    print(agg_carriers)
-    print("++++++++++++++++++++++++++++++++++++++++=")
-
     agg_buses = network.generators.bus.isin(aggregate_buses)
 
-    total = agg_buses + agg_carriers
-    target_bus = network.generators.bus.apply(lambda bus: busmap.loc[bus])
-
-    pd.concat(
-        (
-            network.generators,
-            pd.DataFrame({
-                "carrier_based": agg_carriers,
-                "buses_based": agg_buses,
-                "total": total,
-                "target_bus": target_bus,
-            })
-        ), axis=1
-    ).to_csv("generator_aggregation.csv")
-    
     gens_agg_b = agg_carriers + agg_buses
 
     attrs = network.components["Generator"]["attrs"]
@@ -187,15 +160,6 @@ def aggregatebuses(network, busmap, custom_strategies=dict()):
         (attr, _make_consense("Bus", attr)) for attr in columns.difference(strategies)
     )
     strategies.update(custom_strategies)
-
-    print("busmap")
-    print(busmap)
-
-    print("strategies")
-    print(strategies)
-    
-    print("network buses")
-    print(network.buses.groupby(busmap))
 
     return (
         network.buses.groupby(busmap)
@@ -309,7 +273,6 @@ def aggregatelines(network, buses, interlines, line_length_factor=1.0, with_time
                 lines_t[attr] = pnl_df
 
     return lines, linemap_p, linemap_n, linemap, lines_t
-
 
 
 def get_buses_linemap_and_lines(
@@ -462,5 +425,3 @@ def get_clustering_from_busmap(
     network_c.determine_network_topology()
 
     return Clustering(network_c, busmap, linemap, linemap_p, linemap_n)
-
-
