@@ -280,14 +280,6 @@ if __name__ == "__main__":
         duration = time.time() - start
         logger.info(f"Completed availability calculation ({duration:2.2f}s)")
     else:
-        print(f"regions: type: {type(regions)}")
-        print(regions)
-        print("cutout")
-        print(cutout)
-        print("excluder")
-        print(excluder)
-        print("kwargs")
-        print(kwargs)
         availability = cutout.availabilitymatrix(regions, excluder, **kwargs)
 
     area = cutout.grid.to_crs(3035).area / 1e6

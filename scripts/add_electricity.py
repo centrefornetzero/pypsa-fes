@@ -667,8 +667,9 @@ def estimate_renewable_capacities(n, config):
         return
 
     capacities = pm.data.IRENASTAT().powerplant.convert_country_to_alpha2()
+    logger.warning("Currently Using IRENA renewable potential from 2020!")
     capacities = capacities.query(
-        "Year == @year and Technology in @tech_map and Country in @countries"
+        "Year == 2020 and Technology in @tech_map and Country in @countries"
     )
     capacities = capacities.groupby(["Technology", "Country"]).Capacity.sum()
 
@@ -681,6 +682,7 @@ def estimate_renewable_capacities(n, config):
         tech_i = n.generators.query("carrier in @techs").index
         stats = capacities.loc[ppm_technology].reindex(countries, fill_value=0.0)
         country = n.generators.bus[tech_i].map(n.buses.country)
+
         existent = n.generators.p_nom[tech_i].groupby(country).sum()
         missing = stats - existent
         dist = n.generators_t.p_max_pu.mean() * n.generators.p_nom_max

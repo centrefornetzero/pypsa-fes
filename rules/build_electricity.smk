@@ -35,7 +35,8 @@ rule build_electricity_demand:
 
 rule build_2022_octopus_demand:
     input:
-        default_load=RESOURCES + "default_load.csv"
+        default_load=RESOURCES + "default_load.csv",
+        gb_demand="data/eso_demanddata_2022.csv",
     output:
         load=RESOURCES + "load.csv",
     log:
@@ -329,13 +330,14 @@ rule simplify_network:
 rule cluster_network:
     input:
         network=RESOURCES + "networks/elec_s{simpl}.nc",
+        # network=RESOURCES + "networks/elec.nc",
         # regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
         # regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
         # busmap = "data/custom_busmap_elec_s{simpl}_{gb_regions}.csv",
         # network=RESOURCES + "networks/elec.nc",
         regions_onshore=RESOURCES + "regions_onshore.geojson",
         regions_offshore=RESOURCES + "regions_offshore.geojson",
-        busmap = "data/custom_busmap_elec_{gb_regions}.csv",
+        target_regions_onshore="data/regions_onshore_{gb_regions}.geojson",
         tech_costs=COSTS,
     output:
         network=RESOURCES + "networks/elec_s{simpl}_{gb_regions}.nc",

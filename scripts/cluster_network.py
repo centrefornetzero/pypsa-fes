@@ -135,11 +135,12 @@ import pyomo.environ as po
 import pypsa
 import seaborn as sns
 from _helpers import configure_logging, get_aggregation_strategies, update_p_nom_max
+from _clustering_helpers import get_clustering_from_busmap
 from pypsa.networkclustering import (
     busmap_by_greedy_modularity,
     busmap_by_hac,
     busmap_by_kmeans,
-    get_clustering_from_busmap,
+    # get_clustering_from_busmap,
 )
 
 warnings.filterwarnings(action="ignore", category=UserWarning)
@@ -395,7 +396,9 @@ def clustering_for_n_clusters(
     feature=None,
     extended_link_costs=0,
     focus_weights=None,
+    aggregate_countries=None,
 ):
+    
     bus_strategies, generator_strategies = get_aggregation_strategies(
         aggregation_strategies
     )
@@ -408,6 +411,11 @@ def clustering_for_n_clusters(
     else:
         busmap = custom_busmap
 
+    if aggregate_countries:
+        gengroup_buses = busmap.apply(lambda bus: bus[:2] in aggregate_countries)
+    else:
+        gengroup_buses = busmap.astype(bool)
+
     clustering = get_clustering_from_busmap(
         n,
         busmap,
@@ -418,7 +426,13 @@ def clustering_for_n_clusters(
         line_length_factor=line_length_factor,
         generator_strategies=generator_strategies,
         scale_link_capital_costs=False,
+        aggregate_generator_buses=gengroup_buses,
     )
+
+    # print("saving intermediate")
+    # clustering.network.export_to_netcdf("interm_network.nc")
+    # import sys
+    # sys.exit()
 
     if not n.links.empty:
         nc = clustering.network
@@ -454,7 +468,7 @@ def cluster_regions(busmaps, input=None, output=None):
         regions_c.index.name = "name"
         regions_c = regions_c.reset_index()
 
-        if ("onshore" in which) and ("eso" in getattr(input, "busmap")):
+        if ("onshore" in which) and ("eso" in getattr(input, "busmap", "")):
             shutil.copyfile("data/regions_onshore_eso.geojson", getattr(output, which))
         else:
             regions_c.to_file(getattr(output, which))
@@ -509,7 +523,7 @@ if __name__ == "__main__":
         n_clusters = int(snakemake.wildcards.clusters)
     """
 
-    n_clusters = len(pd.read_csv(snakemake.input["busmap"])["name"].unique())
+    n_clusters = len(gpd.read_file(snakemake.input["target_regions_onshore"]))
 
     if n_clusters == len(n.buses):
         # Fast-path if no clustering is necessary
@@ -555,12 +569,50 @@ if __name__ == "__main__":
             logger.info(f"Imported custom busmap from {snakemake.input.custom_busmap}")
         """
 
-        busmap = pd.read_csv(
-            snakemake.input.busmap, index_col=0, squeeze=True
-        )
-        busmap.index = busmap.index.astype(str)
+        target_regions = gpd.read_file(snakemake.input["target_regions_onshore"])
 
-        logger.info(f"Imported busmap from {snakemake.input.busmap}")
+        busgeom = gpd.GeoDataFrame({"bus": n.buses.index},
+                geometry=gpd.points_from_xy(n.buses.x, n.buses.y),
+            ).set_crs(epsg=4326)
+
+        sjoin_busgeom = busgeom.sjoin(target_regions)
+        busmap = pd.Series(sjoin_busgeom["name"].values, index=sjoin_busgeom["bus"].values)
+
+        # assign buses that are not within onshore regions (through maximum overlap between target and buffer)
+        remainers = busgeom.drop(sjoin_busgeom.index)
+        overlap = remainers.geometry.buffer(0.5).apply(
+            lambda geom: target_regions.loc[target_regions.geometry.intersection(geom).area.argmax(), "name"])
+        overlap.index = remainers.bus.values
+        
+        overlap.loc["5676"]  = "DK2 0"      
+        overlap.loc["7429"]  = "DK2 0"      
+
+        busmap = pd.concat((
+            busmap, overlap
+        ), axis=0)
+
+        # print(overlap)        
+        # print(n.buses.loc[overlap.index].country)
+
+        is_it_true = pd.concat((
+            n.buses.loc[overlap.index, ["x", "y", "country"]],
+            overlap,
+        ), axis=1)
+        print(is_it_true)
+
+
+        busmap.index = busmap.index.astype(str)
+        assert set(busmap.index) == set(n.buses.index), "Busmap does not map all buses in network!"
+
+        exclude_countries = snakemake.config["clustering"]["cluster_network"].get("exclude_countries", None)
+        if exclude_countries:
+            logger.info(f"In countries {exclude_countries} generators will NOT be aggregated.")
+            aggregate_countries = set(snakemake.config.get("countries")) - set(exclude_countries)
+
+        else:
+            aggregate_countries = None
+
+        logger.info(f"Created busmap based on target regions \n {snakemake.input['target_regions_onshore']}")
 
         cluster_config = snakemake.config.get("clustering", {}).get(
             "cluster_network", {}
@@ -568,15 +620,16 @@ if __name__ == "__main__":
         clustering = clustering_for_n_clusters(
             n,
             n_clusters,
-            busmap,
-            aggregate_carriers,
-            line_length_factor,
-            aggregation_strategies,
-            snakemake.config["solving"]["solver"]["name"],
-            cluster_config.get("algorithm", "hac"),
-            cluster_config.get("feature", "solar+onwind-time"),
-            hvac_overhead_cost,
-            None,
+            custom_busmap=busmap,
+            aggregate_carriers=aggregate_carriers,
+            line_length_factor=line_length_factor,
+            aggregation_strategies=aggregation_strategies,
+            solver_name=snakemake.config["solving"]["solver"]["name"],
+            algorithm=cluster_config.get("algorithm", "hac"),
+            feature=cluster_config.get("feature", "solar+onwind-time"),
+            extended_link_costs=hvac_overhead_cost,
+            focus_weights=None,
+            aggregate_countries=aggregate_countries,
         )
 
     update_p_nom_max(clustering.network)

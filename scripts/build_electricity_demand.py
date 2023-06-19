@@ -291,7 +291,8 @@ if __name__ == "__main__":
     snapshot_cfg = snakemake.config["snapshots"]
     del snapshot_cfg['start']
     del snapshot_cfg['end']
-    snapshots = pd.date_range('2013', '2013-12-31 23:00:00', freq='h', **snapshot_cfg)
+
+    snapshots = pd.date_range('2013', '2014', freq='h', **snapshot_cfg)
 
     years = slice(snapshots[0], snapshots[-1])
     time_shift = snakemake.config["load"]["time_shift_for_large_gaps"]
