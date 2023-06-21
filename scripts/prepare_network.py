@@ -66,6 +66,8 @@ import pypsa
 from _helpers import configure_logging
 from add_electricity import load_costs, update_transmission_costs
 
+from pypsa.descriptors import expand_series
+
 idx = pd.IndexSlice
 
 logger = logging.getLogger(__name__)
@@ -105,6 +107,18 @@ def add_emission_prices(n, emission_prices={"co2": 0.0}, exclude_co2=False):
     n.generators["marginal_cost"] += gen_ep
     su_ep = n.storage_units.carrier.map(ep) / n.storage_units.efficiency_dispatch
     n.storage_units["marginal_cost"] += su_ep
+
+
+def add_emission_prices_t(n):
+    co2_price = pd.read_csv(snakemake.input.co2_price, index_col=0,
+                            parse_dates=True)
+
+    co2_price = co2_price[~co2_price.index.duplicated()]
+    co2_price = co2_price.reindex(n.snapshots).fillna(method="ffill").fillna(method="bfill")
+    emissions = n.generators.carrier.map(n.carriers.co2_emissions)
+    co2_cost = (expand_series(emissions, n.snapshots).T
+                .mul(co2_price.iloc[:,0], axis=0))
+    n.generators_t.marginal_cost += (co2_cost.reindex(columns=n.generators_t.marginal_cost.columns))
 
 
 def set_line_s_max_pu(n, s_max_pu=0.7):
@@ -324,6 +338,9 @@ if __name__ == "__main__":
                 logger.info("Setting emission prices according to config value.")
                 add_emission_prices(n, snakemake.config["costs"]["emission_prices"])
             break
+        if "ept" in o:
+            logger.info("Setting time dependent emission prices according spot market price")
+            add_emission_prices_t(n) 
 
     ll_type, factor = snakemake.wildcards.ll[0], snakemake.wildcards.ll[1:]
     set_transmission_limit(n, ll_type, factor, costs, Nyears)

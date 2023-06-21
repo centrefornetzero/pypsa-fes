@@ -258,7 +258,7 @@ rule build_monthly_prices:
         exchange_rate="data/euro-british-pound-exchange-rate-historical-chart.csv",
     output:
         co2_price=RESOURCES + "CO2_price_2022.csv",
-        fuel_price=RESOURCES + "monthly_fuel_price.csv"
+        fuel_price=RESOURCES + "monthly_fuel_price.csv",
     log:
         LOGS + "build_monthly_prices.log",
     threads: 1
@@ -305,6 +305,7 @@ rule add_electricity:
         powerplants=RESOURCES + "powerplants.csv",
         hydro_capacities=ancient("data/bundle/hydro_capacities.csv"),
         geth_hydro_capacities="data/geth2015_hydro_capacities.csv",
+        fuel_price=RESOURCES + "monthly_fuel_price.csv",
         load=RESOURCES + "load.csv",
         nuts3_shapes=RESOURCES + "nuts3_shapes.geojson",
     output:
@@ -401,6 +402,7 @@ rule prepare_network:
     input:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
         tech_costs=COSTS,
+        co2_price=RESOURCES + "CO2_price_2022.csv",
     output:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}.nc",
     log:
@@ -414,5 +416,3 @@ rule prepare_network:
         "../envs/environment.yaml"
     script:
         "../scripts/prepare_network.py"
-
-

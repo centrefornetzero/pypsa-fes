@@ -30,7 +30,7 @@ scenario:
   dt_event:
   - '1' # selects file for turndown timing and magnitude in data/turndown_events/
   opts: # only relevant for PyPSA-Eur
-  - ''
+  - 'ept'
   sector_opts: # this is where the main scenario settings are
   - Co2L0-3H-T-H-B-I-A-solar+p3-dist1
   # to really understand the options here, look in scripts/prepare_sector_network.py
