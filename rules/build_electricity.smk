@@ -250,6 +250,26 @@ rule build_renewable_profiles:
         "../scripts/build_renewable_profiles.py"
 
 
+rule build_monthly_prices:
+    input:
+        eu_fuel_price_raw="data/energy-price-trends-xlsx-5619002.xlsx",
+        eu_co2_price_raw="data/emission-spot-primary-market-auction-report-2022-data.xlsx",
+        # fuel_price_gb="data/GB_fuel_prices.xlsx",
+        exchange_rate="data/euro-british-pound-exchange-rate-historical-chart.csv",
+    output:
+        co2_price=RESOURCES + "CO2_price_2022.csv",
+        fuel_price=RESOURCES + "monthly_fuel_price.csv"
+    log:
+        LOGS + "build_monthly_prices.log",
+    threads: 1
+    resources:
+        mem_mb=5000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_monthly_prices.py"
+
+
 rule build_hydro_profile:
     input:
         country_shapes=RESOURCES + "country_shapes.geojson",

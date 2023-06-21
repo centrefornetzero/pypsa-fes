@@ -56,12 +56,16 @@ def aggregategenerators(
 
     if carriers is None:
         carriers = network.generators.carrier.unique()
+    agg_carriers = network.generators.carrier.isin(carriers)
 
+    """
     if aggregate_buses is None:
         aggregate_buses = busmap.astype(bool)
     aggregate_buses = aggregate_buses.loc[aggregate_buses].index
-    
-    agg_carriers = network.generators.carrier.isin(carriers)
+    agg_buses = network.generators.bus.isin(aggregate_buses)
+    """
+    if aggregate_buses is None:
+        aggregate_buses = busmap.index.tolist()
     agg_buses = network.generators.bus.isin(aggregate_buses)
 
     gens_agg_b = agg_carriers + agg_buses

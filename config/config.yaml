@@ -352,7 +352,7 @@ solar_thermal:
 
 # only relevant for foresight = myopic or perfect
 existing_capacities:
-  unit_commitment: true # if unit commitment (UC) for conventional power plants is used
+  unit_commitment: false # if unit commitment (UC) for conventional power plants is used
   grouping_years_power: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030]
   grouping_years_heat: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2019] # these should not extend 2020
   threshold_capacity: 10
@@ -610,13 +610,13 @@ clustering:
     to_substations: false # network is simplified to nodes with positive or negative power injection (i.e. substations or offwind connections)
     algorithm: kmeans # choose from: [hac, kmeans]
     feature: solar+onwind-time # only for hac. choose from: [solar+onwind-time, solar+onwind-cap, solar-time, solar-cap, solar+offwind-cap] etc.
-    exclude_carriers: ["CCGT", "OCGT", "nuclear", "biomass", "lignite", "oil"]
+    exclude_carriers: ["CCGT", "OCGT", "nuclear", "lignite"]
     remove_stubs: true
     remove_stubs_across_borders: true
   cluster_network:
     algorithm: kmeans
     feature: solar+onwind-time
-    exclude_carriers: ["CCGT", "OCGT", "nuclear", "biomass", "lignite", "oil"]
+    exclude_carriers: ["CCGT", "OCGT", "nuclear", "lignite"]
     exclude_countries: ["GB"] # exclude carriers only holds in exclude_countries
   aggregation_strategies:
     generators:

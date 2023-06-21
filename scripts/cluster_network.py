@@ -415,6 +415,8 @@ def clustering_for_n_clusters(
         gengroup_buses = busmap.apply(lambda bus: bus[:2] in aggregate_countries)
     else:
         gengroup_buses = busmap.astype(bool)
+    
+    gengroup_buses = gengroup_buses.loc[gengroup_buses].index.tolist()
 
     clustering = get_clustering_from_busmap(
         n,
