@@ -396,7 +396,7 @@ def attach_conventional_generators(
         (fuel_price.div(ppl.efficiency)).add(ppl.carrier.map(costs.VOM))
     )
 
-    logger.warning("Mixing of different currencies trough fuel price and VOM!")
+    logger.warning("Mixing of different currencies through fuel price and VOM!")
 
     logger.info(
         "Adding {} generators with capacities [GW] \n{}".format(
