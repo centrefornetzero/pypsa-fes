@@ -12,6 +12,7 @@ localrules:
     solve_elec_networks,
     solve_sector_networks,
     plot_networks,
+    plot_gb_validation,
 
 
 rule all:

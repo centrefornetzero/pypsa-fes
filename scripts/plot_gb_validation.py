@@ -26,8 +26,11 @@ logger = logging.getLogger(__name__)
 import pypsa
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 plt.style.use("ggplot")
+from copy import deepcopy
+
 
 pypsa_mapper = {
     "nuclear": ["nuclear"],
@@ -88,6 +91,7 @@ def stackplot_to_ax(df, ax, color_mapper={}):
                  labels=df.columns)
     ax.set_xlim(df.index[0], df.index[-1])
 
+
 def compare_generation_timeseries(
     gen_real,
     gen_model,
@@ -130,15 +134,49 @@ def compare_generation_timeseries(
     
     axs[0].legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
             fancybox=True, shadow=True, ncol=5)
-    
+
     plt.tight_layout()
 
     if savefile is not None:
         plt.savefig(savefile)
     else:
         plt.show()
-    
 
+
+def compare_totals(gen_eso, gen_pypsa, savefile=None):
+    
+    gen_eso = deepcopy(gen_eso)
+    gen_pypsa = deepcopy(gen_pypsa)
+
+    eso_totals = pd.DataFrame(gen_eso.sum().values, index=gen_eso.columns, columns=["tech"]) * 1e-3
+    pypsa_totals = pd.DataFrame(gen_pypsa.sum().values, index=gen_pypsa.columns, columns=["tech"]) * 1e-3
+
+    eso_totals["source"] = ["eso" for _ in range(len(eso_totals))]
+    pypsa_totals["source"] = ["pypsa" for _ in range(len(pypsa_totals))]
+
+    eso_totals["carrier"] = eso_totals.index
+    pypsa_totals["carrier"] = pypsa_totals.index
+
+    totals = pd.concat((eso_totals, pypsa_totals), axis=0)
+
+    _, ax = plt.subplots(1, 1, figsize=(8, 5))
+
+    sns.barplot(data=totals,
+                x="carrier",
+                y="tech",
+                hue="source",
+                ax=ax,
+                edgecolor="k",
+                alpha=0.9,
+                )
+
+    ax.set_xlabel("Technology")
+    ax.set_ylabel("Total Generation (TWh)")
+
+    if savefile is None:
+        plt.show()
+    else:
+        plt.savefig(savefile)
 
 
 
@@ -162,8 +200,8 @@ if __name__ == "__main__":
     n = pypsa.Network(snakemake.input["network"])
     gen = pd.read_csv(snakemake.input["gb_generation_data"], parse_dates=True, index_col=0)
 
-    gen_pypsa = preprocess_generation_pypsa(n, pypsa_mapper)
-    gen_eso = preprocess_generation_eso(gen, eso_mapper)
+    gen_pypsa = preprocess_generation_pypsa(n, pypsa_mapper) * 1e-3
+    gen_eso = preprocess_generation_eso(gen, eso_mapper) * 1e-3
     gen_pypsa.index = gen_eso.index
 
     compare_generation_timeseries(gen_eso,
@@ -178,9 +216,4 @@ if __name__ == "__main__":
         savefile=snakemake.output["generation_timeseries_weeks"]
         )
     
-    raise NotImplementedError("Add saving sessions and total generation plot")
-    
-
-
-
-    
+    compare_totals(gen_eso, gen_pypsa, savefile=snakemake.output.total_generation)
