@@ -45,18 +45,6 @@ pypsa_mapper = {
 
 eso_mapper = {key: key.upper() for key in list(pypsa_mapper)}
 
-tech_colors = {
-    "nuclear": '#ff8c00',
-    "solar": "#f9d002",
-    "wind": "#6895dd",
-    "hydro": '#298c81',
-    "solar": "#f9d002",
-    "gas": '#e05b09',
-    "coal": '#545454',
-    "oil": '#c9c9c9',
-    "biomass": '#baa741',
-}
-
 
 def preprocess_generation_pypsa(n, mapper, country="GB"):
 
@@ -71,6 +59,78 @@ def preprocess_generation_pypsa(n, mapper, country="GB"):
     return ts
 
 
+def get_transmission_pypsa(n, country="GB"):
+
+    mask1 = n.links.bus0.str.startswith(country)
+    mask2 = n.links.bus1.str.startswith(country)
+
+    intercon = n.links.loc[mask1 ^ mask2]
+
+    gb0_flow = intercon.loc[intercon.bus0.str.startswith(country)].index
+    gb1_flow = intercon.drop(gb0_flow).index
+
+    intercon_flow = pd.concat((
+        n.links_t.p1[gb0_flow], n.links_t.p0[gb1_flow]
+    ), axis=1)
+
+    intercon_flow_positive = pd.DataFrame({"transmission lines":
+        intercon_flow.sum(axis=1).clip(lower=0.)})
+
+    intercon_flow_negative = pd.DataFrame({"transmission lines":
+        intercon_flow.sum(axis=1).clip(upper=0.)})
+
+    return intercon_flow_positive, intercon_flow_negative
+
+
+def get_storage_flows_pypsa(n, country="GB"):
+    storage = n.storage_units.loc[
+        n.storage_units.bus.str.startswith(country)].index
+
+    sp = pd.DataFrame({"ror": n.storage_units_t.p[storage].sum(axis=1)})
+
+    storage_dispatch = sp.clip(lower=0.)
+    storage_charging = sp.clip(upper=0.)
+
+    return storage_dispatch, storage_charging
+
+
+def get_store_flows_pypsa(n, country="GB"):
+
+    stores = n.stores.loc[n.stores.bus.str.startswith(country)]
+
+    df_charge = pd.DataFrame(index=n.links_t.p0.index)
+    df_discharge = pd.DataFrame(index=n.links_t.p0.index)
+
+    for carrier in stores.carrier.unique():
+
+        stores = stores.loc[stores.carrier == carrier]
+
+        store_chargers = n.links.loc[n.links.bus1.isin(stores.bus)]
+        df_charge[carrier+" charge"] = (
+            n.links_t
+            .p1[store_chargers.index]
+            # .mul(n.links.loc[store_chargers.index].efficiency, axis=1)     
+        ).sum(axis=1)
+
+        store_dischargers = n.links.loc[n.links.bus0.isin(stores.bus)]
+        discharge = (
+            n.links_t
+            .p0[store_dischargers.index]
+            .mul(n.links.loc[store_dischargers.index].efficiency, axis=1)     
+        )
+
+        df_discharge[carrier+" dispatch"] = discharge.sum(axis=1)
+
+    return df_discharge, df_charge
+
+
+def get_load_pypsa(n, country="GB"):
+
+    gb_buses = n.loads.loc[n.loads.bus.str.startswith(country)].index
+    load = n.loads_t.p_set[gb_buses].sum(axis=1)
+    return load
+
+
 def preprocess_generation_eso(df, mapper):
 
     ts = pd.DataFrame(index=df.index)
@@ -79,42 +139,80 @@ def preprocess_generation_eso(df, mapper):
     return ts
 
 
-def stackplot_to_ax(df, ax, color_mapper={}):
+def stackplot_to_ax(df, ax, color_mapper={}, stackplot_kwargs={}):
     if color_mapper:
         colors = [color_mapper[tech] for tech in df.columns]
     else:
         colors = None
+
+    stackplot_kwargs_default = {
+        # "edgecolor": "k", 
+        # "linewidth": 0.3,
+        # "linestyle": ":",
+        "alpha": 0.9,
+        }
+    stackplot_kwargs_default.update(stackplot_kwargs)
     
     ax.stackplot(df.index,
                  df.values.T,
                  colors=colors,
-                 labels=df.columns)
+                 labels=df.columns,
+                 **stackplot_kwargs_default)
     ax.set_xlim(df.index[0], df.index[-1])
 
 
 def compare_generation_timeseries(
     gen_real,
-    gen_model,
+    gen_model_inflow,
+    gen_model_outflow,
+    load_model=None,
     start=None,
     end=None,
     freq=None,
     vlines=None,
     savefile=None):
+
+    if load_model is None:
+        kirchhoff = pd.DataFrame(index=gen_real.index)
+    else:
+        if load_model.index.tz is None:
+            load_model.index = load_model.index.tz_localize("UTC")
+        kirchhoff = load_model - gen_model_inflow.sum(axis=1) - gen_model_outflow.sum(axis=1) 
+
+    tech_colors = snakemake.config["plotting"]["tech_colors"]
+    tech_colors["wind"] = tech_colors["onwind"]
+    tech_colors["H2 dispatch"] = tech_colors["H2 Fuel Cell"]
+    tech_colors["H2 charge"] = tech_colors["H2 Electrolysis"]
+    tech_colors["battery dispatch"] = tech_colors["battery"]
+    tech_colors["battery charge"] = tech_colors["BEV charger"]
     
     assert (int(bool(start)) + int(bool(end))) % 2 == 0, "Please choose either both or none of start, end"
     
     if start is not None:
         gen_real = gen_real.loc[start:end]
-        gen_model = gen_model.loc[start:end]
-    
+        gen_model_inflow = gen_model_inflow.loc[start:end]
+        gen_model_outflow = gen_model_outflow.loc[start:end]
+        kirchhoff = kirchhoff.loc[start:end]
+
     if freq is not None:
         gen_real = gen_real.resample(freq).mean()
-        gen_model = gen_model.resample(freq).mean()
-    
+        gen_model_inflow = gen_model_inflow.resample(freq).mean()
+        gen_model_outflow = gen_model_outflow.resample(freq).mean()
+        kirchhoff = kirchhoff.resample(freq).mean()
+
     _, axs = plt.subplots(1, 2, figsize=(16, 4))
-    
+
     stackplot_to_ax(gen_real, axs[0], color_mapper=tech_colors)
-    stackplot_to_ax(gen_model, axs[1], color_mapper=tech_colors)
+    stackplot_to_ax(gen_model_inflow, axs[1], color_mapper=tech_colors)
+    stackplot_to_ax(gen_model_outflow, axs[1], color_mapper=tech_colors)
+        
+    if not kirchhoff.empty:
+        axs[1].plot(kirchhoff.index,
+                    kirchhoff.values,
+                    color="k",
+                    linewidth=1.2,
+                    label="Kirchhoff balance",
+                    )
 
     axs[0].set_ylabel("Generation (GW)")
 
@@ -131,8 +229,8 @@ def compare_generation_timeseries(
                     ax.axvline(date, label="Saving Session", **l_kwargs)
                 else:
                     ax.axvline(date, **l_kwargs)
-    
-    axs[0].legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+
+    axs[1].legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
             fancybox=True, shadow=True, ncol=5)
 
     plt.tight_layout()
@@ -180,7 +278,6 @@ def compare_totals(gen_eso, gen_pypsa, savefile=None):
 
 
 
-
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -198,19 +295,43 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     n = pypsa.Network(snakemake.input["network"])
-    gen = pd.read_csv(snakemake.input["gb_generation_data"], parse_dates=True, index_col=0)
+    gen = pd.read_csv(snakemake.input["gb_generation_data"],
+                      parse_dates=True,
+                      index_col=0)
 
-    gen_pypsa = preprocess_generation_pypsa(n, pypsa_mapper) * 1e-3
+    gen_pypsa = preprocess_generation_pypsa(n, pypsa_mapper)
+    loads_pypsa = get_load_pypsa(n) * 1e-3
+
+    storage_plus, storage_minus = get_storage_flows_pypsa(n)
+    store_plus, store_minus = get_store_flows_pypsa(n)
+    transmission_plus, transmission_minus = get_transmission_pypsa(n)
+
+    energy_inflows = pd.concat((
+        gen_pypsa, storage_plus, store_plus, transmission_plus
+    ), axis=1) * 1e-3
+    energy_outflows = pd.concat((
+        storage_minus, store_minus, transmission_minus
+    ), axis=1) * 1e-3
+    gen_pypsa *= 1e-3
+
     gen_eso = preprocess_generation_eso(gen, eso_mapper) * 1e-3
     gen_pypsa.index = gen_eso.index
+    energy_inflows.index = gen_eso.index
+    energy_outflows.index = gen_eso.index
 
-    compare_generation_timeseries(gen_eso,
-        gen_pypsa, 
+    compare_generation_timeseries(
+        gen_eso,
+        energy_inflows,
+        energy_outflows,
+        load_model=loads_pypsa,
         freq="d",
         savefile=snakemake.output["generation_timeseries_year"]
         )
-    compare_generation_timeseries(gen_eso,
-        gen_pypsa,
+    compare_generation_timeseries(
+        gen_eso,
+        energy_inflows,
+        energy_outflows, 
+        load_model=loads_pypsa,
         start=pd.Timestamp("2022-11-13"),
         end=pd.Timestamp("2022-12-15"),
         savefile=snakemake.output["generation_timeseries_weeks"]

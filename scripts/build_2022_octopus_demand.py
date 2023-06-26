@@ -168,4 +168,20 @@ logger.warning("Just transferring demand data from 2013 to 2022 right now.")
 load = pd.read_csv("resources/octopus_test/load.csv", parse_dates=True, index_col=0)
 load.index = pd.date_range("2022", "2022-12-31 23:00", freq="h")
 
+# data from https://data.nationalgrideso.com/demand/historic-demand-data
+# 2022 data, column ND
+esoload = pd.read_csv("data/demanddata.csv", parse_dates=True)
+
+esoload["dt"] = esoload.apply(lambda row: pd.Timestamp(row.SETTLEMENT_DATE) + 
+                        pd.Timedelta(30*(row.SETTLEMENT_PERIOD-1), unit="min"),
+                        axis=1)
+esoload.index = esoload["dt"]
+# esoload.index = esoload.index.tz_localize("UTC")
+esoload = esoload.resample("h").mean()
+esoload = esoload["ND"]
+# esoload.index = load.index
+
+load["GB"] = esoload.values
+
+
 load.to_csv("resources/octopus_2022/load.csv")
