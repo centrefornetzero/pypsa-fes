@@ -183,5 +183,4 @@ esoload = esoload["ND"]
 
 load["GB"] = esoload.values
 
-
 load.to_csv("resources/octopus_2022/load.csv")

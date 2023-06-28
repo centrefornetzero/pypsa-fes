@@ -385,9 +385,10 @@ def attach_conventional_generators(
     )
     ppl["efficiency"] = ppl.efficiency.fillna(ppl.efficiency_r)
     
+    logger.warning("Shouldnt it be m_fuel_price -> fuel_price")
     fuel_price = (fuel_price.assign(
-            OCGT=m_fuel_price['gas'],
-            CCGT=m_fuel_price['gas']
+            OCGT=fuel_price['gas'],
+            CCGT=fuel_price['gas']
         ).drop("gas", axis=1))
     fuel_price = fuel_price.reindex(ppl.carrier, axis=1)
     fuel_price.fillna(costs.fuel, inplace=True)
