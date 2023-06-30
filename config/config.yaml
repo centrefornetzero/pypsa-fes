@@ -27,6 +27,12 @@ scenario:
   # - 37
   gb_regions:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
+  fes_scenario:
+  - 'FS' # Future energy scenario considered, can be 
+      # FS: Falling Short,
+      # LW: Leading the Way,
+      # ST: System Transformation,
+      # CT: Consumer Transformation,
   dt_event:
   - '1' # selects file for turndown timing and magnitude in data/turndown_events/
   opts: # only relevant for PyPSA-Eur
