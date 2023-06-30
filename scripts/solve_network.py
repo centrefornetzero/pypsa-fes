@@ -563,6 +563,26 @@ def add_pipe_retrofit_constraint(n):
     n.model.add_constraints(lhs == rhs, name="Link-pipe_retrofit")
 
 
+def add_capacity_constraint(n, const, country="GB", carrier="solar"):
+    """
+    Upper bounds the total capacity for a carrier in a country 
+    i.e. let mask represents the intersection of country and carrier, then
+
+    n.generators.loc[mask]['p_nom'].sum() < const
+    """
+    const = float(const)
+
+    mask = n.generators.bus.str.startswith(country) * (n.generators.carrier == carrier)
+    index = n.generators.loc[mask].index
+
+    p_nom = n.model["Generator-p_nom"].loc[index]
+
+    n.model.add_constraints(
+        p_nom.sum() <= const,
+        name=f"{country}_{carrier}_capacity_constraint"
+        )
+
+
 def extra_functionality(n, snapshots):
     """
     Collects supplementary constraints which will be passed to
@@ -588,6 +608,7 @@ def extra_functionality(n, snapshots):
             add_EQ_constraints(n, o)
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
+    
 
 
 def solve_network(n, config, opts="", **kwargs):
