@@ -61,8 +61,6 @@ publications.jrc.ec.europa.eu/
 
 *.xlsx
 
-config.yaml
-
 doc/_build
 
 *.xls
