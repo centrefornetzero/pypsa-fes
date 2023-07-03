@@ -570,16 +570,19 @@ def add_capacity_constraint(n, const, country="GB", carrier="solar"):
 
     n.generators.loc[mask]['p_nom'].sum() < const
     """
+    if isinstance(carrier, str):
+        carrier = [carrier]
+
     const = float(const)
 
-    mask = n.generators.bus.str.startswith(country) * (n.generators.carrier == carrier)
+    mask = n.generators.bus.str.startswith(country) * (n.generators.carrier.isin(carrier))
     index = n.generators.loc[mask].index
 
     p_nom = n.model["Generator-p_nom"].loc[index]
 
     n.model.add_constraints(
         p_nom.sum() <= const,
-        name=f"{country}_{carrier}_capacity_constraint"
+        name=f"{country}_{'_'.join(carrier)}_capacity_constraint"
         )
 
 
@@ -608,7 +611,7 @@ def extra_functionality(n, snapshots):
             add_EQ_constraints(n, o)
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
-    
+
 
 
 def solve_network(n, config, opts="", **kwargs):
