@@ -581,7 +581,7 @@ def add_capacity_constraint(n, const, country="GB", carrier="solar"):
     p_nom = n.model["Generator-p_nom"].loc[index]
 
     n.model.add_constraints(
-        p_nom.sum() <= const,
+        p_nom.sum() == const,
         name=f"{country}_{'_'.join(carrier)}_capacity_constraint"
         )
 

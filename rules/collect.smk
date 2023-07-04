@@ -36,7 +36,7 @@ rule extra_components_networks:
 rule prepare_elec_networks:
     input:
         expand(
-            RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}.nc",
+            RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
             **config["scenario"]
         ),
 
@@ -53,7 +53,7 @@ rule prepare_sector_networks:
 rule solve_elec_networks:
     input:
         expand(
-            RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}.nc",
+            RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
 
             **config["scenario"]
         ),
@@ -72,6 +72,6 @@ rule plot_networks:
     input:
         expand(
             RESULTS
-            + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+            + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}-costs-all_{fes_scenario}_{planning_horizons}.pdf",
             **config["scenario"]
         ),

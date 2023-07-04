@@ -36,7 +36,7 @@ rule build_electricity_demand:
 rule build_2022_octopus_demand:
     input:
         default_load=RESOURCES + "default_load.csv",
-        gb_demand="data/eso_demanddata_2022.csv",
+        gb_demand="data/demanddata.csv",
     output:
         load=RESOURCES + "load.csv",
     log:
@@ -248,6 +248,23 @@ rule build_renewable_profiles:
         "../envs/environment.yaml"
     script:
         "../scripts/build_renewable_profiles.py"
+
+rule build_fes_constraints:
+    input:
+        fes_table="data/Data-workbook2022_V006.xlsx",
+    output:
+        capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes_scenario}_{planning_horizons}.csv",
+        # load_constraints=RESOURCES + "fes_load_constraints_{fes_scenario}_{planning_horizons}.csv",
+        # battery_constraints=RESOURCES + "fes_battery_constraints_{fes_scenario}_{planning_horizons}.csv",
+    log:
+        LOGS + "build_fes_constraints_{fes_scenario}_{planning_horizons}.log"
+    threads: 1
+    resources:
+        mem_mb=1000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_fes_constraints.py"
 
 
 rule build_monthly_prices:
