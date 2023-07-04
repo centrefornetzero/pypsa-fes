@@ -181,8 +181,8 @@ if __name__ == "__main__":
 
     configure_logging(snakemake)
 
-    fes = snakemake.wildcards["fes_scenarios"]
-    year = snakemake.wildcards["planning_horizons"]
+    fes = snakemake.wildcards["fes_scenario"]
+    year = int(snakemake.wildcards["planning_horizons"])
 
     caps = pd.DataFrame(columns=["carrier", "attr", "value", "sense"]) 
     loads = pd.DataFrame(columns=["carrier", "attr", "value", "sense"]) 

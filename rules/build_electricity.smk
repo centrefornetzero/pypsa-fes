@@ -421,11 +421,11 @@ rule prepare_network:
         tech_costs=COSTS,
         co2_price=RESOURCES + "CO2_price_2022.csv",
     output:
-        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}.nc",
+        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
     log:
-        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}.log",
+        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.log",
     benchmark:
-        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}")
+        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}")
     threads: 1
     resources:
         mem_mb=4000,
