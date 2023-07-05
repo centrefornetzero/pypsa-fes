@@ -613,6 +613,18 @@ def extra_functionality(n, snapshots):
     add_pipe_retrofit_constraint(n)
 
 
+"""
+cc = pd.read_csv(snakemake.input["capacity_constraints"],
+                                    index_col=0)
+
+# for _, row in capacity_constraints.iterrows():
+
+offshore = cc.carrier.isin(["offshore-ac", "offshore-dc"])
+add_capacity_constraint(n,
+    cc.loc[offshore])
+#def add_capacity_constraint(n, const, country="GB", carrier="solar"):
+"""
+
 
 def solve_network(n, config, opts="", **kwargs):
     set_of_options = config["solving"]["solver"]["options"]

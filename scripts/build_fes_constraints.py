@@ -111,7 +111,6 @@ def get_extra(datapoint, scenario, year):
 
         return df.loc[scenario, year]
 
-
     if datapoint == "elec_demand_home_heating":
 
         sheet, col, row, unit, format = list(page_mapper[datapoint].values())
@@ -168,10 +167,11 @@ def get_data_point(datapoint, scenario, year):
             val = val * 1e3
         elif unit == "TWh":
             val = val * 1e6
-
+        
     elif format == "cumul":
         val = df.loc[scenario_mapper[scenario], :year].sum()
-        return val
+
+    return val
 
 
 if __name__ == "__main__":
@@ -196,14 +196,9 @@ if __name__ == "__main__":
 
     val = get_data_point("offshore_wind_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({
-        "carrier": "offwind-ac",
+        "carrier": "offwind",
         "attr": "p_nom",
-        "value": val/2.,
-        "sense": "==",})
-    caps.loc[len(caps)] = pd.Series({
-        "carrier": "offwind-dc",
-        "attr": "p_nom",
-        "value": val/2.,
+        "value": val,
         "sense": "==",})
 
     val = get_data_point("solar_capacity", fes, year)
@@ -216,14 +211,9 @@ if __name__ == "__main__":
     # (unabated gas)
     val = get_data_point("gas_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({
-        "carrier": "OCGT",
+        "carrier": "gas",
         "attr": "p_nom",
-        "value": val/2.,
-        "sense": "==",})
-    caps.loc[len(caps)] = pd.Series({
-        "carrier": "CCGT",
-        "attr": "p_nom",
-        "value": val/2.,
+        "value": val,
         "sense": "==",})
     
     val = get_data_point("gas_ccs_capacity", fes, year)

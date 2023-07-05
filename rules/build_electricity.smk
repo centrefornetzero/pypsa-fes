@@ -420,6 +420,7 @@ rule prepare_network:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
         tech_costs=COSTS,
         co2_price=RESOURCES + "CO2_price_2022.csv",
+        heat_demand=RESOURCES + "heat_demand_residential_elec_s{simpl}_{gb_regions}.geojson",
     output:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
     log:

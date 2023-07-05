@@ -15,7 +15,7 @@ run:
   shared_resources: false # set to true to share the default resources across runs
   shared_cutouts: true # set to true to share the default cutout(s) across runs
 
-foresight:  # options are overnight, myopic, perfect (perfect is not yet implemented)
+foresight: overnight # options are overnight, myopic, perfect (perfect is not yet implemented)
 # if you use myopic or perfect foresight, set the investment years in "planning_horizons" below
 
 scenario:
