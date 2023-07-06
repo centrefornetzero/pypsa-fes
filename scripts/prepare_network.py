@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors
+# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors and Lukas Franken
 #
 # SPDX-License-Identifier: MIT
 
@@ -60,11 +60,16 @@ Description
 import logging
 import re
 
+import pypsa
 import numpy as np
 import pandas as pd
-import pypsa
-from _helpers import configure_logging
+import xarray as xr
+from itertools import product
+
+from _helpers import configure_logging, generate_periodic_profiles
 from add_electricity import load_costs, update_transmission_costs
+from build_fes_constraints import get_data_point
+
 
 from pypsa.descriptors import expand_series
 
@@ -252,6 +257,86 @@ def set_line_nom_max(n, s_nom_max_set=np.inf, p_nom_max_set=np.inf):
     n.links.p_nom_max.clip(upper=p_nom_max_set, inplace=True)
 
 
+def add_heat_pump_load(
+    n, 
+    heat_demand_file,
+    ashp_cop_file,
+    energy_totals_file,
+    intraday_profile_file,
+    scenario,
+    year,
+    ):
+
+    year = int(year)
+
+    intraday_profiles = pd.read_csv(intraday_profile_file, index_col=0)
+
+    daily_space_heat_demand = (
+        xr.open_dataarray(heat_demand_file)
+        .to_pandas()
+        .reindex(index=n.snapshots, method="ffill")
+    )
+
+    gb_regions = [col for col in daily_space_heat_demand if "GB" in col]
+    daily_space_heat_demand = daily_space_heat_demand[gb_regions]
+
+    pop_weighted_energy_totals = pd.read_csv(energy_totals_file, index_col=0)
+
+    sectors = ["residential"]
+    uses = ["water", "space"]
+
+    heat_demand = {}
+
+    for sector, use in product(sectors, uses):
+        weekday = list(intraday_profiles[f"{sector} {use} weekday"])
+        weekend = list(intraday_profiles[f"{sector} {use} weekend"])
+        weekly_profile = weekday * 5 + weekend * 2
+        intraday_year_profile = generate_periodic_profiles(
+            daily_space_heat_demand.index.tz_localize("UTC"),
+            nodes=daily_space_heat_demand.columns,
+            weekly_profile=weekly_profile,
+        )
+
+        if use == "space":
+            heat_demand_shape = daily_space_heat_demand * intraday_year_profile
+        else:
+            heat_demand_shape = intraday_year_profile
+
+        heat_demand[f"{sector} {use}"] = (
+            heat_demand_shape / heat_demand_shape.sum()
+        ).multiply(pop_weighted_energy_totals[f"total {sector} {use}"]) * 1e6
+
+    heat_demand = pd.concat(heat_demand, axis=1)
+    heat_demand = pd.DataFrame({
+        region: heat_demand[[col for col in heat_demand.columns if region in col]].sum(axis=1)
+        for region in daily_space_heat_demand.columns
+    })
+
+    cop = xr.open_dataarray(ashp_cop_file).to_dataframe().iloc[:,0].unstack()
+    cop = cop[gb_regions]
+
+    cop = cop.rename(
+        columns={old: [col for col in heat_demand.columns if col in old][0]
+        for old in cop.columns}
+    )
+
+    # to electricity demand through cop
+    heat_demand = heat_demand.divide(cop)
+
+    # scale according to scenario
+    # get number of elec load through residential heating
+    hp_load_future = get_data_point("elec_demand_home_heating", scenario, year)
+    hp_load_base = get_data_point("elec_demand_home_heating", scenario, 2020)
+
+    heat_demand = (
+        heat_demand 
+        / heat_demand.sum().sum() 
+        * (hp_load_future - hp_load_base) 
+    )
+
+    n.loads_t.p_set[gb_regions] += heat_demand    
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -355,6 +440,16 @@ if __name__ == "__main__":
         enforce_autarky(n)
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
+
+    add_heat_pump_load(
+        n, 
+        snakemake.input["heat_demand"],
+        snakemake.input["cop_air_total"],
+        snakemake.input["energy_totals"],
+        snakemake.input["heat_profile"],
+        snakemake.wildcards.fes_scenario,
+        snakemake.wildcards.planning_horizons,
+    )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])

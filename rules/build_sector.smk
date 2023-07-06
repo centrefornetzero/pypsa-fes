@@ -30,16 +30,16 @@ rule build_clustered_population_layouts:
         pop_layout_total=RESOURCES + "pop_layout_total.nc",
         pop_layout_urban=RESOURCES + "pop_layout_urban.nc",
         pop_layout_rural=RESOURCES + "pop_layout_rural.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{clusters}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{gb_regions}.csv",
     log:
-        LOGS + "build_clustered_population_layouts_{simpl}_{clusters}.log",
+        LOGS + "build_clustered_population_layouts_{simpl}_{gb_regions}.log",
     resources:
         mem_mb=10000,
     benchmark:
-        BENCHMARKS + "build_clustered_population_layouts/s{simpl}_{clusters}"
+        BENCHMARKS + "build_clustered_population_layouts/s{simpl}_{gb_regions}"
     conda:
         "../envs/environment.yaml"
     script:
@@ -141,18 +141,22 @@ if not (config["sector"]["gas_network"] or config["sector"]["H2_retrofit"]):
 
 rule build_heat_demands:
     input:
-        pop_layout=RESOURCES + "pop_layout_{scope}.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        # pop_layout=RESOURCES + "pop_layout_{scope}.nc",
+        pop_layout=RESOURCES + "pop_layout_total.nc",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
-        heat_demand=RESOURCES + "heat_demand_{scope}_elec_s{simpl}_{clusters}.nc",
+        # heat_demand=RESOURCES + "heat_demand_{scope}_elec_s{simpl}_{gb_regions}.nc",
+        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_{gb_regions}.nc",
     resources:
         mem_mb=20000,
     threads: 8
     log:
-        LOGS + "build_heat_demands_{scope}_{simpl}_{clusters}.loc",
+        # LOGS + "build_heat_demands_{scope}_{simpl}_{gb_regions}.loc",
+        LOGS + "build_heat_demands_residential_{simpl}_{gb_regions}.loc",
     benchmark:
-        BENCHMARKS + "build_heat_demands/{scope}_s{simpl}_{clusters}"
+        # BENCHMARKS + "build_heat_demands/{scope}_s{simpl}_{gb_regions}"
+        BENCHMARKS + "build_heat_demands/residential_s{simpl}_{gb_regions}"
     conda:
         "../envs/environment.yaml"
     script:
@@ -162,18 +166,18 @@ rule build_heat_demands:
 rule build_temperature_profiles:
     input:
         pop_layout=RESOURCES + "pop_layout_{scope}.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
-        temp_soil=RESOURCES + "temp_soil_{scope}_elec_s{simpl}_{clusters}.nc",
-        temp_air=RESOURCES + "temp_air_{scope}_elec_s{simpl}_{clusters}.nc",
+        temp_soil=RESOURCES + "temp_soil_{scope}_elec_s{simpl}_{gb_regions}.nc",
+        temp_air=RESOURCES + "temp_air_{scope}_elec_s{simpl}_{gb_regions}.nc",
     resources:
         mem_mb=20000,
     threads: 8
     log:
-        LOGS + "build_temperature_profiles_{scope}_{simpl}_{clusters}.log",
+        LOGS + "build_temperature_profiles_{scope}_{simpl}_{gb_regions}.log",
     benchmark:
-        BENCHMARKS + "build_temperature_profiles/{scope}_s{simpl}_{clusters}"
+        BENCHMARKS + "build_temperature_profiles/{scope}_s{simpl}_{gb_regions}"
     conda:
         "../envs/environment.yaml"
     script:
@@ -182,25 +186,25 @@ rule build_temperature_profiles:
 
 rule build_cop_profiles:
     input:
-        temp_soil_total=RESOURCES + "temp_soil_total_elec_s{simpl}_{clusters}.nc",
-        temp_soil_rural=RESOURCES + "temp_soil_rural_elec_s{simpl}_{clusters}.nc",
-        temp_soil_urban=RESOURCES + "temp_soil_urban_elec_s{simpl}_{clusters}.nc",
-        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}_{clusters}.nc",
-        temp_air_rural=RESOURCES + "temp_air_rural_elec_s{simpl}_{clusters}.nc",
-        temp_air_urban=RESOURCES + "temp_air_urban_elec_s{simpl}_{clusters}.nc",
+        temp_soil_total=RESOURCES + "temp_soil_total_elec_s{simpl}_{gb_regions}.nc",
+        temp_soil_rural=RESOURCES + "temp_soil_rural_elec_s{simpl}_{gb_regions}.nc",
+        temp_soil_urban=RESOURCES + "temp_soil_urban_elec_s{simpl}_{gb_regions}.nc",
+        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}_{gb_regions}.nc",
+        temp_air_rural=RESOURCES + "temp_air_rural_elec_s{simpl}_{gb_regions}.nc",
+        temp_air_urban=RESOURCES + "temp_air_urban_elec_s{simpl}_{gb_regions}.nc",
     output:
-        cop_soil_total=RESOURCES + "cop_soil_total_elec_s{simpl}_{clusters}.nc",
-        cop_soil_rural=RESOURCES + "cop_soil_rural_elec_s{simpl}_{clusters}.nc",
-        cop_soil_urban=RESOURCES + "cop_soil_urban_elec_s{simpl}_{clusters}.nc",
-        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_{clusters}.nc",
-        cop_air_rural=RESOURCES + "cop_air_rural_elec_s{simpl}_{clusters}.nc",
-        cop_air_urban=RESOURCES + "cop_air_urban_elec_s{simpl}_{clusters}.nc",
+        cop_soil_total=RESOURCES + "cop_soil_total_elec_s{simpl}_{gb_regions}.nc",
+        cop_soil_rural=RESOURCES + "cop_soil_rural_elec_s{simpl}_{gb_regions}.nc",
+        cop_soil_urban=RESOURCES + "cop_soil_urban_elec_s{simpl}_{gb_regions}.nc",
+        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_{gb_regions}.nc",
+        cop_air_rural=RESOURCES + "cop_air_rural_elec_s{simpl}_{gb_regions}.nc",
+        cop_air_urban=RESOURCES + "cop_air_urban_elec_s{simpl}_{gb_regions}.nc",
     resources:
         mem_mb=20000,
     log:
-        LOGS + "build_cop_profiles_s{simpl}_{clusters}.log",
+        LOGS + "build_cop_profiles_s{simpl}_{gb_regions}.log",
     benchmark:
-        BENCHMARKS + "build_cop_profiles/s{simpl}_{clusters}"
+        BENCHMARKS + "build_cop_profiles/s{simpl}_{gb_regions}"
     conda:
         "../envs/environment.yaml"
     script:
@@ -606,14 +610,14 @@ if not config["sector"]["retrofitting"]["retro_endogen"]:
 rule build_population_weighted_energy_totals:
     input:
         energy_totals=RESOURCES + "energy_totals.csv",
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{clusters}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{gb_regions}.csv",
     output:
-        RESOURCES + "pop_weighted_energy_totals_s{simpl}_{clusters}.csv",
+        RESOURCES + "pop_weighted_energy_totals_s{simpl}_{gb_regions}.csv",
     threads: 1
     resources:
         mem_mb=2000,
     log:
-        LOGS + "build_population_weighted_energy_totals_s{simpl}_{clusters}.log",
+        LOGS + "build_population_weighted_energy_totals_s{simpl}_{gb_regions}.log",
     conda:
         "../envs/environment.yaml"
     script:

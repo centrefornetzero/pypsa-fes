@@ -34,6 +34,10 @@ import string
 from _helpers import configure_logging
 
 data_file = "data/Data-workbook2022_V006.xlsx"
+import os
+if not os.path.isfile(data_file):
+    data_file = "/mnt/c/Users/s2216495/Desktop/octopus/pypsa-eur/"+data_file
+
 
 page_mapper = {
     "wind_capacity": {"sheet": "ES.E.12", "start_col": "N", "start_row": 9, "unit": "GW", "format": "gen"},
@@ -55,6 +59,9 @@ page_mapper = {
     
     "hydrogen_demand": {"sheet": "EC.R.08", "start_col": "M", "start_row": 7, "unit": "TWh", "format": "gen"}, # for home heating
     "total_emissions": {"sheet": "NZ.09"},
+
+    "ashp_installations": {"sheet": "EC.R.10", "start_col": "M", "start_row": 9, "unit": "#", "format": "cumul"},
+    "elec_demand_home_heating": {"sheet": "EC.R.06", "start_col": "M", "start_row": 8, "unit": "GWh", "format": "gen"},
 }
 
 scenario_mapper = {
@@ -122,7 +129,7 @@ def get_extra(datapoint, scenario, year):
                 header=row-2,
                 index_col=0,
                 nrows=5,
-                usecols=[col+i for i in range(32)],
+                usecols=[col+i for i in range(47)],
                 )
             .iloc[1:]
         )

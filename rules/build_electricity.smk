@@ -419,8 +419,11 @@ rule prepare_network:
     input:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
         tech_costs=COSTS,
+        heat_profile="data/heat_load_profile_BDEW.csv",
         co2_price=RESOURCES + "CO2_price_2022.csv",
-        heat_demand=RESOURCES + "heat_demand_residential_elec_s{simpl}_{gb_regions}.geojson",
+        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_{gb_regions}.nc",
+        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_{gb_regions}.nc",
+        energy_totals=RESOURCES + "pop_weighted_energy_totals_s{simpl}_{gb_regions}.csv",
     output:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
     log:
