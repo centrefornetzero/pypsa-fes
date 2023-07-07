@@ -257,6 +257,7 @@ def set_line_nom_max(n, s_nom_max_set=np.inf, p_nom_max_set=np.inf):
     n.links.p_nom_max.clip(upper=p_nom_max_set, inplace=True)
 
 
+# adapted from `add_heat` method in `scripts/prepare_sector_network.py`
 def add_heat_pump_load(
     n, 
     heat_demand_file,

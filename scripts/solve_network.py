@@ -578,7 +578,7 @@ def add_capacity_constraint(n, const, country="GB", carrier="solar"):
     mask = n.generators.bus.str.startswith(country) * (n.generators.carrier.isin(carrier))
     index = n.generators.loc[mask].index
 
-    p_nom = n.model["Generator-p_nom"].loc[index]
+    p_nom = n.model['Generator-p_nom'].loc[index]
 
     n.model.add_constraints(
         p_nom.sum() == const,
@@ -612,18 +612,26 @@ def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
 
+    # fix generation capacities according to FES
+    cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
 
-"""
-cc = pd.read_csv(snakemake.input["capacity_constraints"],
-                                    index_col=0)
+    value = cc.at["solar", "value"]
+    add_capacity_constraint(n, value, country="GB", carrier=["solar"])
+    
+    value = cc.at["offwind", "value"]
+    add_capacity_constraint(n, value, country="GB", carrier=["offwind-ac", "offwind-dc"])
 
-# for _, row in capacity_constraints.iterrows():
+    value = cc.at["onwind", "value"]
+    add_capacity_constraint(n, value, country="GB", carrier=["onwind"])
 
-offshore = cc.carrier.isin(["offshore-ac", "offshore-dc"])
-add_capacity_constraint(n,
-    cc.loc[offshore])
-#def add_capacity_constraint(n, const, country="GB", carrier="solar"):
-"""
+    value = cc.at["gas", "value"]
+    add_capacity_constraint(n, value, country="GB", carrier=["OCGT", "CCGT"])
+
+    value = cc.at["nuclear", "value"] 
+    add_capacity_constraint(n, value, country="GB", carrier=["nuclear"])
+
+    value = cc.at["biomass", "value"] 
+    add_capacity_constraint(n, value, country="GB", carrier=["biomass"])
 
 
 def solve_network(n, config, opts="", **kwargs):
