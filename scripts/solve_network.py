@@ -616,22 +616,31 @@ def extra_functionality(n, snapshots):
     cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
 
     value = cc.at["solar", "value"]
+    print("fixing solar total capacity: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["solar"])
-    
+
     value = cc.at["offwind", "value"]
+    print("fixing offwind total capacity: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["offwind-ac", "offwind-dc"])
 
     value = cc.at["onwind", "value"]
+    print("fixing onwind total capacity: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["onwind"])
 
-    value = cc.at["gas", "value"]
-    add_capacity_constraint(n, value, country="GB", carrier=["OCGT", "CCGT"])
-
     value = cc.at["nuclear", "value"] 
+    print("fixing nuclear total capacity: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["nuclear"])
 
+    logger.warning("Biomass and gas commented out.")
+    """
     value = cc.at["biomass", "value"] 
+    print("biomass: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["biomass"])
+
+    value = cc.at["gas", "value"]
+    print("gas: ", value)
+    add_capacity_constraint(n, value, country="GB", carrier=["OCGT", "CCGT"])
+    """
 
 
 def solve_network(n, config, opts="", **kwargs):
