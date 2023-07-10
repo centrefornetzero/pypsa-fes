@@ -652,16 +652,17 @@ rule build_transport_demand:
         traffic_data_KFZ="data/emobility/KFZ__count",
         traffic_data_Pkw="data/emobility/Pkw__count",
         temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}_{gb_regions}.nc",
+        fes_data="data/Data-workbook2022_V006.xlsx",
     output:
-        transport_demand=RESOURCES + "transport_demand_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
-        transport_data=RESOURCES + "transport_data_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
-        avail_profile=RESOURCES + "avail_profile_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
-        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
+        transport_demand=RESOURCES + "transport_demand_s{simpl}_{gb_regions}.csv",
+        transport_data=RESOURCES + "transport_data_s{simpl}_{gb_regions}.csv",
+        avail_profile=RESOURCES + "avail_profile_s{simpl}_{gb_regions}.csv",
+        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_{gb_regions}.csv",
     threads: 1
     resources:
         mem_mb=2000,
     log:
-        LOGS + "build_transport_demand_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.log",
+        LOGS + "build_transport_demand_s{simpl}_{gb_regions}.log",
     conda:
         "../envs/environment.yaml"
     script:

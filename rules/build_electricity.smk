@@ -424,6 +424,11 @@ rule prepare_network:
         heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_{gb_regions}.nc",
         cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_{gb_regions}.nc",
         energy_totals=RESOURCES + "pop_weighted_energy_totals_s{simpl}_{gb_regions}.csv",
+        transport_demand=RESOURCES + "transport_demand_s{simpl}_{gb_regions}.csv",
+        transport_data=RESOURCES + "transport_data_s{simpl}_{gb_regions}.csv",
+        avail_profile=RESOURCES + "avail_profile_s{simpl}_{gb_regions}.csv",
+        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_{gb_regions}.csv",
+        fes_table="data/Data-workbook2022_V006.xlsx",
     output:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
     log:

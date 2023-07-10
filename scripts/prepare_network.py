@@ -68,9 +68,13 @@ from itertools import product
 
 from _helpers import configure_logging, generate_periodic_profiles
 from add_electricity import load_costs, update_transmission_costs
-from build_fes_constraints import get_data_point
-
-
+from prepare_sector_network import cycling_shift
+from _fes_helpers import (
+    get_data_point,
+    scenario_mapper,
+    get_gb_total_number_cars,
+    get_gb_total_transport_demand
+    ) 
 from pypsa.descriptors import expand_series
 
 idx = pd.IndexSlice
@@ -335,7 +339,101 @@ def add_heat_pump_load(
         * (hp_load_future - hp_load_base) 
     )
 
-    n.loads_t.p_set[gb_regions] += heat_demand    
+    n.loads_t.p_set[gb_regions] += heat_demand
+
+
+def add_bev(n, transport_config):
+    """Adds BEV load and respective stores units;
+    adapted from `add_land_transport` method in `scripts/prepare_sector_network.py`"""
+
+    logger.info("Adding BEV load and respective storage units")
+
+    year = int(snakemake.wildcards.planning_horizons)
+
+    transport = pd.read_csv(
+        snakemake.input.transport_demand, index_col=0, parse_dates=True
+    )
+    number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)[
+        "number cars"
+    ]
+    avail_profile = pd.read_csv(
+        snakemake.input.avail_profile, index_col=0, parse_dates=True
+    )
+    dsm_profile = pd.read_csv(
+        snakemake.input.dsm_profile, index_col=0, parse_dates=True
+    )
+
+    gb_cars_2050 = get_gb_total_number_cars(
+        snakemake.input.fes_table, "FS") * 1e6
+
+    gb_transport_demand = get_gb_total_transport_demand(
+        snakemake.input.fes_table)
+
+    bev_cars = get_data_point("bev_cars_on_road",
+        snakemake.wildcards.fes_scenario,
+        year)
+    
+    electric_share = bev_cars / gb_cars_2050
+    logger.info(f"EV share: {electric_share*100}%")
+
+    gb_nodes = [col for col in transport.columns if "GB" in col]
+
+    if electric_share > 0.0:
+
+        n.madd(
+            "Bus",
+            gb_nodes,
+            location=gb_nodes,
+            suffix=" EV battery",
+            unit="MWh_el",
+        )
+
+        p_set = (
+            electric_share
+            * (
+                transport[gb_nodes]
+                + cycling_shift(transport[gb_nodes], 1)
+                + cycling_shift(transport[gb_nodes], 2)
+            )
+            / 3
+        )
+
+        import matplotlib.pyplot as plt
+        plt.style.use("ggplot")
+        _, ax = plt.subplots(1, 1, figsize=(10, 5))        
+
+        transport[gb_nodes].mean(axis=1).iloc[:200].plot(
+            ax=ax, alpha=0.5, color="k", label="before")
+        p_set.mean(axis=1).iloc[:200].plot(ax=ax,
+            alpha=0.5, color="r", label=f"afer el share {electric_share*100}%")
+
+        ax.set_ylabel("GW")
+        ax.legend()
+        ax.set_title("EV demand vs transport demand")
+        ax.set_xlabel("Time")
+
+        plt.savefig("ev_demand.png")
+        plt.show()
+
+        p_nom = (
+            number_cars
+            * transport_config.get("bev_charge_rate", 0.011)
+            * electric_share
+        )
+
+        n.loads_t.p_set[gb_nodes] += p_set        
+
+        n.madd(
+            "Bus",
+            gb_nodes,
+            location=gb_nodes,
+            suffix=" EV battery",
+            unit="MWh_el",
+        )
+        
+
+
+
 
 
 if __name__ == "__main__":
@@ -452,5 +550,9 @@ if __name__ == "__main__":
         snakemake.wildcards.planning_horizons,
     )
 
+    add_bev(n, snakemake.config["sector"])
+
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
-    n.export_to_netcdf(snakemake.output[0])
+
+    n.links.to_csv("links_before_saving_network.csv")
+    # n.export_to_netcdf(snakemake.output[0])
