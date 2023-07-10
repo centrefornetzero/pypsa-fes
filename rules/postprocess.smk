@@ -12,21 +12,20 @@ localrules:
 rule plot_network:
     input:
         overrides="data/override_component_attrs",
-        network=RESULTS
-        + "postnetworks/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
         regions=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
     output:
         map=RESULTS
-        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}-costs-all_{fes_scenario}_{planning_horizons}.pdf",
         today=RESULTS
-        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-today.pdf",
+        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{fes_scenario}_{planning_horizons}-today.pdf",
     threads: 2
     resources:
         mem_mb=10000,
     benchmark:
         (
             BENCHMARKS
-            + "plot_network/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_{planning_horizons}"
+            + "plot_network/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{fes_scenario}_{planning_horizons}"
         )
     conda:
         "../envs/environment.yaml"

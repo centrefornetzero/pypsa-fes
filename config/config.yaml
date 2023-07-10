@@ -711,9 +711,9 @@ solving:
 
 plotting:
   map:
-    boundaries: [-11, 30, 34, 71]
+    boundaries: [-7, 8, 47, 63]
     color_geomap:
-      ocean: white
+      ocean: lightskyblue 
       land: white
   eu_node_location:
     x: -5.5

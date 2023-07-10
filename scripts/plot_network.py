@@ -179,6 +179,11 @@ def plot_map(
     fig, ax = plt.subplots(subplot_kw={"projection": ccrs.EqualEarth()})
     fig.set_size_inches(7, 6)
 
+    for col in costs.unstack().columns:
+        if col not in tech_colors:
+            logger.warning(f"{col} not in config/plotting/tech_colors")
+            tech_colors[col] = "grey"
+
     n.plot(
         bus_sizes=costs / bus_size_factor,
         bus_colors=tech_colors,
@@ -190,6 +195,7 @@ def plot_map(
         **map_opts,
     )
 
+    """
     sizes = [20, 10, 5]
     labels = [f"{s} bEUR/a" for s in sizes]
     sizes = [s / bus_size_factor * 1e9 for s in sizes]
@@ -229,9 +235,10 @@ def plot_map(
     add_legend_lines(
         ax, sizes, labels, patch_kw=dict(color="lightgrey"), legend_kw=legend_kw
     )
+    """
 
     legend_kw = dict(
-        bbox_to_anchor=(1.52, 1.04),
+        # bbox_to_anchor=(1.52, 1.04),
         frameon=False,
     )
 

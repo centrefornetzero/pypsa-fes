@@ -645,23 +645,23 @@ rule build_shipping_demand:
 
 rule build_transport_demand:
     input:
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{clusters}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{gb_regions}.csv",
         pop_weighted_energy_totals=RESOURCES
-        + "pop_weighted_energy_totals_s{simpl}_{clusters}.csv",
+        + "pop_weighted_energy_totals_s{simpl}_{gb_regions}.csv",
         transport_data=RESOURCES + "transport_data.csv",
         traffic_data_KFZ="data/emobility/KFZ__count",
         traffic_data_Pkw="data/emobility/Pkw__count",
-        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}_{clusters}.nc",
+        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}_{gb_regions}.nc",
     output:
-        transport_demand=RESOURCES + "transport_demand_s{simpl}_{clusters}.csv",
-        transport_data=RESOURCES + "transport_data_s{simpl}_{clusters}.csv",
-        avail_profile=RESOURCES + "avail_profile_s{simpl}_{clusters}.csv",
-        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_{clusters}.csv",
+        transport_demand=RESOURCES + "transport_demand_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
+        transport_data=RESOURCES + "transport_data_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
+        avail_profile=RESOURCES + "avail_profile_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
+        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.csv",
     threads: 1
     resources:
         mem_mb=2000,
     log:
-        LOGS + "build_transport_demand_s{simpl}_{clusters}.log",
+        LOGS + "build_transport_demand_s{simpl}_{gb_regions}_{fes_scenario}_{planning_horizons}.log",
     conda:
         "../envs/environment.yaml"
     script:

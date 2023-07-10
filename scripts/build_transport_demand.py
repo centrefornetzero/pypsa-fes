@@ -13,9 +13,25 @@ import pandas as pd
 import xarray as xr
 from _helpers import generate_periodic_profiles
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def build_nodal_transport_data(fn, pop_layout):
     transport_data = pd.read_csv(fn, index_col=0)
+
+    if "NI1 0" in pop_layout.index:
+
+        logger.info("Assigning Ireland car number and fuel eta to both Ireland and Northern Ireland.")
+
+        pop_ni = 1.903
+        pop_ie = 5.033
+
+        n_cars_ie = transport_data.loc["IE", "number cars"] * (pop_ie / (pop_ie + pop_ni)) 
+        n_cars_ni = transport_data.loc["IE", "number cars"] * (pop_ni / (pop_ie + pop_ni)) 
+        transport_data.loc["NI"] = transport_data.loc["IE"]
+        transport_data.loc["NI", "number cars"] = n_cars_ni
+        transport_data.loc["IE", "number cars"] = n_cars_ie
 
     nodal_transport_data = transport_data.loc[pop_layout.ct].fillna(0.0)
     nodal_transport_data.index = pop_layout.index
@@ -166,6 +182,10 @@ if __name__ == "__main__":
             simpl="",
             clusters=48,
         )
+    
+    print(snakemake.wildcards)
+    print(snakemake.wildcards.fes_scenario) 
+    print(snakemake.wildcards.planning_horizons) 
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
 
