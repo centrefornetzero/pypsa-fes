@@ -198,8 +198,6 @@ def get_gb_total_transport_demand(fn):
 
     return df
 
-    get_gb_total_number_cars,
-    get_gb_total_transport_demand
 
 def get_gb_total_number_cars(fn, scenario):
     col = string.ascii_uppercase.index("B")
@@ -215,3 +213,49 @@ def get_gb_total_number_cars(fn, scenario):
 
     return df.loc[scenario_mapper[scenario]]
 
+
+def get_smart_charge_v2g(fn, scenario, year):
+    col = string.ascii_uppercase.index("M")
+
+    df = (
+        pd.read_excel(fn,
+            sheet_name="EC.T.13",
+            header=8,
+            index_col=0,
+            nrows=4,
+            usecols=[col+i for i in range(7)],
+            )
+    )
+
+    smart_charge = (
+        df[
+            ["% of consumers who smart charge", "% of consumers who smart charge.1"]
+            ]
+        .rename(columns={"% of consumers who smart charge.1": 2050, 
+                        "% of consumers who smart charge": 2035})
+    )
+    v2g = (
+        df[
+            ["% of consumers who participate in V2G", "% of consumers who participate in V2G.1"]
+            ]
+        .rename(columns={"% of consumers who participate in V2G.1": 2050,
+                        "% of consumers who participate in V2G": 2035})
+        )
+
+    smart_charge = pd.concat((
+        pd.Series(np.zeros(4), index=smart_charge.index, name=2020), smart_charge,
+    ), axis=1)
+
+    v2g = pd.concat((
+        pd.Series(np.zeros(4), index=v2g.index, name=2020), v2g,
+    ), axis=1)
+
+    if not isinstance(year, int):
+        year = int(year)
+
+    assert year <= 2050 and year >= 2020, "Please choose a year between 2020 and 2050."
+
+    smart_val = np.interp(year, smart_charge.columns, smart_charge.loc[scenario_mapper[scenario]])
+    v2g_val = np.interp(year, v2g.columns, v2g.loc[scenario_mapper[scenario]])
+
+    return smart_val, v2g_val

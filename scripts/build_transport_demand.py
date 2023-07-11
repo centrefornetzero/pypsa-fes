@@ -13,14 +13,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from _helpers import generate_periodic_profiles, configure_logging
-"""
-from _fes_helpers import (
-    get_data_point,
-    scenario_mapper,
-    get_gb_total_number_cars,
-    get_gb_total_transport_demand
-    ) 
-"""
 
 import logging
 logger = logging.getLogger(__name__)
@@ -193,45 +185,6 @@ if __name__ == "__main__":
         )
     
     configure_logging(snakemake)
-
-    """
-    gb_cars_2050 = get_gb_total_number_cars(
-        snakemake.input.fes_data,
-        "FS",
-        )
-
-    gb_transport_demand = get_gb_total_transport_demand(
-        snakemake.input.fes_data,
-        )
-    
-    print("gb_transport_demand")
-    print(gb_transport_demand)
-    print("gb_cars 2050")
-    print(gb_cars_2050)
-
-    year = int(snakemake.wildcards.planning_horizons)
-
-    bev_cars = get_data_point("bev_cars_on_road",
-        snakemake.wildcards.fes_scenario,
-        year)
-
-    bev_vans = get_data_point("bev_vans_on_road",
-        snakemake.wildcards.fes_scenario,
-        year)
-
-    bev_hgvs = get_data_point("bev_hgvs_on_road",
-        snakemake.wildcards.fes_scenario,
-        year)
-
-    print("cars on road")
-    print(bev_cars)
-    print("vans on road")
-    print(bev_vans)
-    print("hgvs on road")
-    print(bev_hgvs)
-
-    ev_share = bev_cars / gb_cars_2050
-    """
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
 

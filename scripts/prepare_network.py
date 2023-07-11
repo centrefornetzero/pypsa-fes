@@ -73,7 +73,8 @@ from _fes_helpers import (
     get_data_point,
     scenario_mapper,
     get_gb_total_number_cars,
-    get_gb_total_transport_demand
+    get_gb_total_transport_demand,
+    get_smart_charge_v2g,
     ) 
 from pypsa.descriptors import expand_series
 
@@ -376,17 +377,9 @@ def add_bev(n, transport_config):
     electric_share = bev_cars / gb_cars_2050
     logger.info(f"EV share: {electric_share*100}%")
 
-    gb_nodes = [col for col in transport.columns if "GB" in col]
+    gb_nodes = pd.Index([col for col in transport.columns if "GB" in col])
 
     if electric_share > 0.0:
-
-        n.madd(
-            "Bus",
-            gb_nodes,
-            location=gb_nodes,
-            suffix=" EV battery",
-            unit="MWh_el",
-        )
 
         p_set = (
             electric_share
@@ -398,22 +391,23 @@ def add_bev(n, transport_config):
             / 3
         )
 
-        import matplotlib.pyplot as plt
-        plt.style.use("ggplot")
-        _, ax = plt.subplots(1, 1, figsize=(10, 5))        
+        n.madd(
+            "Bus",
+            gb_nodes,
+            location=gb_nodes,
+            suffix=" EV battery",
+            carrier="Li ion",
+            unit="MWh_el",
+        )
 
-        transport[gb_nodes].mean(axis=1).iloc[:200].plot(
-            ax=ax, alpha=0.5, color="k", label="before")
-        p_set.mean(axis=1).iloc[:200].plot(ax=ax,
-            alpha=0.5, color="r", label=f"afer el share {electric_share*100}%")
-
-        ax.set_ylabel("GW")
-        ax.legend()
-        ax.set_title("EV demand vs transport demand")
-        ax.set_xlabel("Time")
-
-        plt.savefig("ev_demand.png")
-        plt.show()
+        n.madd(
+            "Load",
+            gb_nodes, 
+            suffix = " land transport EV",
+            bus=gb_nodes + " EV battery",
+            carrier="land transport EV",
+            p_set=p_set,
+        )
 
         p_nom = (
             number_cars
@@ -421,19 +415,64 @@ def add_bev(n, transport_config):
             * electric_share
         )
 
-        n.loads_t.p_set[gb_nodes] += p_set        
-
+        logger.info("Assuming BEV charge efficiency of 0.9")
         n.madd(
-            "Bus",
+            "Link",
             gb_nodes,
-            location=gb_nodes,
-            suffix=" EV battery",
-            unit="MWh_el",
+            suffix=" BEV charger",
+            bus0=gb_nodes,
+            bus1=gb_nodes + " EV battery",
+            p_nom=p_nom,
+            carrier="BEV charger",
+            p_max_pu=avail_profile[gb_nodes],
+            efficiency=0.9,
+            # These were set non-zero to find LU infeasibility when availability = 0.25
+            # p_nom_extendable=True,
+            # p_nom_min=p_nom,
+            # capital_cost=1e6,  #i.e. so high it only gets built where necessary
         )
+
+        smart_share, v2g_share = get_smart_charge_v2g(
+            snakemake.input.fes_table,
+            snakemake.wildcards.fes_scenario,
+            year)
         
+        if v2g_share > 0.:
+            logger.info("Assuming V2G efficiency of 0.9")
+            v2g_efficiency = 0.9
+            n.madd(
+                "Link",
+                gb_nodes,
+                suffix=" V2G",
+                bus0=gb_nodes + " EV battery",
+                bus1=gb_nodes,
+                p_nom=p_nom * v2g_share,
+                carrier="V2G",
+                p_max_pu=avail_profile[gb_nodes],
+                efficiency=v2g_efficiency,
+            )
 
+        if smart_share > 0.:
+            logger.info("Assuming average capacity size of 0.05 MWh")
+            avg_battery_size = 0.05
+            e_nom = (
+                number_cars
+                * avg_battery_size
+                * smart_share
+                * electric_share
+            )
 
-
+            n.madd(
+                "Store",
+                gb_nodes,
+                suffix=" battery storage",
+                bus=gb_nodes + " EV battery",
+                carrier="battery storage",
+                e_cyclic=True,
+                e_nom=e_nom,
+                e_max_pu=1,
+                e_min_pu=dsm_profile[gb_nodes],
+            )
 
 
 if __name__ == "__main__":
@@ -550,9 +589,11 @@ if __name__ == "__main__":
         snakemake.wildcards.planning_horizons,
     )
 
-    add_bev(n, snakemake.config["sector"])
+    add_bev(n,
+        snakemake.config["sector"],
+    )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
     n.links.to_csv("links_before_saving_network.csv")
-    # n.export_to_netcdf(snakemake.output[0])
+    n.export_to_netcdf(snakemake.output[0])
