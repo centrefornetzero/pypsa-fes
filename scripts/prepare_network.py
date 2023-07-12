@@ -68,13 +68,14 @@ from itertools import product
 
 from _helpers import configure_logging, generate_periodic_profiles
 from add_electricity import load_costs, update_transmission_costs
-from prepare_sector_network import cycling_shift
+from prepare_sector_network import cycling_shift, prepare_costs
 from _fes_helpers import (
     get_data_point,
     scenario_mapper,
     get_gb_total_number_cars,
     get_gb_total_transport_demand,
     get_smart_charge_v2g,
+    get_power_generation_emission,
     ) 
 from pypsa.descriptors import expand_series
 
@@ -475,6 +476,37 @@ def add_bev(n, transport_config):
             )
 
 
+def add_co2_tracking(n):
+
+    options = snakemake.config["sector"]
+    
+    n.add("Carrier", "co2", co2_emissions=-1.0)
+    
+    # can also be negative
+    n.add(
+        "Store",
+        "co2 atmosphere",
+        e_nom_extendable=True,
+        e_min_pu=-1,
+        carrier="co2",
+        bus="co2 atmosphere",
+    )
+
+    # this tracks CO2 stored, e.g. underground
+    n.madd(
+        "Bus",
+        spatial.co2.nodes,
+        location=spatial.co2.locations,
+        carrier="co2 stored",
+        unit="t_co2",
+    )
+
+
+def add_dac(n, costs):
+    pass
+
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -595,5 +627,7 @@ if __name__ == "__main__":
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
+    print(costs)
+
     n.links.to_csv("links_before_saving_network.csv")
-    n.export_to_netcdf(snakemake.output[0])
+    # n.export_to_netcdf(snakemake.output[0])

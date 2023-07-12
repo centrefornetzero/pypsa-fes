@@ -3424,5 +3424,4 @@ if __name__ == "__main__":
         cluster_heat_buses(n)
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
-
     n.export_to_netcdf(snakemake.output[0])

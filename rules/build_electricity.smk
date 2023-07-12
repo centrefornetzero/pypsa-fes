@@ -429,6 +429,7 @@ rule prepare_network:
         avail_profile=RESOURCES + "avail_profile_s{simpl}_{gb_regions}.csv",
         dsm_profile=RESOURCES + "dsm_profile_s{simpl}_{gb_regions}.csv",
         fes_table="data/Data-workbook2022_V006.xlsx",
+        fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
     output:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
     log:
