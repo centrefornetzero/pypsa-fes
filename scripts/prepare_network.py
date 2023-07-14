@@ -476,35 +476,45 @@ def add_bev(n, transport_config):
             )
 
 
-def add_co2_tracking(n):
+def add_gb_co2_tracking(n):
 
-    options = snakemake.config["sector"]
-    
-    n.add("Carrier", "co2", co2_emissions=-1.0)
-    
     # can also be negative
     n.add(
-        "Store",
-        "co2 atmosphere",
-        e_nom_extendable=True,
-        e_min_pu=-1,
+        "Bus",
+        "gb co2 atmosphere",
         carrier="co2",
-        bus="co2 atmosphere",
+        unit="t_co2",
     )
 
-    # this tracks CO2 stored, e.g. underground
-    n.madd(
+    n.add(
+        "Store",
+        "gb co2 atmosphere",
+        e_nom_extendable=True,
+        carrier="co2",
+        bus="gb co2 atmosphere",
+    )
+
+    # this tracks GB CO2 stored, e.g. underground
+    n.add(
         "Bus",
-        spatial.co2.nodes,
-        location=spatial.co2.locations,
+        "gb co2 stored", 
         carrier="co2 stored",
         unit="t_co2",
     )
 
+    n.add(
+        "Store",
+        "gb co2 stored",
+        e_nom_extendable=True,
+        carrier="co2",
+        bus="gb co2 stored",
+    )
+
+
 
 def add_dac(n, costs):
-    pass
 
+    pass
 
 
 if __name__ == "__main__":
@@ -526,6 +536,23 @@ if __name__ == "__main__":
         snakemake.config["electricity"],
         Nyears,
     )
+
+    print(costs)
+
+    other_costs = prepare_costs(
+        # snakemake.input.tech_costs,
+        "../technology-data/outputs/costs_2030.csv",
+        snakemake.config["costs"],
+        1,
+    )
+
+    interesting = ["CCGT", "direct air capture", "coal CCS", "gas CCS"]
+
+    print(other_costs.index)    
+    print(other_costs.loc[interesting])
+    
+    import sys
+    sys.exit()
 
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
 
