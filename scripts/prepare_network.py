@@ -65,8 +65,11 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from itertools import product
-
-from _helpers import configure_logging, generate_periodic_profiles
+from _helpers import (
+    configure_logging,
+    generate_periodic_profiles,
+    override_component_attrs,
+)
 from add_electricity import load_costs, update_transmission_costs
 from prepare_sector_network import cycling_shift, prepare_costs
 from _fes_helpers import (
@@ -261,6 +264,80 @@ def enforce_autarky(n, only_crossborder=False):
 def set_line_nom_max(n, s_nom_max_set=np.inf, p_nom_max_set=np.inf):
     n.lines.s_nom_max.clip(upper=s_nom_max_set, inplace=True)
     n.links.p_nom_max.clip(upper=p_nom_max_set, inplace=True)
+
+
+# TODO: PyPSA-Eur merge issue
+def remove_elec_base_techs(n):
+    """
+    Remove conventional generators (e.g. OCGT) and storage units (e.g.
+    batteries and H2) from base electricity-only network, since they're added
+    here differently using links.
+    """
+    logger.warning("Removing conventional generators and storage units in GB only!")
+    for c in n.iterate_components(snakemake.config["pypsa_eur"]):
+        to_keep = snakemake.config["pypsa_eur"][c.name]
+        to_remove = pd.Index(c.df.carrier.unique()).symmetric_difference(to_keep)
+        if to_remove.empty:
+            continue
+        logger.info(f"Removing {c.list_name} with carrier {list(to_remove)}")
+        names = c.df.index[c.df.carrier.isin(to_remove)]
+
+        subset = c.df.loc[names]
+        names = subset.index[subset.index.str.contains("GB")]
+
+        n.mremove(c.name, names)
+        # n.carriers.drop(to_remove, inplace=True, errors="ignore")
+
+
+def convert_generators_to_links(n, costs):
+
+    logger.info("Converting generators to links")
+
+    gb_generation = n.generators.loc[n.generators.bus.str.contains("GB")]
+    conventionals = {"CCGT": "gas",
+                     "OCGT": "gas",
+                     "coal": "coal",
+                     "lignite": "lignite"}
+
+    for generator, carrier in conventionals.items(): 
+        
+        if not f"GB_{carrier}_bus" in n.buses.index:
+            n.add("Bus",
+                f"GB_{carrier}_bus",
+                carrier=carrier)
+
+            n.add("Generator",
+                  f"GB_{carrier}",
+                  bus=f"GB_{carrier}_bus",
+                  carrier=carrier,
+                  p_nom_extendable=True,
+                  marginal_cost=costs.at[carrier, "fuel"],
+                  )
+
+        gens = gb_generation.loc[gb_generation.carrier == generator]
+
+        n.madd(
+            "Link",
+            gens.index,
+            bus0=f"GB_{carrier}_bus",
+            bus1=gens.bus,
+            bus2="gb co2 atmosphere",
+            marginal_cost=costs.at[generator, "efficiency"]
+            * costs.at[generator, "VOM"],  # NB: VOM is per MWel
+            capital_cost=costs.at[generator, "efficiency"]
+            * costs.at[generator, "fixed"],  # NB: fixed cost is per MWel
+            carrier=generator,
+            p_nom=gens.p_nom.values / costs.at[generator, "efficiency"],
+            efficiency=costs.at[generator, "efficiency"],
+            efficiency2=costs.at[carrier, "CO2 intensity"],
+            # lifetime=costs.at[generator, "lifetime"],
+        )
+
+    logger.warning((
+        "What is added is not affected by `remove_elec_base_techs` due to "
+        "'coal', 'lignite', 'CCGT', 'OCGT' being in config[`pypsa_eur`]" 
+        ))
+    remove_elec_base_techs(n)
 
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
@@ -512,6 +589,7 @@ def add_gb_co2_tracking(n):
 
 
 
+
 def add_dac(n, costs):
 
     pass
@@ -528,7 +606,9 @@ if __name__ == "__main__":
 
     opts = snakemake.wildcards.opts.split("-")
 
-    n = pypsa.Network(snakemake.input[0])
+    overrides = override_component_attrs(snakemake.input.overrides)
+    n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
+
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
     costs = load_costs(
         snakemake.input.tech_costs,
@@ -537,19 +617,16 @@ if __name__ == "__main__":
         Nyears,
     )
 
-    print(costs)
-
     other_costs = prepare_costs(
         # snakemake.input.tech_costs,
         "../technology-data/outputs/costs_2030.csv",
         snakemake.config["costs"],
-        1,
+        1.,
     )
 
     interesting = ["CCGT", "direct air capture", "coal CCS", "gas CCS"]
 
-    print(other_costs.index)    
-    print(other_costs.loc[interesting])
+    convert_generators_to_links(n, other_costs)
     
     import sys
     sys.exit()

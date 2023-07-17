@@ -729,15 +729,6 @@ def cycling_shift(df, steps=1):
 
 def prepare_costs(cost_file, config, nyears):
     # set all asset costs and other parameters
-    check = pd.read_csv(cost_file, index_col=0)
-
-    print("+++++++++++++++++++++++++++++++++++++++")
-    print("coal CC" in check.index)
-    print(check.head())
-    print("+++++++++++++++++++++++++++++++++++++++")
-    
-    
-
     costs = pd.read_csv(cost_file, index_col=[0, 1]).sort_index()
 
     # correct units to MW and EUR
@@ -747,7 +738,6 @@ def prepare_costs(cost_file, config, nyears):
     costs = (
         costs.loc[:, "value"].unstack(level=1).groupby("technology").sum(min_count=1)
     )
-
 
     costs = costs.fillna(config["fill_values"])
 

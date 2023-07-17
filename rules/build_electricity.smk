@@ -418,6 +418,7 @@ rule add_extra_components:
 rule prepare_network:
     input:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
+        overrides="data/override_component_attrs",
         tech_costs=COSTS,
         heat_profile="data/heat_load_profile_BDEW.csv",
         co2_price=RESOURCES + "CO2_price_2022.csv",
