@@ -420,6 +420,7 @@ rule prepare_network:
         RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
         overrides="data/override_component_attrs",
         tech_costs=COSTS,
+        capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes_scenario}_{planning_horizons}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",
         co2_price=RESOURCES + "CO2_price_2022.csv",
         heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_{gb_regions}.nc",

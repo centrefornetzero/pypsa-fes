@@ -289,6 +289,34 @@ def remove_elec_base_techs(n):
         # n.carriers.drop(to_remove, inplace=True, errors="ignore")
 
 
+def scale_generation_capacity(n, capacity_file):
+    
+    generation_mapper = {
+        "gas": ["OCGT", "CCGT"],
+        "coal": ["coal", "lignite"],
+        "nuclear": ["nuclear"],
+        "biomass": ["biomass"],
+    }
+
+    constraints = pd.read_csv(capacity_file, index_col=1)["value"]
+
+    gb_gen = n.generators.loc[n.generators.bus.str.contains("GB")]
+
+    for fes_gen, target in generation_mapper.items():
+        index = gb_gen[gb_gen.carrier.isin(target)].index
+
+        if not fes_gen in constraints.index:
+            n.generators.drop(index, inplace=True)
+            continue
+
+        adapted = n.generators.loc[index, "p_nom"].copy()
+        adapted *= constraints.loc[fes_gen] / adapted.sum() 
+
+        n.generators.loc[index, "p_nom"] = adapted
+        n.generators.loc[index, "p_nom_min"] = adapted
+
+
+
 def convert_generators_to_links(n, costs):
 
     logger.info("Converting generators to links")
@@ -300,7 +328,7 @@ def convert_generators_to_links(n, costs):
                      "lignite": "lignite"}
 
     for generator, carrier in conventionals.items(): 
-        
+
         if not f"GB_{carrier}_bus" in n.buses.index:
             n.add("Bus",
                 f"GB_{carrier}_bus",
@@ -313,6 +341,9 @@ def convert_generators_to_links(n, costs):
                   p_nom_extendable=True,
                   marginal_cost=costs.at[carrier, "fuel"],
                   )
+
+        if not generator in gb_generation.carrier.unique():
+            continue
 
         gens = gb_generation.loc[gb_generation.carrier == generator]
 
@@ -624,10 +655,9 @@ if __name__ == "__main__":
         1.,
     )
 
-    interesting = ["CCGT", "direct air capture", "coal CCS", "gas CCS"]
-
+    scale_generation_capacity(n, snakemake.input.capacity_constraints)
     convert_generators_to_links(n, other_costs)
-    
+
     import sys
     sys.exit()
 

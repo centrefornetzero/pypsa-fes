@@ -14,7 +14,7 @@ Builds constraints for generation capacities based on the FES scenarios
 
 import pandas as pd
 
-from _fes_helper import get_data_point
+from _fes_helpers import get_data_point
 from _helpers import configure_logging
 
 
