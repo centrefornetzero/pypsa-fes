@@ -619,11 +619,44 @@ def add_gb_co2_tracking(n):
     )
 
 
-
-
 def add_dac(n, costs):
 
-    pass
+    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
+
+    print("before")
+    print(gb_buses)
+
+    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
+
+    print("after")
+    print(gb_buses)
+
+    logger.info("Adding direct air capture")
+    logger.warning("Neglecting heat demand of direct air capture")
+
+    print(costs.loc["direct air capture"])
+
+    efficiency2 = -(
+        costs.at["direct air capture", "electricity-input"]
+        + costs.at["direct air capture", "compression-electricity-input"]
+    )
+    print('efficiency2')
+    print(efficiency2)
+
+    n.madd(
+        "Link",
+        gb_buses.index,
+        suffix=" DAC",
+        bus0="gb co2 atmosphere",
+        bus1="gb co2 stored",
+        bus2=gb_buses.index,
+        carrier="DAC",
+        capital_cost=costs.at["direct air capture", "fixed"],
+        efficiency=1.0,
+        
+    )
+    
+    
 
 
 if __name__ == "__main__":
