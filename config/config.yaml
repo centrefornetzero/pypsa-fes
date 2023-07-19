@@ -305,6 +305,9 @@ load:
 pypsa_eur:
   Bus:
   - AC
+  - gas
+  - coal
+  - lignite
   Link:
   - DC
   - coal

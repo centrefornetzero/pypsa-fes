@@ -7,6 +7,7 @@ rule solve_network:
     input:
         network=RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes_scenario}_{planning_horizons}.csv",
+        overrides="data/override_component_attrs",
     output:
         network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
     log:

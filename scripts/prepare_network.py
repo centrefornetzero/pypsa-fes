@@ -327,9 +327,18 @@ def convert_generators_to_links(n, costs):
                      "coal": "coal",
                      "lignite": "lignite"}
 
-    for generator, carrier in conventionals.items(): 
+    for generator, carrier in conventionals.items():
+
+        gens = gb_generation.loc[gb_generation.carrier == generator]
+
+        if gens.empty:
+            print(f"nothing to do for carrier {generator}")
+            continue
 
         if not f"GB_{carrier}_bus" in n.buses.index:
+
+            print(f"Adding bus GB_{carrier}_bus")
+
             n.add("Bus",
                 f"GB_{carrier}_bus",
                 carrier=carrier)
@@ -341,11 +350,6 @@ def convert_generators_to_links(n, costs):
                   p_nom_extendable=True,
                   marginal_cost=costs.at[carrier, "fuel"],
                   )
-
-        if not generator in gb_generation.carrier.unique():
-            continue
-
-        gens = gb_generation.loc[gb_generation.carrier == generator]
 
         n.madd(
             "Link",
@@ -364,10 +368,12 @@ def convert_generators_to_links(n, costs):
             # lifetime=costs.at[generator, "lifetime"],
         )
 
+
     logger.warning((
         "What is added is not affected by `remove_elec_base_techs` due to "
         "'coal', 'lignite', 'CCGT', 'OCGT' being in config[`pypsa_eur`]" 
         ))
+    
     remove_elec_base_techs(n)
 
 
@@ -622,26 +628,16 @@ def add_gb_co2_tracking(n):
 def add_dac(n, costs):
 
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
-
-    print("before")
-    print(gb_buses)
-
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
-
-    print("after")
-    print(gb_buses)
 
     logger.info("Adding direct air capture")
     logger.warning("Neglecting heat demand of direct air capture")
 
-    print(costs.loc["direct air capture"])
-
-    efficiency2 = -(
+    logger.warning("Changed sign of DAC efficiency to be positive")
+    efficiency2 = (
         costs.at["direct air capture", "electricity-input"]
         + costs.at["direct air capture", "compression-electricity-input"]
     )
-    print('efficiency2')
-    print(efficiency2)
 
     n.madd(
         "Link",
@@ -653,10 +649,10 @@ def add_dac(n, costs):
         carrier="DAC",
         capital_cost=costs.at["direct air capture", "fixed"],
         efficiency=1.0,
-        
+        efficiency2=efficiency2,
+        p_nom_extendable=True,
+        lifetime=costs.at["direct air capture", "lifetime"],
     )
-    
-    
 
 
 if __name__ == "__main__":
@@ -691,8 +687,8 @@ if __name__ == "__main__":
     scale_generation_capacity(n, snakemake.input.capacity_constraints)
     convert_generators_to_links(n, other_costs)
 
-    import sys
-    sys.exit()
+    add_gb_co2_tracking(n)
+    add_dac(n, other_costs)
 
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
 
@@ -794,7 +790,9 @@ if __name__ == "__main__":
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
-    print(costs)
-
     n.links.to_csv("links_before_saving_network.csv")
-    # n.export_to_netcdf(snakemake.output[0])
+    n.buses.to_csv("buses_before_saving_network.csv")
+    n.generators.to_csv("generators_before_saving_network.csv")
+    n.stores.to_csv("stores_before_saving_network.csv")
+
+    n.export_to_netcdf(snakemake.output[0])
