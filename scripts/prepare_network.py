@@ -316,7 +316,6 @@ def scale_generation_capacity(n, capacity_file):
         n.generators.loc[index, "p_nom_min"] = adapted
 
 
-
 def convert_generators_to_links(n, costs):
 
     logger.info("Converting generators to links")
@@ -591,7 +590,6 @@ def add_bev(n, transport_config):
 
 
 def add_gb_co2_tracking(n):
-
     # can also be negative
     n.add(
         "Bus",
@@ -684,13 +682,19 @@ if __name__ == "__main__":
         1.,
     )
 
-    scale_generation_capacity(n, snakemake.input.capacity_constraints)
-    convert_generators_to_links(n, other_costs)
+    # scale_generation_capacity(n, snakemake.input.capacity_constraints)
+    # convert_generators_to_links(n, other_costs)
 
-    add_gb_co2_tracking(n)
-    add_dac(n, other_costs)
+    # logger.warning("Implemented unelegant clean-up of generator marginal costs")
+    # if 'GB0 Z11 coal' in n.generators_t.marginal_cost.columns:
+    #     n.generators_t.marginal_cost.drop(columns=[
+    #         'GB0 Z11 coal', 'GB0 Z11 coal', 'GB0 Z8 coal'
+    #         ], inplace=True)
 
-    set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
+    # add_gb_co2_tracking(n)
+    # add_dac(n, other_costs)
+
+    # set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
 
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)
@@ -774,6 +778,7 @@ if __name__ == "__main__":
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
 
+    """
     add_heat_pump_load(
         n, 
         snakemake.input["heat_demand"],
@@ -787,6 +792,7 @@ if __name__ == "__main__":
     add_bev(n,
         snakemake.config["sector"],
     )
+    """
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
@@ -794,5 +800,10 @@ if __name__ == "__main__":
     n.buses.to_csv("buses_before_saving_network.csv")
     n.generators.to_csv("generators_before_saving_network.csv")
     n.stores.to_csv("stores_before_saving_network.csv")
+    n.loads.to_csv("stores_before_saving_network.csv")
+    n.links_t.marginal_cost.to_csv("links_before_saving_network.csv")
+    n.generators_t.marginal_cost.to_csv("generators_before_saving_network.csv")
+    n.stores_t.marginal_cost.to_csv("stores_before_saving_network.csv")
+    n.loads_t.p_set.to_csv("stores_before_saving_network.csv")
 
     n.export_to_netcdf(snakemake.output[0])
