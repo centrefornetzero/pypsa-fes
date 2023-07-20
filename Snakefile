@@ -72,9 +72,10 @@ rule purge:
     message:
         "Purging generated resources, results and docs. Downloads are kept."
     run:
-        rmtree("resources/", ignore_errors=True)
-        rmtree("results/", ignore_errors=True)
-        rmtree("doc/_build", ignore_errors=True)
+        # rmtree("resources/", ignore_errors=True)
+        # rmtree("results/", ignore_errors=True)
+        # rmtree("doc/_build", ignore_errors=True)
+        print("Almost purged there!")
 
 
 rule dag:

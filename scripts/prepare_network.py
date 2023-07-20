@@ -489,7 +489,7 @@ def add_bev(n, transport_config):
         year)
     
     electric_share = bev_cars / gb_cars_2050
-    logger.info(f"EV share: {electric_share*100}%")
+    logger.info(f"EV share: {np.around(electric_share*100, decimals=2)}%")
 
     gb_nodes = pd.Index([col for col in transport.columns if "GB" in col])
 
@@ -664,16 +664,19 @@ if __name__ == "__main__":
 
     opts = snakemake.wildcards.opts.split("-")
 
+    # n = pypsa.Network(snakemake.input[0])
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
 
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
+
     costs = load_costs(
         snakemake.input.tech_costs,
         snakemake.config["costs"],
         snakemake.config["electricity"],
         Nyears,
     )
+
 
     other_costs = prepare_costs(
         # snakemake.input.tech_costs,
@@ -682,19 +685,34 @@ if __name__ == "__main__":
         1.,
     )
 
-    # scale_generation_capacity(n, snakemake.input.capacity_constraints)
-    # convert_generators_to_links(n, other_costs)
+    scale_generation_capacity(n, snakemake.input.capacity_constraints)
+    convert_generators_to_links(n, other_costs)
 
-    # logger.warning("Implemented unelegant clean-up of generator marginal costs")
-    # if 'GB0 Z11 coal' in n.generators_t.marginal_cost.columns:
-    #     n.generators_t.marginal_cost.drop(columns=[
-    #         'GB0 Z11 coal', 'GB0 Z11 coal', 'GB0 Z8 coal'
-    #         ], inplace=True)
 
-    # add_gb_co2_tracking(n)
-    # add_dac(n, other_costs)
+    logger.warning("Implemented unelegant clean-up of generator marginal costs")
+    if 'GB0 Z11 coal' in n.generators_t.marginal_cost.columns:
+        n.generators_t.marginal_cost.drop(columns=[
+            'GB0 Z11 coal', 'GB0 Z10 coal', 'GB0 Z8 coal'
+            ], inplace=True)
 
-    # set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
+    add_gb_co2_tracking(n)
+    add_dac(n, other_costs)
+
+    add_heat_pump_load(
+        n, 
+        snakemake.input["heat_demand"],
+        snakemake.input["cop_air_total"],
+        snakemake.input["energy_totals"],
+        snakemake.input["heat_profile"],
+        snakemake.wildcards.fes_scenario,
+        snakemake.wildcards.planning_horizons,
+    )
+
+    add_bev(n,
+        snakemake.config["sector"],
+    )
+
+    set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
 
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)
@@ -778,32 +796,17 @@ if __name__ == "__main__":
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
 
-    """
-    add_heat_pump_load(
-        n, 
-        snakemake.input["heat_demand"],
-        snakemake.input["cop_air_total"],
-        snakemake.input["energy_totals"],
-        snakemake.input["heat_profile"],
-        snakemake.wildcards.fes_scenario,
-        snakemake.wildcards.planning_horizons,
-    )
-
-    add_bev(n,
-        snakemake.config["sector"],
-    )
-    """
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
-    n.links.to_csv("links_before_saving_network.csv")
-    n.buses.to_csv("buses_before_saving_network.csv")
-    n.generators.to_csv("generators_before_saving_network.csv")
-    n.stores.to_csv("stores_before_saving_network.csv")
-    n.loads.to_csv("stores_before_saving_network.csv")
-    n.links_t.marginal_cost.to_csv("links_before_saving_network.csv")
-    n.generators_t.marginal_cost.to_csv("generators_before_saving_network.csv")
-    n.stores_t.marginal_cost.to_csv("stores_before_saving_network.csv")
-    n.loads_t.p_set.to_csv("stores_before_saving_network.csv")
+    n.links.to_csv("links.csv")
+    n.buses.to_csv("buses.csv")
+    n.generators.to_csv("generators.csv")
+    n.stores.to_csv("stores.csv")
+    n.loads.to_csv("loads.csv")
+    n.links_t.marginal_cost.to_csv("mcosts_links.csv")
+    n.generators_t.marginal_cost.to_csv("mcosts_generators.csv")
+    n.stores_t.marginal_cost.to_csv("mcosts_stores.csv")
+    n.loads_t.p_set.to_csv("loads_pset.csv")
 
     n.export_to_netcdf(snakemake.output[0])

@@ -8,11 +8,11 @@ localrules:
     cluster_networks,
     extra_components_networks,
     prepare_elec_networks,
-    prepare_sector_networks,
+    # prepare_sector_networks,
     solve_elec_networks,
-    solve_sector_networks,
+    # solve_sector_networks,
     plot_networks,
-    plot_gb_validation,
+    # plot_gb_validation,
 
 
 rule all:

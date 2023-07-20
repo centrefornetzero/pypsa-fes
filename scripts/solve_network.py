@@ -612,7 +612,6 @@ def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
 
-    """
     # fix generation capacities according to FES
     cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
 
@@ -633,7 +632,6 @@ def extra_functionality(n, snapshots):
     add_capacity_constraint(n, value, country="GB", carrier=["nuclear"])
 
     logger.warning("Biomass and gas commented out.")
-    """
 
     """
     value = cc.at["biomass", "value"] 

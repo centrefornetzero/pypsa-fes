@@ -292,6 +292,7 @@ def calculate_energy(n, label, energy):
             )
         else:
             c_energies = pd.Series(0.0, c.df.carrier.unique())
+
             for port in [col[3:] for col in c.df.columns if col[:3] == "bus"]:
                 totals = (
                     c.pnl["p" + port]
@@ -300,9 +301,14 @@ def calculate_energy(n, label, energy):
                 )
                 # remove values where bus is missing (bug in nomopyomo)
                 no_bus = c.df.index[c.df["bus" + port] == ""]
+
+                if totals.empty:
+                    continue
+
                 totals.loc[no_bus] = n.component_attrs[c.name].loc[
                     "p" + port, "default"
                 ]
+
                 c_energies -= totals.groupby(c.df.carrier).sum()
 
         c_energies = pd.concat([c_energies], keys=[c.list_name])
@@ -348,7 +354,7 @@ def calculate_supply(n, label, supply):
             for end in [col[3:] for col in c.df.columns if col[:3] == "bus"]:
                 items = c.df.index[c.df["bus" + end].map(bus_map).fillna(False)]
 
-                if len(items) == 0:
+                if len(items) == 0 or c.pnl["p" + end].empty:
                     continue
 
                 # lots of sign compensation for direction and to do maximums
@@ -400,7 +406,7 @@ def calculate_supply_energy(n, label, supply_energy):
             for end in [col[3:] for col in c.df.columns if col[:3] == "bus"]:
                 items = c.df.index[c.df["bus" + str(end)].map(bus_map).fillna(False)]
 
-                if len(items) == 0:
+                if len(items) == 0 or c.pnl["p" + end].empty:
                     continue
 
                 s = (-1) * c.pnl["p" + end][items].multiply(
@@ -685,15 +691,15 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     networks_dict = {
-        (cluster, ll, opt + sector_opt, planning_horizon): "results/"
+        (gb_regions, ll, opts, fes_scenario, planning_horizons): "results/"
         + snakemake.params.RDIR
-        + f"/postnetworks/elec_s{simpl}_{cluster}_l{ll}_{opt}_{sector_opt}_{planning_horizon}.nc"
+        + f"networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc"
         for simpl in snakemake.config["scenario"]["simpl"]
-        for cluster in snakemake.config["scenario"]["clusters"]
-        for opt in snakemake.config["scenario"]["opts"]
-        for sector_opt in snakemake.config["scenario"]["sector_opts"]
+        for gb_regions in snakemake.config["scenario"]["gb_regions"]
         for ll in snakemake.config["scenario"]["ll"]
-        for planning_horizon in snakemake.config["scenario"]["planning_horizons"]
+        for opts in snakemake.config["scenario"]["opts"]
+        for fes_scenario in snakemake.config["scenario"]["fes_scenario"]
+        for planning_horizons in snakemake.config["scenario"]["planning_horizons"]
     }
 
     Nyears = len(pd.date_range(freq="h", **snakemake.config["snapshots"])) / 8760

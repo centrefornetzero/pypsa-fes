@@ -72,7 +72,7 @@ rule make_summary:
         overrides="data/override_component_attrs",
         networks=expand(
             RESULTS
-            + "postnetworks/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_{fes_scenario}_{planning_horizons}.nc",
+            + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
             **config["scenario"]
         ),
         costs="data/costs_{}.csv".format(config["costs"]["year"])
@@ -80,7 +80,7 @@ rule make_summary:
         else "data/costs_{}.csv".format(config["scenario"]["planning_horizons"][0]),
         plots=expand(
             RESULTS
-            + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}-costs-all_{fes_scenario}_{planning_horizons}.pdf",
+            + "maps/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_-costs-all_{fes_scenario}_{planning_horizons}.pdf",
             **config["scenario"]
         ),
     output:
@@ -119,7 +119,7 @@ rule plot_summary:
         costs=RESULTS + "csvs/costs.csv",
         energy=RESULTS + "csvs/energy.csv",
         balances=RESULTS + "csvs/supply_energy.csv",
-        eurostat=input_eurostat,
+        # eurostat=input_eurostat,
     output:
         costs=RESULTS + "graphs/costs.pdf",
         energy=RESULTS + "graphs/energy.pdf",
