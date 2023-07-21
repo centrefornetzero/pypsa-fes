@@ -78,11 +78,11 @@ rule make_summary:
         costs="data/costs_{}.csv".format(config["costs"]["year"])
         if config["foresight"] == "overnight"
         else "data/costs_{}.csv".format(config["scenario"]["planning_horizons"][0]),
-        plots=expand(
-            RESULTS
-            + "maps/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_-costs-all_{fes_scenario}_{planning_horizons}.pdf",
-            **config["scenario"]
-        ),
+        # plots=expand(
+        #     RESULTS
+        #     + "maps/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_-costs-all_{fes_scenario}_{planning_horizons}.pdf",
+        #     **config["scenario"]
+        # ),
     output:
         nodal_costs=RESULTS + "csvs/nodal_costs.csv",
         nodal_capacities=RESULTS + "csvs/nodal_capacities.csv",
@@ -117,13 +117,16 @@ rule plot_summary:
         RDIR=RDIR,
     input:
         costs=RESULTS + "csvs/costs.csv",
+        nodal_costs=RESULTS + "csvs/nodal_costs.csv",
         energy=RESULTS + "csvs/energy.csv",
         balances=RESULTS + "csvs/supply_energy.csv",
+        nodal_capacities=RESULTS + "csvs/nodal_capacities.csv",
         # eurostat=input_eurostat,
     output:
         costs=RESULTS + "graphs/costs.pdf",
         energy=RESULTS + "graphs/energy.pdf",
         balances=RESULTS + "graphs/balances-energy.pdf",
+        capacities=RESULTS + "graphs/capacities.pdf",    
     threads: 2
     resources:
         mem_mb=10000,

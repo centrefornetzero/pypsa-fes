@@ -242,9 +242,35 @@ def calculate_nodal_capacities(n, label, nodal_capacities):
         index = pd.MultiIndex.from_tuples(
             [(c.list_name,) + t for t in nodal_capacities_c.index.to_list()]
         )
+
+        extendables = (
+            c.df.loc[getattr(
+                    c.df, opt_name.get(c.name, "p") + "_nom_extendable"
+                    )]
+            .groupby(["location", "carrier"])[
+            opt_name.get(c.name, "p") + "_nom_opt"
+        ].sum()
+        )
+
+        non_extendables = (
+            c.df.loc[~getattr(
+                    c.df, opt_name.get(c.name, "p") + "_nom_extendable"
+                    )]
+            .groupby(["location", "carrier"])[
+            opt_name.get(c.name, "p") + "_nom"
+        ].sum()
+        )
+        
+        nodal_capacities_c = pd.concat((extendables, non_extendables))
+
+        index = pd.MultiIndex.from_tuples(
+                [(c.list_name,) + t for t in nodal_capacities_c.index.to_list()]
+            )
+
         nodal_capacities = nodal_capacities.reindex(index.union(nodal_capacities.index))
         nodal_capacities.loc[index, label] = nodal_capacities_c.values
 
+    nodal_capacities.drop("load", level=2, inplace=True)
     return nodal_capacities
 
 
@@ -654,7 +680,8 @@ def make_summaries(networks_dict):
     ]
 
     columns = pd.MultiIndex.from_tuples(
-        networks_dict.keys(), names=["cluster", "ll", "opt", "planning_horizon"]
+        networks_dict.keys(),
+        names=["gb_regions", "ll", "opt", "fes_scenario", "planning_horizon"]
     )
 
     df = {}

@@ -131,27 +131,36 @@ preferred_order = pd.Index(
 
 
 def plot_costs():
-    cost_df = pd.read_csv(
-        snakemake.input.costs, index_col=list(range(3)), header=list(range(n_header))
+    nodal_cost_df = pd.read_csv(
+        snakemake.input.nodal_costs, index_col=list(range(4)), header=list(range(n_header))
     )
+    idx = pd.IndexSlice
 
-    df = cost_df.groupby(cost_df.index.get_level_values(2)).sum()
+    gb_buses = nodal_cost_df.index.get_level_values(2).unique()
+    gb_buses = gb_buses[gb_buses.fillna("nan").str.contains("GB")]
 
+    df = nodal_cost_df.loc[idx[:, :, gb_buses, :]]
+
+    df = (
+        df
+        .groupby(df.index.get_level_values(3))
+        .sum()
+        .droplevel([0,1,2], axis=1)
+        .drop("load")
+    )
     # convert to billions
     df = df / 1e9
 
     df = df.groupby(df.index.map(rename_techs)).sum()
 
     to_drop = df.index[df.max(axis=1) < snakemake.config["plotting"]["costs_threshold"]]
-
     logger.info(
         f"Dropping technology with costs below {snakemake.config['plotting']['costs_threshold']} EUR billion per year"
     )
     logger.debug(df.loc[to_drop])
-
     df = df.drop(to_drop)
 
-    logger.info(f"Total system cost of {round(df.sum()[0])} EUR billion per year")
+    logger.info(f"Average total system cost of {round(df.sum().mean())} EUR billion per year")
 
     new_index = preferred_order.intersection(df.index).append(
         df.index.difference(preferred_order)
@@ -186,6 +195,66 @@ def plot_costs():
     )
 
     fig.savefig(snakemake.output.costs, bbox_inches="tight")
+
+
+def plot_capacities():
+    nodal_caps_df = pd.read_csv(
+        snakemake.input.nodal_capacities, index_col=list(range(3)), header=list(range(n_header))
+    )
+    idx = pd.IndexSlice
+
+    gb_buses = nodal_caps_df.index.get_level_values(1).unique()
+    gb_buses = gb_buses[gb_buses.fillna("nan").str.contains("GB")]
+
+    df = nodal_caps_df.loc[idx[:, gb_buses, :]]
+    df.drop("stores", level=0, inplace=True)
+
+    df = (
+        df
+        .groupby(df.index.get_level_values(2))
+        .sum()
+        .droplevel([0,1,2], axis=1)
+    )
+    # convert to GW 
+    df = df / 1e3
+
+    df = df.groupby(df.index.map(rename_techs)).sum()
+
+    logger.warning("Dropping of techs not implemented for plot_capacities()")
+
+    new_index = preferred_order.intersection(df.index).append(
+        df.index.difference(preferred_order)
+    )
+
+    new_columns = df.sum().sort_values().index
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    df.loc[new_index, new_columns].T.plot(
+        kind="bar",
+        ax=ax,
+        stacked=True,
+        color=[snakemake.config["plotting"]["tech_colors"][i] for i in new_index],
+    )
+
+    handles, labels = ax.get_legend_handles_labels()
+
+    handles.reverse()
+    labels.reverse()
+
+    ax.set_ylim([0, snakemake.config["plotting"]["capacities_max"]])
+
+    ax.set_ylabel("Installed Capacity [GW]")
+
+    ax.set_xlabel("")
+
+    ax.grid(axis="x")
+
+    ax.legend(
+        handles, labels, ncol=1, loc="upper left", bbox_to_anchor=[1, 1], frameon=False
+    )
+
+    fig.savefig(snakemake.output.capacities, bbox_inches="tight")
 
 
 def plot_energy():
@@ -547,7 +616,9 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
-    n_header = 4
+    n_header = 5
+
+    plot_capacities()    
 
     plot_costs()
 

@@ -36,6 +36,14 @@ scenario:
       # LW: Leading the Way,
       # ST: System Transformation,
       # CT: Consumer Transformation,
+  planning_horizons: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
+  - 2035
+  # for example, set to
+  # - 2020
+  # - 2030
+  # - 2040
+  # - 2050
+  # for myopic foresight
   dt_event:
   - '1' # selects file for turndown timing and magnitude in data/turndown_events/
   opts: # only relevant for PyPSA-Eur
@@ -58,14 +66,6 @@ scenario:
   # planning_horizons), be:beta decay; ex:exponential decay
   # cb40ex0 distributes a carbon budget of 40 GtCO2 following an exponential
   # decay with initial growth rate 0
-  planning_horizons: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
-  - 2035
-  # for example, set to
-  # - 2020
-  # - 2030
-  # - 2040
-  # - 2050
-  # for myopic foresight
 
 # here is a list of all possible countries: 
 # countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
@@ -730,8 +730,10 @@ plotting:
   eu_node_location:
     x: -5.5
     y: 46.
-  costs_max: 1000
-  costs_threshold: 1
+  costs_max: 50
+  capacities_max: 1000
+  costs_threshold: 0
+  capacities_threshold: 0
   energy_max: 20000
   energy_min: -20000
   energy_threshold: 50.
@@ -874,6 +876,7 @@ plotting:
     electricity distribution grid: '#97ad8c'
     # electricity demand
     Electric load: '#110d63'
+    load: '#110d63'
     electric demand: '#110d63'
     electricity: '#110d63'
     industry electricity: '#2d2a66'
@@ -931,8 +934,10 @@ plotting:
     H2 pipeline: '#f081dc'
     H2 pipeline retrofitted: '#ba99b5'
     H2 Fuel Cell: '#c251ae'
+    H2 fuel cell: '#c251ae'
     H2 turbine: '#991f83'
     H2 Electrolysis: '#ff29d9'
+    H2 electrolysis: '#ff29d9'
     # ammonia
     NH3: '#46caf0'
     ammonia: '#46caf0'
