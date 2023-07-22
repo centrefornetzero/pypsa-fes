@@ -138,3 +138,29 @@ rule plot_summary:
         "../envs/environment.yaml"
     script:
         "../scripts/plot_summary.py"
+
+
+rule plot_timeseries:
+    params:
+        RDIR=RDIR,
+    input:
+        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
+        overrides="data/override_component_attrs",
+    output:
+        timeseries_gb_year=RESULTS + "graphs/timeseries-year-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
+        timeseries_gb_short=RESULTS + "graphs/timeseries-short-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
+        timeseries_scotland_year=RESULTS + "graphs/timeseries-year-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
+        timeseries_scotland_short=RESULTS + "graphs/timeseries-short-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
+        timeseries_england_year=RESULTS + "graphs/timeseries-year-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
+        timeseries_england_short=RESULTS + "graphs/timeseries-short-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
+    threads: 1
+    resources:
+        mem_mb=10000,
+    log:
+        LOGS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.log",
+    benchmark:
+        BENCHMARKS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/plot_timeseries.py"

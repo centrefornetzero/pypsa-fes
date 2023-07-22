@@ -277,6 +277,7 @@ def remove_elec_base_techs(n):
     for c in n.iterate_components(snakemake.config["pypsa_eur"]):
         to_keep = snakemake.config["pypsa_eur"][c.name]
         to_remove = pd.Index(c.df.carrier.unique()).symmetric_difference(to_keep)
+        to_remove = to_remove[to_remove.str.contains("GB0")]
         if to_remove.empty:
             continue
         logger.info(f"Removing {c.list_name} with carrier {list(to_remove)}")
@@ -346,10 +347,15 @@ def convert_generators_to_links(n, costs):
                   f"GB_{carrier}",
                   bus=f"GB_{carrier}_bus",
                   carrier=carrier,
-                  p_nom_extendable=True,
+                  p_nom=np.inf,
                   marginal_cost=costs.at[carrier, "fuel"],
                   )
+            print("================================================")
+            print("marginal_cost of fuel:")
+            print(costs.at[carrier, "fuel"])
+            print("================================================")
 
+        logger.warning("Currently no co2 tracking in link-generators")
         n.madd(
             "Link",
             gens.index,
@@ -373,7 +379,14 @@ def convert_generators_to_links(n, costs):
         "'coal', 'lignite', 'CCGT', 'OCGT' being in config[`pypsa_eur`]" 
         ))
     
+    def diff(li1, li2):
+        return (list(list(set(li1)-set(li2)) + list(set(li2)-set(li1))))
+
+    before = n.generators.index.tolist()
     remove_elec_base_techs(n)
+
+    print("removed generators")
+    print(diff(before, n.generators.index.tolist()))
 
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
@@ -618,6 +631,7 @@ def add_gb_co2_tracking(n):
         "Store",
         "gb co2 stored",
         e_nom_extendable=True,
+        e_nom_min=-1.,
         carrier="co2",
         bus="gb co2 stored",
     )
@@ -687,7 +701,6 @@ if __name__ == "__main__":
 
     scale_generation_capacity(n, snakemake.input.capacity_constraints)
     convert_generators_to_links(n, other_costs)
-
 
     logger.warning("Implemented unelegant clean-up of generator marginal costs")
     if 'GB0 Z11 coal' in n.generators_t.marginal_cost.columns:

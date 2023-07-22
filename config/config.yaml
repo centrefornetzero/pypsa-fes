@@ -28,10 +28,10 @@ scenario:
   gb_regions:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes_scenario: # Future energy scenario considered, can be 
-  - 'CT'
-  - 'LW'
+  # - 'CT'
+  # - 'LW'
   - 'FS'
-  - 'ST'
+  # - 'ST'
       # FS: Falling Short,
       # LW: Leading the Way,
       # ST: System Transformation,
@@ -737,6 +737,8 @@ plotting:
   energy_max: 20000
   energy_min: -20000
   energy_threshold: 50.
+  timeseries_freq: d
+  timeseries_month: 1
   vre_techs:
   - onwind
   - offwind-ac
