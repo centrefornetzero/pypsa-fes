@@ -159,7 +159,8 @@ def prepare_network(n, solve_opts=None, config=None):
         buses_i = n.buses.query("carrier == 'AC'").index
         if not np.isscalar(load_shedding):
             # TODO: do not scale via sign attribute (use Eur/MWh instead of Eur/kWh)
-            load_shedding = 1e2  # Eur/kWh
+            #load_shedding = 1e2  # Eur/kWh
+            load_shedding = 1e4  # Eur/kWh
 
         n.madd(
             "Generator",

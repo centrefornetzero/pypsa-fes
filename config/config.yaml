@@ -739,6 +739,9 @@ plotting:
   energy_threshold: 50.
   timeseries_freq: d
   timeseries_month: 1
+  timeseries_groups:
+    scotland: ["GB0 Z1_1", "GB0 Z1_2", "GB0 Z1_3", "GB0 Z1_4", "GB0 Z2", "GB0 Z3", "GB0 Z5"]
+    england: ["GB0 Z6", "GB0 Z7", "GB0 Z8", "GB0 Z9", "GB0 Z10", "GB0 Z11", "GB0 Z12", "GB0 Z13", "GB0 Z14", "GB0 Z15", "GB0 Z16", "GB0 Z17"]
   vre_techs:
   - onwind
   - offwind-ac

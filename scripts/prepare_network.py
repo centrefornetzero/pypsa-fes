@@ -277,7 +277,6 @@ def remove_elec_base_techs(n):
     for c in n.iterate_components(snakemake.config["pypsa_eur"]):
         to_keep = snakemake.config["pypsa_eur"][c.name]
         to_remove = pd.Index(c.df.carrier.unique()).symmetric_difference(to_keep)
-        to_remove = to_remove[to_remove.str.contains("GB0")]
         if to_remove.empty:
             continue
         logger.info(f"Removing {c.list_name} with carrier {list(to_remove)}")
@@ -327,6 +326,8 @@ def convert_generators_to_links(n, costs):
                      "coal": "coal",
                      "lignite": "lignite"}
 
+    buses_to_add = list()
+
     for generator, carrier in conventionals.items():
 
         gens = gb_generation.loc[gb_generation.carrier == generator]
@@ -336,26 +337,8 @@ def convert_generators_to_links(n, costs):
             continue
 
         if not f"GB_{carrier}_bus" in n.buses.index:
+            buses_to_add.append(carrier)
 
-            print(f"Adding bus GB_{carrier}_bus")
-
-            n.add("Bus",
-                f"GB_{carrier}_bus",
-                carrier=carrier)
-
-            n.add("Generator",
-                  f"GB_{carrier}",
-                  bus=f"GB_{carrier}_bus",
-                  carrier=carrier,
-                  p_nom=np.inf,
-                  marginal_cost=costs.at[carrier, "fuel"],
-                  )
-            print("================================================")
-            print("marginal_cost of fuel:")
-            print(costs.at[carrier, "fuel"])
-            print("================================================")
-
-        logger.warning("Currently no co2 tracking in link-generators")
         n.madd(
             "Link",
             gens.index,
@@ -373,20 +356,30 @@ def convert_generators_to_links(n, costs):
             # lifetime=costs.at[generator, "lifetime"],
         )
 
-
     logger.warning((
         "What is added is not affected by `remove_elec_base_techs` due to "
         "'coal', 'lignite', 'CCGT', 'OCGT' being in config[`pypsa_eur`]" 
         ))
-    
-    def diff(li1, li2):
-        return (list(list(set(li1)-set(li2)) + list(set(li2)-set(li1))))
 
-    before = n.generators.index.tolist()
     remove_elec_base_techs(n)
 
-    print("removed generators")
-    print(diff(before, n.generators.index.tolist()))
+    print(buses_to_add)
+    for carrier in set(buses_to_add):
+
+        print(f"Adding bus GB_{carrier}_bus, and generator GB_{carrier}")
+
+        n.add("Bus",
+            f"GB_{carrier}_bus",
+            carrier=carrier)
+
+        n.add("Generator",
+                f"GB_{carrier}",
+                bus=f"GB_{carrier}_bus",
+                carrier=carrier,
+                # p_nom_extandable=True,
+                p_nom=1e6,
+                marginal_cost=costs.at[carrier, "fuel"],
+                )
 
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
@@ -813,6 +806,7 @@ if __name__ == "__main__":
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
     n.links.to_csv("links.csv")
+    n.lines.to_csv("lines.csv")
     n.buses.to_csv("buses.csv")
     n.generators.to_csv("generators.csv")
     n.stores.to_csv("stores.csv")

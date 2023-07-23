@@ -146,9 +146,9 @@ def stackplot_to_ax(df, ax, color_mapper={}, stackplot_kwargs={}):
         colors = None
 
     stackplot_kwargs_default = {
-        # "edgecolor": "k", 
-        # "linewidth": 0.3,
-        # "linestyle": ":",
+        "edgecolor": "k", 
+        "linewidth": 0.1,
+        "linestyle": ":",
         "alpha": 0.9,
         }
     stackplot_kwargs_default.update(stackplot_kwargs)
