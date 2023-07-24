@@ -65,12 +65,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from itertools import product
+
 from _helpers import (
     configure_logging,
     generate_periodic_profiles,
     override_component_attrs,
 )
-from add_electricity import load_costs, update_transmission_costs
+from add_electricity import load_costs, update_transmission_costs, calculate_annuity
 from prepare_sector_network import cycling_shift, prepare_costs
 from _fes_helpers import (
     get_data_point,
@@ -80,6 +81,7 @@ from _fes_helpers import (
     get_smart_charge_v2g,
     get_power_generation_emission,
     ) 
+
 from pypsa.descriptors import expand_series
 
 idx = pd.IndexSlice
@@ -381,6 +383,29 @@ def convert_generators_to_links(n, costs):
                 marginal_cost=costs.at[carrier, "fuel"],
                 )
 
+def add_gas_ccs(n, costs):
+    print(costs.loc["gas CCS"])
+
+    gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
+    gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
+    print("Adding gas ccs generation to buses")
+    print(gb_buses)
+
+    n.madd(
+        "Link",
+        gb_buses,
+        suffix=" gas CCS",
+        bus0=f"GB_gas_bus",
+        bus1=gb_buses,
+        marginal_cost=costs.at["gas CCS", "efficiency"]
+        * costs.at["gas CCS", "VOM"],  # NB: VOM is per MWel
+        capital_cost=costs.at["gas CCS", "efficiency"]
+        * costs.at["gas CCS", "fixed"],  # NB: fixed cost is per MWel
+        carrier="GAS CCS",
+        p_nom_extendable=True,
+        efficiency=costs.at["gas CCS", "efficiency"],
+    )
+
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
 def add_heat_pump_load(
@@ -595,7 +620,7 @@ def add_bev(n, transport_config):
             )
 
 
-def add_gb_co2_tracking(n):
+def add_gb_co2_tracking(n, max_emission):
     # can also be negative
     n.add(
         "Bus",
@@ -610,6 +635,24 @@ def add_gb_co2_tracking(n):
         e_nom_extendable=True,
         carrier="co2",
         bus="gb co2 atmosphere",
+        e_nom_max=max_emission * 1e6,
+    )
+
+
+def add_dac(n, costs, daccs_removal):
+
+    daccs_removal = abs(daccs_removal)
+
+    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
+    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
+
+    logger.info("Adding direct air capture")
+    logger.warning("Neglecting heat demand of direct air capture")
+
+    # logger.warning("Changed sign of DAC efficiency to be positive")
+    efficiency2 = - (
+        costs.at["direct air capture", "electricity-input"]
+        + costs.at["direct air capture", "compression-electricity-input"]
     )
 
     # this tracks GB CO2 stored, e.g. underground
@@ -620,28 +663,17 @@ def add_gb_co2_tracking(n):
         unit="t_co2",
     )
 
+    e_min_pu = pd.Series(0., n.snapshots)
+    e_min_pu.iloc[-1] = 1.
+
     n.add(
         "Store",
         "gb co2 stored",
         e_nom_extendable=True,
-        e_nom_min=-1.,
+        e_min_pu=e_min_pu,
+        e_nom_min=daccs_removal * 1e6,
         carrier="co2",
         bus="gb co2 stored",
-    )
-
-
-def add_dac(n, costs):
-
-    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
-    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
-
-    logger.info("Adding direct air capture")
-    logger.warning("Neglecting heat demand of direct air capture")
-
-    logger.warning("Changed sign of DAC efficiency to be positive")
-    efficiency2 = (
-        costs.at["direct air capture", "electricity-input"]
-        + costs.at["direct air capture", "compression-electricity-input"]
     )
 
     n.madd(
@@ -675,6 +707,10 @@ if __name__ == "__main__":
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
 
+    fes_scenario = snakemake.wildcards.fes_scenario
+    year = snakemake.wildcards.planning_horizons
+    logger.info(f"Preparing network for {fes_scenario} in {year}.")
+
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
 
     costs = load_costs(
@@ -684,7 +720,6 @@ if __name__ == "__main__":
         Nyears,
     )
 
-
     other_costs = prepare_costs(
         # snakemake.input.tech_costs,
         "../technology-data/outputs/costs_2030.csv",
@@ -692,20 +727,45 @@ if __name__ == "__main__":
         1.,
     )
 
+    generation_emission, daccs_removal, beccs_removal = (
+        get_power_generation_emission(
+            snakemake.input.fes_table_2023,
+            fes_scenario,
+            year,
+        )
+    )
+
+    logger.warning("Artificially setting daccs target to -2 MtCO2.")
+    daccs_removal = 2.
+
+    logger.info(f"Emission from Electricity Generation: {np.around(generation_emission, decimals=2)} MtCO2")
+    logger.info(f"Direct Air Capture Removal: {np.around(-daccs_removal, decimals=2)} MtCO2")
+    logger.info(f"Removal through Carbon Capture Biomass: {np.around(beccs_removal, decimals=2)} MtCO2")
+
+    logger.info("Scaling conventional generators to match FES.")
     scale_generation_capacity(n, snakemake.input.capacity_constraints)
+    
+    logger.info("Converting conventional generators to links.")
     convert_generators_to_links(n, other_costs)
 
-    logger.warning("Implemented unelegant clean-up of generator marginal costs")
+    logger.warning("Implemented unelegant clean-up of generator marginal costs.")
     if 'GB0 Z11 coal' in n.generators_t.marginal_cost.columns:
         n.generators_t.marginal_cost.drop(columns=[
             'GB0 Z11 coal', 'GB0 Z10 coal', 'GB0 Z8 coal'
             ], inplace=True)
 
-    add_gb_co2_tracking(n)
-    add_dac(n, other_costs)
+    logger.info("Adding GB CO2 tracking.")
+    add_gb_co2_tracking(n, generation_emission)
 
+    logger.info("Adding direct air capture.")
+    add_dac(n, other_costs, daccs_removal)
+
+    logger.info("Adding gas CCS generation.")
+    add_gas_ccs(n, other_costs)
+    
+    logger.info("Adding heat pump load.")
     add_heat_pump_load(
-        n, 
+        n,
         snakemake.input["heat_demand"],
         snakemake.input["cop_air_total"],
         snakemake.input["energy_totals"],
@@ -714,10 +774,12 @@ if __name__ == "__main__":
         snakemake.wildcards.planning_horizons,
     )
 
+    logger.info("Adding BEV load.")
     add_bev(n,
         snakemake.config["sector"],
     )
 
+    logger.info("Adding transmission limit.")
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
 
     for o in opts:

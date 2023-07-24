@@ -260,9 +260,14 @@ def get_smart_charge_v2g(fn, scenario, year):
 
     return smart_val, v2g_val
 
-    
+
 def get_power_generation_emission(file, scenario, year):
 
+    year = int(year)
+    assert 2021 <= year & year <= 2050, ( 
+        "Please choose a year between 2021 and 2050, not {}.".format(year)
+    )
+    
     row_mapper = {
         "CT": 18,
         "ST": 46,
@@ -276,12 +281,16 @@ def get_power_generation_emission(file, scenario, year):
         header=row_mapper[scenario]-1,
         index_col=0,
         nrows=19,
-        usecols=[col+i for i in range(37)],
+        usecols=[col+i for i in range(31)],
         ) 
     df.columns = [pd.Timestamp(dt).year for dt in df.columns]
-    
-    elec_gen_emission = df.loc["Electricity without BECCS", year]
-    beccs = df.loc["BECCS", year].iloc[0]
-    daccs = df.loc["DACCS", year].iloc[0]
 
-    return elec_gen_emission, beccs, dacss
+    if "DACCS" in df.index:
+        daccs = df.loc["DACCS", year].iloc[0]
+    else:
+        daccs = 0.
+
+    beccs = df.loc["BECCS", year].iloc[0]
+    emission = df.at["Electricity without BECCS", year]
+
+    return emission, daccs, beccs

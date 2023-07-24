@@ -29,8 +29,8 @@ scenario:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes_scenario: # Future energy scenario considered, can be 
   # - 'CT'
-  # - 'LW'
-  - 'FS'
+  - 'LW'
+  # - 'FS'
   # - 'ST'
       # FS: Falling Short,
       # LW: Leading the Way,

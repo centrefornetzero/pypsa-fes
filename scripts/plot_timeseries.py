@@ -30,10 +30,10 @@ def plot_emission_timeseries(n):
     
     _, axs = plt.subplots(2, 1, figsize=(16, 10))
 
-    regions = ["Scotland", "England", "GB"]
+    regions = ["England", "Scotland", "GB"]
     bus_names = [
-        snakemake.config["plotting"]["timeseries_groups"]["scotland"],
         snakemake.config["plotting"]["timeseries_groups"]["england"],
+        snakemake.config["plotting"]["timeseries_groups"]["scotland"],
         "all",
     ]
 
@@ -49,7 +49,11 @@ def plot_emission_timeseries(n):
         zorder=10,
     )
 
-    for buses, region in zip(bus_names, regions):
+    linestyles = ["-", "--", "-."]
+
+    for buses, region, ls in zip(bus_names, regions, linestyles):
+
+        line_kwargs["linestyle"] = ls
 
         logger.info(f"Gathering emission timeseries for {region}...")
 
@@ -119,6 +123,7 @@ if __name__ == "__main__":
     tech_colors["battery charge"] = tech_colors["BEV charger"]
     tech_colors["DC"] = tech_colors["HVDC links"]
     tech_colors["AC"] = tech_colors["AC-AC"]
+    tech_colors["GAS CCS"] = tech_colors["CHP CC"]
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -145,7 +150,6 @@ if __name__ == "__main__":
             buses = pd.Index(n.buses.location.unique())
             buses = buses[buses.str.contains("GB")]
 
-        # get intersection of two lists
         def intersection(lst1, lst2):
             return list(set(lst1) & set(lst2))
 
