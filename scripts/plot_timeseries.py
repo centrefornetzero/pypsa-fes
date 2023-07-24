@@ -69,10 +69,6 @@ if __name__ == "__main__":
         load = n.loads_t.p_set.loc[:, intersection(n.loads.index, buses)].sum(axis=1)
         inflow = pd.DataFrame(index=n.snapshots)
         outflow = pd.DataFrame(index=n.snapshots)
-                        
-        n.links_t.p0.to_csv("p0.csv")
-        n.links_t.p1.to_csv("p0.csv")
-        n.generators.to_csv("genz_after.csv")
 
         for c in n.iterate_components(n.one_port_components | n.branch_components):
 
@@ -92,7 +88,7 @@ if __name__ == "__main__":
                     cols = c.df.loc[idx].loc[c.df.loc[idx, "carrier"] == carrier].index
 
                     inflow[carrier] = c_energies.loc[:, cols].sum(axis=1)
-            
+
             elif c.name in ["Link", "Line"]:
 
                 inout = ((c.df.bus0.isin(buses)) ^ (c.df.bus1.isin(buses))).rename("choice")
@@ -119,6 +115,7 @@ if __name__ == "__main__":
 
         total = inflow.sum(axis=1) + outflow.sum(axis=1) - load
 
+        # make whole year plot
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
         stackplot_to_ax(
@@ -126,14 +123,14 @@ if __name__ == "__main__":
             ax=ax,
             color_mapper=tech_colors,
             )
-        
+
         if not outflow.empty:
             stackplot_to_ax(
                 outflow.resample(freq).mean(),
                 ax=ax,
                 color_mapper=tech_colors,
                 )
-        
+
         ax.plot(total.index,
                 total,
                 color="black",
@@ -164,7 +161,7 @@ if __name__ == "__main__":
         plt.savefig(snakemake.output[f"timeseries_{target}_year"])
         plt.show()
 
-
+        # make plot of one month
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
         stackplot_to_ax(
@@ -172,14 +169,14 @@ if __name__ == "__main__":
             ax=ax,
             color_mapper=tech_colors,
             )
-        
+
         if not outflow.empty:
             stackplot_to_ax(
                 outflow.loc[inflow.index.month == month],
                 ax=ax,
                 color_mapper=tech_colors,
                 )
-        
+
         ax.plot(total.loc[inflow.index.month == month].index,
                 total.loc[inflow.index.month == month],
                 color="black",
