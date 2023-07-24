@@ -16,12 +16,93 @@ import matplotlib.pyplot as plt
 import numpy as np
 import calendar
 import pypsa
+import seaborn as sns
 
 from _helpers import override_component_attrs
 from _fes_helpers import scenario_mapper
 from make_summary import assign_carriers, assign_locations 
 from plot_gb_validation import stackplot_to_ax
 
+
+def plot_emission_timeseries(n):
+
+    year = str(snakemake.wildcards["planning_horizons"])
+    
+    _, axs = plt.subplots(2, 1, figsize=(16, 10))
+
+    regions = ["Scotland", "England", "GB"]
+    bus_names = [
+        snakemake.config["plotting"]["timeseries_groups"]["scotland"],
+        snakemake.config["plotting"]["timeseries_groups"]["england"],
+        "all",
+    ]
+
+    emittors = n.links.loc[n.links.bus2 == "gb co2 atmosphere"]
+
+    line_kwargs = dict(
+    )
+    marker_kwargs = dict(
+        marker="o",
+        edgecolor="black",
+        s=50,
+        alpha=1.0,
+        zorder=10,
+    )
+
+    for buses, region in zip(bus_names, regions):
+
+        logger.info(f"Gathering emission timeseries for {region}...")
+
+        if buses == "all":
+            buses = pd.Index(n.buses.location.unique())
+            buses = buses[buses.str.contains("GB")]
+
+        local_emittors = emittors.loc[emittors.bus1.isin(buses)]
+
+        emissions = (
+            n.links_t
+            .p2[local_emittors.index]
+            .mul(-1)
+            .mul(1e-6)
+            .sum(axis=1)
+        )
+
+        emissions.cumsum().plot(ax=axs[0], label=region, **line_kwargs)
+        ss = emissions.cumsum().iloc[::300]
+
+        axs[0].scatter(ss.index, ss.values, **marker_kwargs)
+
+        if region == "GB":
+
+            by_month = emissions.groupby(emissions.index.month).sum()
+            by_month.index = [calendar.month_name[i] for i in range(1, 13)]
+
+            sns.barplot(
+                x=by_month.index, 
+                y=by_month.values,
+                ax=axs[1],
+                alpha=0.8,
+                label="GB Monthly Emissions",
+                edgecolor="black",
+                linewidth=1,
+                color="royalblue",
+            )
+
+    for ax in axs:
+        labels = [item.get_text() for item in ax.get_xticklabels()]
+        labels = [label.replace("2022", year) for label in labels]
+        labels = [label.replace("2021", str(int(year)-1)) for label in labels]
+        ax.set_xticklabels(labels)
+
+    axs[0].legend()
+    axs[0].set_ylabel("Cumulative Emissions [MtCO2]")
+    axs[1].set_ylabel("Monthly Emissions GB [MtCO2]")
+    axs[0].set_xlabel("Time")
+    axs[1].set_xlabel("Month")
+    axs[0].set_title(f"GB Emissions; {scenario_mapper[snakemake.wildcards.fes_scenario]}; {year}")
+
+    plt.savefig(snakemake.output.emission_timeseries)
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -41,6 +122,8 @@ if __name__ == "__main__":
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
+
+    plot_emission_timeseries(n)    
 
     assign_carriers(n)
     assign_locations(n)
@@ -183,7 +266,7 @@ if __name__ == "__main__":
                 label="Kirchhoff Check",
                 linestyle="--",
                 linewidth=1.,
-                )        
+                )
 
         ax.set_ylabel("Generation (GW)")
         title = (
