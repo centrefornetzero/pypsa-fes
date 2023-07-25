@@ -123,7 +123,7 @@ if __name__ == "__main__":
     tech_colors["battery charge"] = tech_colors["BEV charger"]
     tech_colors["DC"] = tech_colors["HVDC links"]
     tech_colors["AC"] = tech_colors["AC-AC"]
-    tech_colors["GAS CCS"] = tech_colors["CHP CC"]
+    tech_colors["GAS CCS"] = tech_colors["power-to-H2"]
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -194,6 +194,13 @@ if __name__ == "__main__":
 
                     inflow[carrier] = np.maximum(flow.values, 0.)
                     outflow[carrier] = np.minimum(flow.values, 0.)
+
+                if c.name == "Link":
+                    logger.warning("Hardcoded data gathering of DAC")
+                    dac = c.df.loc[c.df.carrier == "DAC"]
+                    subset = dac.loc[dac.bus2.isin(buses)]
+
+                    outflow["DAC"] = - c.pnl.p2[subset.index].sum(axis=1)
 
 
         load *= 1e-3
