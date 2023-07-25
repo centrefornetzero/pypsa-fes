@@ -263,22 +263,22 @@ rule build_biomass_potentials:
             keep_local=True,
         ),
         nuts2="data/nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson",  # https://gisco-services.ec.europa.eu/distribution/v2/nuts/download/#nuts21
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
         nuts3_population=ancient("data/bundle/nama_10r_3popgdp.tsv.gz"),
         swiss_cantons=ancient("data/bundle/ch_cantons.csv"),
         swiss_population=ancient("data/bundle/je-e-21.03.02.xls"),
         country_shapes=RESOURCES + "country_shapes.geojson",
     output:
         biomass_potentials_all=RESOURCES
-        + "biomass_potentials_all_s{simpl}_{clusters}.csv",
-        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_{clusters}.csv",
+        + "biomass_potentials_all_s{simpl}_{gb_regions}.csv",
+        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_{gb_regions}.csv",
     threads: 1
     resources:
         mem_mb=1000,
     log:
-        LOGS + "build_biomass_potentials_s{simpl}_{clusters}.log",
+        LOGS + "build_biomass_potentials_s{simpl}_{gb_regions}.log",
     benchmark:
-        BENCHMARKS + "build_biomass_potentials_s{simpl}_{clusters}"
+        BENCHMARKS + "build_biomass_potentials_s{simpl}_{gb_regions}"
     conda:
         "../envs/environment.yaml"
     script:

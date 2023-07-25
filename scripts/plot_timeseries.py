@@ -213,7 +213,8 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
         stackplot_to_ax(
-            inflow.resample(freq).mean(),
+            # inflow.resample(freq).mean(),
+            inflow.resample(freq).mean()[inflow.std().sort_values().index],
             ax=ax,
             color_mapper=tech_colors,
             )
@@ -259,7 +260,7 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
         stackplot_to_ax(
-            inflow.loc[inflow.index.month == month],
+            inflow.loc[inflow.index.month == month][inflow.std().sort_values().index],
             ax=ax,
             color_mapper=tech_colors,
             )

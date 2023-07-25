@@ -31,10 +31,12 @@ import os
 import string
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 data_file = "data/Data-workbook2022_V006.xlsx"
 if not os.path.isfile(data_file):
-    data_file = "/mnt/c/Users/s2216495/Desktop/octopus/pypsa-eur/"+data_file
+    # data_file = "/mnt/c/Users/s2216495/Desktop/octopus/pypsa-eur/"+data_file
+    data_file = Path.cwd().parent / data_file
 
 
 page_mapper = {

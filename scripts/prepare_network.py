@@ -365,7 +365,6 @@ def convert_generators_to_links(n, costs):
 
     remove_elec_base_techs(n)
 
-    print(buses_to_add)
     for carrier in set(buses_to_add):
 
         print(f"Adding bus GB_{carrier}_bus, and generator GB_{carrier}")
@@ -384,12 +383,13 @@ def convert_generators_to_links(n, costs):
                 )
 
 def add_gas_ccs(n, costs):
-    print(costs.loc["gas CCS"])
 
     gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
     gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
     print("Adding gas ccs generation to buses")
     print(gb_buses)
+
+    logger.warning("Current implementation of gas CCS should just be the Allam cycle")
 
     n.madd(
         "Link",
@@ -639,9 +639,9 @@ def add_gb_co2_tracking(n, max_emission):
     )
 
 
-def add_dac(n, costs, daccs_removal):
+def add_dac(n, costs, daccs_removal_target):
 
-    daccs_removal = abs(daccs_removal)
+    daccs_removal_target = abs(daccs_removal_target)
 
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
@@ -671,7 +671,7 @@ def add_dac(n, costs, daccs_removal):
         "gb co2 stored",
         e_nom_extendable=True,
         e_min_pu=e_min_pu,
-        e_nom_min=daccs_removal * 1e6,
+        e_nom_min=daccs_removal_target * 1e6,
         carrier="co2",
         bus="gb co2 stored",
     )
@@ -689,6 +689,42 @@ def add_dac(n, costs, daccs_removal):
         efficiency2=efficiency2,
         p_nom_extendable=True,
         lifetime=costs.at["direct air capture", "lifetime"],
+    )
+
+
+def add_biogas(n, costs):
+
+    biogas_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
+    biogas_potentials = biogas_potentials.loc[gb_buses.index].sum()
+
+    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
+    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
+    
+    n.add("Bus",
+        f"GB_biogas_bus",
+        carrier="biogas")
+    
+    n.madd(
+        "Store",
+        "GB_biogas_store",
+        bus="GB_biogas_bus",
+        carrier="biogas",
+        e_nom=biogas_potentials,
+        marginal_cost=costs.at["biogas", "fuel"],
+        e_initial=biogas_potentials,
+    )
+
+    n.madd(
+        "Link",
+        "biogas upgrading",
+        bus0="GB_biogas_bus",
+        bus1="GB_gas_bus",
+        bus2="co2 atmosphere",
+        carrier="biogas to gas",
+        capital_cost=costs.loc["biogas upgrading", "fixed"],
+        marginal_cost=costs.loc["biogas upgrading", "VOM"],
+        efficiency2=-costs.at["gas", "CO2 intensity"],
+        p_nom_extendable=True,
     )
 
 
@@ -762,6 +798,9 @@ if __name__ == "__main__":
 
     logger.info("Adding gas CCS generation.")
     add_gas_ccs(n, other_costs)
+
+    logger.info("Adding biogas to the system")
+    add_biogas(n, other_costs)
     
     logger.info("Adding heat pump load.")
     add_heat_pump_load(
