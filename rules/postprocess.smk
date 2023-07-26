@@ -153,7 +153,8 @@ rule plot_timeseries:
         timeseries_scotland_short=RESULTS + "graphs/timeseries-short-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
         timeseries_england_year=RESULTS + "graphs/timeseries-year-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
         timeseries_england_short=RESULTS + "graphs/timeseries-short-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
-        emission_timeseries=RESULTS + "graphs/timeseries-emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf"
+        emission_timeseries=RESULTS + "graphs/timeseries-emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
+        co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
     threads: 1
     resources:
         mem_mb=10000,

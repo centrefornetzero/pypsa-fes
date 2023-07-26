@@ -109,6 +109,81 @@ def plot_emission_timeseries(n):
     plt.show()
 
 
+def get_store_interaction(n, store_name):
+    connect1 = n.links.query("bus1 == @store_name")
+    connect2 = n.links.query("bus2 == @store_name")
+
+    connect_t = (
+        pd.concat((
+            n.links_t.p1[connect1.index],   
+            n.links_t.p2[connect2.index]   
+        ), axis=1)
+        .mul(-1.)
+        .groupby(n.links_t.p0.index.month).sum()
+    )
+    connect = pd.concat((connect1, connect2))
+
+    connect_t = pd.concat((
+        pd.DataFrame({
+            "value": connect_t[connect.query("carrier == @carrier").index].sum(axis=1).mul(1e-6), # to MtCO2
+            "carrier": carrier
+            })
+        for carrier in connect.carrier.unique()
+    ), axis=0)
+
+    connect_t["month"] = connect_t.index.map(lambda x: calendar.month_abbr[x])
+
+    return connect_t
+
+
+def make_co2_barplot(n):
+
+    bar_kwargs = {
+        "edgecolor": "black",
+        "linewidth": 1,
+        "alpha": 0.8,
+        "x": "month",
+        "y": "value",
+        "hue": "carrier",
+        "palette": "bright",
+    }
+
+    storing_t = get_store_interaction(n, "gb co2 stored")    
+    emitting_t = get_store_interaction(n, "gb co2 atmosphere")
+
+    fig, axs = plt.subplots(1, 2, figsize=(16, 4))
+
+    sns.barplot(
+        data=emitting_t,
+        ax=axs[0],
+        **bar_kwargs
+        )
+        
+    sns.barplot(
+        data=storing_t,
+        ax=axs[1],
+        **bar_kwargs
+        )
+
+    for ax in axs:
+        ax.set_xlabel("Month")
+        ax.legend(loc=9)
+
+    axs[0].set_ylabel("Monthly CO2 Emissions by Tech [MtCO2]")
+    axs[1].set_ylabel("Monthly CO2 Removal by Tech [MtCO2]")
+
+    total_stored = n.stores_t.e["gb co2 stored"].iloc[-1] * 1e-6
+    total_emitted = n.stores_t.p["gb co2 atmosphere"].sum() * -1e-6
+
+    for ax, value, meaning in zip(axs[::-1], [total_stored, total_emitted], ["Stored", "Emitted"]):
+        ax.set_title(f"Total {meaning}: {value:.2f} MtCO2")
+
+    plt.tight_layout()
+    plt.savefig(snakemake.output.co2_barplot)
+    plt.show()
+
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -213,7 +288,6 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
         stackplot_to_ax(
-            # inflow.resample(freq).mean(),
             inflow.resample(freq).mean()[inflow.std().sort_values().index],
             ax=ax,
             color_mapper=tech_colors,
@@ -305,3 +379,5 @@ if __name__ == "__main__":
 
         plt.savefig(snakemake.output[f"timeseries_{target}_short"])
         plt.show()
+
+    make_co2_barplot(n)

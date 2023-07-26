@@ -386,25 +386,32 @@ def add_gas_ccs(n, costs):
 
     gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
     gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
-    print("Adding gas ccs generation to buses")
-    print(gb_buses)
 
-    logger.warning("Current implementation of gas CCS should just be the Allam cycle")
+    logger.warning("Adding Allam cycle...")
 
     n.madd(
         "Link",
         gb_buses,
-        suffix=" gas CCS",
+        suffix=" allam",
         bus0=f"GB_gas_bus",
         bus1=gb_buses,
-        marginal_cost=costs.at["gas CCS", "efficiency"]
-        * costs.at["gas CCS", "VOM"],  # NB: VOM is per MWel
-        capital_cost=costs.at["gas CCS", "efficiency"]
-        * costs.at["gas CCS", "fixed"],  # NB: fixed cost is per MWel
-        carrier="GAS CCS",
+        bus2="gb co2 stored",
+        carrier="allam",
         p_nom_extendable=True,
-        efficiency=costs.at["gas CCS", "efficiency"],
+        # TODO: add costs to technology-data
+        capital_cost=0.6 * 1.5e6 * 0.1,  # efficiency * EUR/MW * annuity
+        marginal_cost=2,
+        efficiency=0.6,
+        efficiency2=costs.at["gas", "CO2 intensity"],
+        lifetime=30.,
     )
+    """
+    marginal_cost=costs.at["gas CCS", "efficiency"]
+    * costs.at["gas CCS", "VOM"],  # NB: VOM is per MWel
+    capital_cost=costs.at["gas CCS", "efficiency"]
+    * costs.at["gas CCS", "fixed"],  # NB: fixed cost is per MWel
+    efficiency=costs.at["gas CCS", "efficiency"],
+    """
 
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
@@ -694,17 +701,17 @@ def add_dac(n, costs, daccs_removal_target):
 
 def add_biogas(n, costs):
 
-    biogas_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
-    biogas_potentials = biogas_potentials.loc[gb_buses.index].sum()
-
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
-    
+
+    biogas_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
+    biogas_potentials = biogas_potentials.loc[gb_buses.index, "biogas"].sum()
+
     n.add("Bus",
         f"GB_biogas_bus",
         carrier="biogas")
     
-    n.madd(
+    n.add(
         "Store",
         "GB_biogas_store",
         bus="GB_biogas_bus",
@@ -714,7 +721,7 @@ def add_biogas(n, costs):
         e_initial=biogas_potentials,
     )
 
-    n.madd(
+    n.add(
         "Link",
         "biogas upgrading",
         bus0="GB_biogas_bus",
