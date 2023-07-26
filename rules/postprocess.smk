@@ -8,7 +8,6 @@ localrules:
     copy_conda_env,
 
 
-
 rule plot_network:
     input:
         overrides="data/override_component_attrs",

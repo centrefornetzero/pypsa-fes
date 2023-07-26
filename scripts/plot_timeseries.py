@@ -110,18 +110,20 @@ def plot_emission_timeseries(n):
 
 
 def get_store_interaction(n, store_name):
+    connect0 = n.links.query("bus0 == @store_name")
     connect1 = n.links.query("bus1 == @store_name")
     connect2 = n.links.query("bus2 == @store_name")
 
     connect_t = (
         pd.concat((
+            n.links_t.p0[connect0.index],   
             n.links_t.p1[connect1.index],   
             n.links_t.p2[connect2.index]   
         ), axis=1)
         .mul(-1.)
         .groupby(n.links_t.p0.index.month).sum()
     )
-    connect = pd.concat((connect1, connect2))
+    connect = pd.concat((connect0, connect1, connect2))
 
     connect_t = pd.concat((
         pd.DataFrame({
@@ -203,7 +205,7 @@ if __name__ == "__main__":
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
 
-    plot_emission_timeseries(n)    
+    # plot_emission_timeseries(n)    
 
     assign_carriers(n)
     assign_locations(n)

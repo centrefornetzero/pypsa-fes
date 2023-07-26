@@ -269,7 +269,7 @@ def get_power_generation_emission(file, scenario, year):
     assert 2021 <= year & year <= 2050, ( 
         "Please choose a year between 2021 and 2050, not {}.".format(year)
     )
-    
+
     row_mapper = {
         "CT": 18,
         "ST": 46,
@@ -295,4 +295,4 @@ def get_power_generation_emission(file, scenario, year):
     beccs = df.loc["BECCS", year].iloc[0]
     emission = df.at["Electricity without BECCS", year]
 
-    return emission, daccs, beccs
+    return abs(emission), abs(daccs), abs(beccs)

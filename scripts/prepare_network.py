@@ -320,7 +320,7 @@ def scale_generation_capacity(n, capacity_file):
 
 def convert_generators_to_links(n, costs):
 
-    logger.info("Converting generators to links")
+    # logger.info("Converting generators to links")
 
     gb_generation = n.generators.loc[n.generators.bus.str.contains("GB")]
     conventionals = {"CCGT": "gas",
@@ -395,14 +395,16 @@ def add_gas_ccs(n, costs):
         suffix=" allam",
         bus0=f"GB_gas_bus",
         bus1=gb_buses,
-        bus2="gb co2 stored",
+        bus2="gb co2 atmosphere",
+        bus3="gb co2 stored",
         carrier="allam",
         p_nom_extendable=True,
         # TODO: add costs to technology-data
         capital_cost=0.6 * 1.5e6 * 0.1,  # efficiency * EUR/MW * annuity
         marginal_cost=2,
         efficiency=0.6,
-        efficiency2=costs.at["gas", "CO2 intensity"],
+        efficiency2=-costs.at["gas", "CO2 intensity"],
+        efficiency3=costs.at["gas", "CO2 intensity"],
         lifetime=30.,
     )
     """
@@ -416,7 +418,7 @@ def add_gas_ccs(n, costs):
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
 def add_heat_pump_load(
-    n, 
+    n,
     heat_demand_file,
     ashp_cop_file,
     energy_totals_file,
@@ -627,7 +629,7 @@ def add_bev(n, transport_config):
             )
 
 
-def add_gb_co2_tracking(n, max_emission):
+def add_gb_co2_tracking(n, net_change_co2):
     # can also be negative
     n.add(
         "Bus",
@@ -636,19 +638,30 @@ def add_gb_co2_tracking(n, max_emission):
         unit="t_co2",
     )
 
+    e_max_pu = pd.Series(1., n.snapshots)
+    e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
+
+    print("Net change co2: ", net_change_co2)
+    print("e_max_pu: ", (-1.) ** (int(net_change_co2 < 0)))
+
+    print("e_nom: ", abs(net_change_co2))
+
     n.add(
         "Store",
         "gb co2 atmosphere",
-        e_nom_extendable=True,
         carrier="co2",
         bus="gb co2 atmosphere",
-        e_nom_max=max_emission * 1e6,
+        e_nom=abs(net_change_co2),
+        e_nom_extendalble=True,
+        e_min_pu=-1.,
+        e_max_pu=e_max_pu,
+        e_initial=0.,
     )
 
 
-def add_dac(n, costs, daccs_removal_target):
+def add_dac(n, costs):
 
-    daccs_removal_target = abs(daccs_removal_target)
+    # daccs_removal_target = abs(daccs_removal_target)
 
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
@@ -670,15 +683,16 @@ def add_dac(n, costs, daccs_removal_target):
         unit="t_co2",
     )
 
-    e_min_pu = pd.Series(0., n.snapshots)
-    e_min_pu.iloc[-1] = 1.
+    # e_min_pu = pd.Series(0., n.snapshots)
+    # e_min_pu.iloc[-1] = 1.
 
     n.add(
         "Store",
         "gb co2 stored",
         e_nom_extendable=True,
-        e_min_pu=e_min_pu,
-        e_nom_min=daccs_removal_target * 1e6,
+        # e_min_pu=e_min_pu,
+        e_min_pu=-1.,
+        # e_nom_min=daccs_removal_target * 1e6,
         carrier="co2",
         bus="gb co2 stored",
     )
@@ -726,7 +740,7 @@ def add_biogas(n, costs):
         "biogas upgrading",
         bus0="GB_biogas_bus",
         bus1="GB_gas_bus",
-        bus2="co2 atmosphere",
+        bus2="gb co2 atmosphere",
         carrier="biogas to gas",
         capital_cost=costs.loc["biogas upgrading", "fixed"],
         marginal_cost=costs.loc["biogas upgrading", "VOM"],
@@ -746,7 +760,6 @@ if __name__ == "__main__":
 
     opts = snakemake.wildcards.opts.split("-")
 
-    # n = pypsa.Network(snakemake.input[0])
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
 
@@ -782,8 +795,12 @@ if __name__ == "__main__":
     daccs_removal = 2.
 
     logger.info(f"Emission from Electricity Generation: {np.around(generation_emission, decimals=2)} MtCO2")
-    logger.info(f"Direct Air Capture Removal: {np.around(-daccs_removal, decimals=2)} MtCO2")
+    logger.info(f"Direct Air Capture Removal: {np.around(daccs_removal, decimals=2)} MtCO2")
     logger.info(f"Removal through Carbon Capture Biomass: {np.around(beccs_removal, decimals=2)} MtCO2")
+
+    net_change_atmospheric_co2 = generation_emission - daccs_removal - beccs_removal
+    logger.info(("\n Net change in atmospheric CO2: ",
+        f"{np.around(net_change_atmospheric_co2, decimals=2)} MtCO2"))
 
     logger.info("Scaling conventional generators to match FES.")
     scale_generation_capacity(n, snakemake.input.capacity_constraints)
@@ -798,10 +815,10 @@ if __name__ == "__main__":
             ], inplace=True)
 
     logger.info("Adding GB CO2 tracking.")
-    add_gb_co2_tracking(n, generation_emission)
+    add_gb_co2_tracking(n, net_change_atmospheric_co2)
 
     logger.info("Adding direct air capture.")
-    add_dac(n, other_costs, daccs_removal)
+    add_dac(n, other_costs)
 
     logger.info("Adding gas CCS generation.")
     add_gas_ccs(n, other_costs)
