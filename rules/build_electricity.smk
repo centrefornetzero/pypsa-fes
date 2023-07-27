@@ -423,6 +423,7 @@ rule prepare_network:
         biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_{gb_regions}.csv",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{gb_regions}.csv",
         co2_price=RESOURCES + "CO2_price_2022.csv",
         heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_{gb_regions}.nc",
         cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_{gb_regions}.nc",
@@ -434,11 +435,11 @@ rule prepare_network:
         fes_table="data/Data-workbook2022_V006.xlsx",
         fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
     output:
-        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.nc",
+        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
     log:
-        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.log",
+        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
     benchmark:
-        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}")
+        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}")
     threads: 1
     resources:
         mem_mb=4000,

@@ -11,20 +11,20 @@ localrules:
 rule plot_network:
     input:
         overrides="data/override_component_attrs",
-        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.nc",
+        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
         regions=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
     output:
         map=RESULTS
-        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}-costs-all_{fes}_{year}.pdf",
+        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}-costs-all_{fes}_{year}.pdf",
         today=RESULTS
-        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{fes}_{year}-today.pdf",
+        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}_{fes}_{year}-today.pdf",
     threads: 2
     resources:
         mem_mb=10000,
     benchmark:
         (
             BENCHMARKS
-            + "plot_network/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{fes}_{year}"
+            + "plot_network/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}_{fes}_{year}"
         )
     conda:
         "../envs/environment.yaml"
@@ -71,7 +71,7 @@ rule make_summary:
         overrides="data/override_component_attrs",
         networks=expand(
             RESULTS
-            + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.nc",
+            + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
             **config["scenario"]
         ),
         costs="data/costs_{}.csv".format(config["costs"]["year"])
@@ -143,24 +143,24 @@ rule plot_timeseries:
     params:
         RDIR=RDIR,
     input:
-        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.nc",
+        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
         overrides="data/override_component_attrs",
     output:
-        timeseries_gb_year=RESULTS + "graphs/timeseries-year-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.pdf",
-        timeseries_gb_short=RESULTS + "graphs/timeseries-short-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.pdf",
-        timeseries_scotland_year=RESULTS + "graphs/timeseries-year-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.pdf",
-        timeseries_scotland_short=RESULTS + "graphs/timeseries-short-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.pdf",
-        timeseries_england_year=RESULTS + "graphs/timeseries-year-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.pdf",
-        timeseries_england_short=RESULTS + "graphs/timeseries-short-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.pdf",
+        timeseries_gb_year=RESULTS + "graphs/timeseries-year-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+        timeseries_gb_short=RESULTS + "graphs/timeseries-short-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+        timeseries_scotland_year=RESULTS + "graphs/timeseries-year-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+        timeseries_scotland_short=RESULTS + "graphs/timeseries-short-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+        timeseries_england_year=RESULTS + "graphs/timeseries-year-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+        timeseries_england_short=RESULTS + "graphs/timeseries-short-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
         # emission_timeseries=RESULTS + "graphs/timeseries-emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
-        co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.pdf",
+        co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
     threads: 1
     resources:
         mem_mb=10000,
     log:
-        LOGS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.log",
+        LOGS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
     benchmark:
-        BENCHMARKS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}"
+        BENCHMARKS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
     conda:
         "../envs/environment.yaml"
     script:

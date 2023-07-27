@@ -760,6 +760,78 @@ def add_biogas(n, costs):
     )
 
 
+def add_regular_flexibility(n):
+
+    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
+    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
+    
+    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)     
+    pop_layout = pop_layout.loc[pop_layout.index.str.contains("GB")]["total"]
+
+    total_pop = pop_layout.sum()
+    
+    sm_rollout = 1.
+    opt_in_rate = 0.5
+
+    gb_population = 67_330_000
+
+    turndown_per_household = 0.5 * 1e-3     # MWh
+    avg_people_per_household = 2.36         # Statista 2022
+    turndown_per_person = turndown_per_household / avg_people_per_household
+
+    weekly_allowance = 2                    # events  
+
+    single_event_capacity = (
+        (pop_layout / total_pop * gb_population) 
+        * turndown_per_person 
+        * sm_rollout
+        * opt_in_rate
+    )
+
+    # weekly recharge
+    recharge_profile = pd.Series(0., index=n.snapshots)
+    mask = (n.snapshots.hour == 0) & (n.snapshots.weekday == 1)
+    recharge_profile.loc[mask] = 1.
+
+    n.add("Bus",
+        "regular flex",
+        carrier="regular flex",
+        )
+
+    n.add("Generator",
+        "regular flex",
+        bus="regular flex",
+        carrier="regular flex",
+        p_nom=single_event_capacity.sum() * weekly_allowance,
+        p_max_pu=recharge_profile,
+        marginal_cost=0.,
+    )
+
+    n.add("Store",
+        "regular flex",
+        bus="regular flex",
+        carrier="regular flex",
+        e_nom=single_event_capacity.sum() * weekly_allowance,
+    )
+
+    # events define time when demand flex can be used
+    event_space = pd.Series(0., index=n.snapshots)
+
+    mask = (n.snapshots.hour >= 17) & (n.snapshots.hour <= 18)
+    event_space.loc[mask] = weekly_allowance
+
+    n.madd("Link",
+        gb_buses.index,
+        suffix=" regular flex",
+        bus0="regular flex",
+        bus1=gb_buses.index,
+        carrier="regular flex",
+        p_nom=single_event_capacity * weekly_allowance,
+        p_max_pu=event_space,
+        marginal_cost=0.,
+    )
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -855,6 +927,17 @@ if __name__ == "__main__":
 
     logger.info("Adding transmission limit.")
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
+
+
+    print(snakemake.wildcards)
+    flexopts = snakemake.wildcards.flexopts.split("-")
+    print("flexopts: \n", flexopts)
+
+    if "reg" in flexopts:
+        add_regular_flexibility(n)
+    
+    # import sys
+    # sys.exit()
 
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)

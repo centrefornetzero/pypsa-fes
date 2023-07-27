@@ -44,7 +44,7 @@ scenario:
   # - 2040
   # - 2050
   # for myopic foresight
-  flextypes: 
+  flexopts: 
   - reg-ss-v2g-heat
   # reg  # regular weekly demand flexibility (2 days max), one hour
   # ss   # one hour events, any weekday in winter, Saving Sessions style
