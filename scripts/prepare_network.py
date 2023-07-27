@@ -395,18 +395,19 @@ def add_gas_ccs(n, costs):
         suffix=" allam",
         bus0=f"GB_gas_bus",
         bus1=gb_buses,
-        bus2="gb co2 atmosphere",
-        bus3="gb co2 stored",
+        bus2="gb co2 stored",
+        # bus3="gb co2 atmosphere",
         carrier="allam",
         p_nom_extendable=True,
         # TODO: add costs to technology-data
         capital_cost=0.6 * 1.5e6 * 0.1,  # efficiency * EUR/MW * annuity
         marginal_cost=2,
         efficiency=0.6,
-        efficiency2=-costs.at["gas", "CO2 intensity"],
-        efficiency3=costs.at["gas", "CO2 intensity"],
+        efficiency2=costs.at["gas", "CO2 intensity"],
+        # efficiency3=-costs.at["gas", "CO2 intensity"],
         lifetime=30.,
     )
+
     """
     marginal_cost=costs.at["gas CCS", "efficiency"]
     * costs.at["gas CCS", "VOM"],  # NB: VOM is per MWel
@@ -414,7 +415,6 @@ def add_gas_ccs(n, costs):
     * costs.at["gas CCS", "fixed"],  # NB: fixed cost is per MWel
     efficiency=costs.at["gas CCS", "efficiency"],
     """
-
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
 def add_heat_pump_load(
@@ -503,7 +503,7 @@ def add_bev(n, transport_config):
 
     logger.info("Adding BEV load and respective storage units")
 
-    year = int(snakemake.wildcards.planning_horizons)
+    year = int(snakemake.wildcards.year)
 
     transport = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
@@ -525,7 +525,7 @@ def add_bev(n, transport_config):
         snakemake.input.fes_table)
 
     bev_cars = get_data_point("bev_cars_on_road",
-        snakemake.wildcards.fes_scenario,
+        snakemake.wildcards.fes,
         year)
     
     electric_share = bev_cars / gb_cars_2050
@@ -588,7 +588,7 @@ def add_bev(n, transport_config):
 
         smart_share, v2g_share = get_smart_charge_v2g(
             snakemake.input.fes_table,
-            snakemake.wildcards.fes_scenario,
+            snakemake.wildcards.fes,
             year)
         
         if v2g_share > 0.:
@@ -643,7 +643,6 @@ def add_gb_co2_tracking(n, net_change_co2):
 
     print("Net change co2: ", net_change_co2)
     print("e_max_pu: ", (-1.) ** (int(net_change_co2 < 0)))
-
     print("e_nom: ", abs(net_change_co2))
 
     n.add(
@@ -651,8 +650,8 @@ def add_gb_co2_tracking(n, net_change_co2):
         "gb co2 atmosphere",
         carrier="co2",
         bus="gb co2 atmosphere",
-        e_nom=abs(net_change_co2),
-        e_nom_extendalble=True,
+        e_nom=abs(net_change_co2*1e6),
+        # e_nom_extendable=True,
         e_min_pu=-1.,
         e_max_pu=e_max_pu,
         e_initial=0.,
@@ -675,6 +674,21 @@ def add_dac(n, costs):
         + costs.at["direct air capture", "compression-electricity-input"]
     )
 
+    heat_demand = (
+        costs.at["direct air capture", "heat-input"]
+        - costs.at["direct air capture", "compression-heat-output"]
+    )
+
+    # ad-hoc estimation for the cost of low-grade heat if it was generated from 
+    # natural gas, ccgt, heat pump
+    mcost_heat = (
+        costs.at["gas", "fuel"] / costs.at["CCGT", "efficiency"] +
+        costs.at["CCGT", "VOM"]
+    ) / costs.at["central air-sourced heat pump", "efficiency"] + costs.at["central air-sourced heat pump", "VOM"]
+
+    logger.info(f"Estimating cost of heat for DAC to be {np.around(mcost_heat, decimals=2)} EUR/MWh_th")
+    logger.info(f"Assuming required LHV heat net input {np.around(heat_demand, decimals=2)} MWh_th/tCO2")
+
     # this tracks GB CO2 stored, e.g. underground
     n.add(
         "Bus",
@@ -683,16 +697,11 @@ def add_dac(n, costs):
         unit="t_co2",
     )
 
-    # e_min_pu = pd.Series(0., n.snapshots)
-    # e_min_pu.iloc[-1] = 1.
-
     n.add(
         "Store",
         "gb co2 stored",
         e_nom_extendable=True,
-        # e_min_pu=e_min_pu,
         e_min_pu=-1.,
-        # e_nom_min=daccs_removal_target * 1e6,
         carrier="co2",
         bus="gb co2 stored",
     )
@@ -706,6 +715,7 @@ def add_dac(n, costs):
         bus2=gb_buses.index,
         carrier="DAC",
         capital_cost=costs.at["direct air capture", "fixed"],
+        marginal_cost=heat_demand * mcost_heat,
         efficiency=1.0,
         efficiency2=efficiency2,
         p_nom_extendable=True,
@@ -722,13 +732,13 @@ def add_biogas(n, costs):
     biogas_potentials = biogas_potentials.loc[gb_buses.index, "biogas"].sum()
 
     n.add("Bus",
-        f"GB_biogas_bus",
+        f"gb biogas",
         carrier="biogas")
     
     n.add(
         "Store",
-        "GB_biogas_store",
-        bus="GB_biogas_bus",
+        "gb biogas",
+        bus="gb biogas",
         carrier="biogas",
         e_nom=biogas_potentials,
         marginal_cost=costs.at["biogas", "fuel"],
@@ -738,12 +748,13 @@ def add_biogas(n, costs):
     n.add(
         "Link",
         "biogas upgrading",
-        bus0="GB_biogas_bus",
+        bus0="gb biogas",
         bus1="GB_gas_bus",
         bus2="gb co2 atmosphere",
         carrier="biogas to gas",
         capital_cost=costs.loc["biogas upgrading", "fixed"],
         marginal_cost=costs.loc["biogas upgrading", "VOM"],
+        efficiency=1.,
         efficiency2=-costs.at["gas", "CO2 intensity"],
         p_nom_extendable=True,
     )
@@ -763,9 +774,9 @@ if __name__ == "__main__":
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
 
-    fes_scenario = snakemake.wildcards.fes_scenario
-    year = snakemake.wildcards.planning_horizons
-    logger.info(f"Preparing network for {fes_scenario} in {year}.")
+    fes = snakemake.wildcards.fes
+    year = snakemake.wildcards.year
+    logger.info(f"Preparing network for {fes} in {year}.")
 
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
 
@@ -786,7 +797,7 @@ if __name__ == "__main__":
     generation_emission, daccs_removal, beccs_removal = (
         get_power_generation_emission(
             snakemake.input.fes_table_2023,
-            fes_scenario,
+            fes,
             year,
         )
     )
@@ -833,8 +844,8 @@ if __name__ == "__main__":
         snakemake.input["cop_air_total"],
         snakemake.input["energy_totals"],
         snakemake.input["heat_profile"],
-        snakemake.wildcards.fes_scenario,
-        snakemake.wildcards.planning_horizons,
+        snakemake.wildcards.fes,
+        snakemake.wildcards.year,
     )
 
     logger.info("Adding BEV load.")

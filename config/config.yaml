@@ -27,7 +27,7 @@ scenario:
   # - 37
   gb_regions:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
-  fes_scenario: # Future energy scenario considered, can be 
+  fes: # Future energy scenario considered, can be 
   # - 'CT'
   - 'LW'
   # - 'FS'
@@ -36,7 +36,7 @@ scenario:
       # LW: Leading the Way,
       # ST: System Transformation,
       # CT: Consumer Transformation,
-  planning_horizons: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
+  year: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
   - 2035
   # for example, set to
   # - 2020
@@ -44,6 +44,12 @@ scenario:
   # - 2040
   # - 2050
   # for myopic foresight
+  flextypes: 
+  - reg-ss-v2g-heat
+  # reg  # regular weekly demand flexibility (2 days max), one hour
+  # ss   # one hour events, any weekday in winter, Saving Sessions style
+  # v2g  # included by default, numbers are share of intelligent tariff and V2G
+  # hp   # included by default, numbers are share of heat pumps controlled intelligently
   dt_event:
   - '1' # selects file for turndown timing and magnitude in data/turndown_events/
   opts: # only relevant for PyPSA-Eur

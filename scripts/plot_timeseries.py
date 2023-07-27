@@ -26,7 +26,7 @@ from plot_gb_validation import stackplot_to_ax
 
 def plot_emission_timeseries(n):
 
-    year = str(snakemake.wildcards["planning_horizons"])
+    year = str(snakemake.wildcards["year"])
     
     _, axs = plt.subplots(2, 1, figsize=(16, 10))
 
@@ -103,7 +103,7 @@ def plot_emission_timeseries(n):
     axs[1].set_ylabel("Monthly Emissions GB [MtCO2]")
     axs[0].set_xlabel("Time")
     axs[1].set_xlabel("Month")
-    axs[0].set_title(f"GB Emissions; {scenario_mapper[snakemake.wildcards.fes_scenario]}; {year}")
+    axs[0].set_title(f"GB Emissions; {scenario_mapper[snakemake.wildcards.fes]}; {year}")
 
     plt.savefig(snakemake.output.emission_timeseries)
     plt.show()
@@ -153,7 +153,7 @@ def make_co2_barplot(n):
     storing_t = get_store_interaction(n, "gb co2 stored")    
     emitting_t = get_store_interaction(n, "gb co2 atmosphere")
 
-    fig, axs = plt.subplots(1, 2, figsize=(16, 4))
+    _, axs = plt.subplots(1, 2, figsize=(16, 4))
 
     sns.barplot(
         data=emitting_t,
@@ -313,8 +313,8 @@ if __name__ == "__main__":
 
         title = (
             f"{target.upper()};"
-            f"{ scenario_mapper[snakemake.wildcards.fes_scenario]};"
-            f"{ snakemake.wildcards.planning_horizons}"
+            f"{ scenario_mapper[snakemake.wildcards.fes]};"
+            f"{ snakemake.wildcards.year}"
         )        
         ax.set_title(title)
         handles, labels = plt.gca().get_legend_handles_labels()
@@ -359,8 +359,8 @@ if __name__ == "__main__":
         ax.set_ylabel("Generation (GW)")
         title = (
             f"{target.upper()};"
-            f" {scenario_mapper[snakemake.wildcards.fes_scenario]};"
-            f" {snakemake.wildcards.planning_horizons};"
+            f" {scenario_mapper[snakemake.wildcards.fes]};"
+            f" {snakemake.wildcards.year};"
             f" {calendar.month_name[month]}"
         )
 

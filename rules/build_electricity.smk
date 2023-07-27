@@ -253,11 +253,11 @@ rule build_fes_constraints:
     input:
         fes_table="data/Data-workbook2022_V006.xlsx",
     output:
-        capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes_scenario}_{planning_horizons}.csv",
-        # load_constraints=RESOURCES + "fes_load_constraints_{fes_scenario}_{planning_horizons}.csv",
-        # battery_constraints=RESOURCES + "fes_battery_constraints_{fes_scenario}_{planning_horizons}.csv",
+        capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
+        # load_constraints=RESOURCES + "fes_load_constraints_{fes}_{year}.csv",
+        # battery_constraints=RESOURCES + "fes_battery_constraints_{fes}_{year}.csv",
     log:
-        LOGS + "build_fes_constraints_{fes_scenario}_{planning_horizons}.log"
+        LOGS + "build_fes_constraints_{fes}_{year}.log"
     threads: 1
     resources:
         mem_mb=1000,
@@ -421,7 +421,7 @@ rule prepare_network:
         overrides="data/override_component_attrs",
         tech_costs=COSTS,
         biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_{gb_regions}.csv",
-        capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes_scenario}_{planning_horizons}.csv",
+        capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",
         co2_price=RESOURCES + "CO2_price_2022.csv",
         heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_{gb_regions}.nc",
@@ -434,11 +434,11 @@ rule prepare_network:
         fes_table="data/Data-workbook2022_V006.xlsx",
         fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
     output:
-        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc",
+        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.nc",
     log:
-        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.log",
+        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.log",
     benchmark:
-        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}")
+        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}")
     threads: 1
     resources:
         mem_mb=4000,
