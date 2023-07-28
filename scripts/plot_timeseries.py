@@ -289,8 +289,17 @@ if __name__ == "__main__":
         # make whole year plot
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
+        sorting = inflow.std().sort_values().index.tolist()
+        flexs = [carrier for carrier in inflow.columns if "flex" in carrier]
+        for flex in flexs:
+            sorting.remove(flex)
+            sorting.append(flex)
+
+        print("wo sorting", inflow.resample(freq).mean())
+        print("w sorting", inflow.resample(freq).mean()[sorting])
+
         stackplot_to_ax(
-            inflow.resample(freq).mean()[inflow.std().sort_values().index],
+            inflow.resample(freq).mean()[sorting],
             ax=ax,
             color_mapper=tech_colors,
             )
@@ -336,7 +345,7 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
         stackplot_to_ax(
-            inflow.loc[inflow.index.month == month][inflow.std().sort_values().index],
+            inflow.loc[inflow.index.month == month][sorting],
             ax=ax,
             color_mapper=tech_colors,
             )

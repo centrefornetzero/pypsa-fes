@@ -760,7 +760,11 @@ def add_biogas(n, costs):
     )
 
 
-def add_regular_flexibility(n):
+def add_flexibility(n, mode):
+
+    assert mode in ["winter", "regular"], f"chosen mode {mode} must be either 'winter' or 'regular'"
+
+    name = mode + " flex"
 
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
@@ -779,7 +783,7 @@ def add_regular_flexibility(n):
     avg_people_per_household = 2.36         # Statista 2022
     turndown_per_person = turndown_per_household / avg_people_per_household
 
-    weekly_allowance = 2                    # events  
+    weekly_allowance = 5 if mode == "winter" else 2
 
     single_event_capacity = (
         (pop_layout / total_pop * gb_population) 
@@ -793,43 +797,59 @@ def add_regular_flexibility(n):
     mask = (n.snapshots.hour == 0) & (n.snapshots.weekday == 1)
     recharge_profile.loc[mask] = 1.
 
+    # events define time when demand flex can be used
+    event_space = pd.DataFrame(0., index=n.snapshots, columns=gb_buses.index)
+
+    mask = (n.snapshots.hour >= 9) & (n.snapshots.hour <= 19)
+
+    if mode == "winter":
+        mask = mask & (n.snapshots.month.isin([12, 1, 2])) & (n.snapshots.weekday <= 5)
+
+    event_space.loc[mask] = 1.
+
     n.add("Bus",
-        "regular flex",
-        carrier="regular flex",
+        name,
+        carrier=name,
         )
 
     n.add("Generator",
-        "regular flex",
-        bus="regular flex",
-        carrier="regular flex",
+        name,
+        bus=name,
+        carrier=name,
         p_nom=single_event_capacity.sum() * weekly_allowance,
         p_max_pu=recharge_profile,
         marginal_cost=0.,
     )
 
     n.add("Store",
-        "regular flex",
-        bus="regular flex",
-        carrier="regular flex",
+        name,
+        bus=name,
+        carrier=name,
         e_nom=single_event_capacity.sum() * weekly_allowance,
     )
-
-    # events define time when demand flex can be used
-    event_space = pd.DataFrame(0., index=n.snapshots, columns=gb_buses.index)
-
-    mask = (n.snapshots.hour >= 17) & (n.snapshots.hour <= 18)
-    event_space.loc[mask] = 1.
     
     n.madd("Link",
         gb_buses.index,
-        suffix=" regular flex",
-        bus0="regular flex",
+        suffix=f" {name}", 
+        bus0=name,
         bus1=gb_buses.index,
-        carrier="regular flex",
+        carrier=name,
         p_nom=single_event_capacity * weekly_allowance,
         p_max_pu=event_space,
         marginal_cost=0.,
     )
+
+    # ensure no double flexibility in winter months
+    if "winter flex" in n.buses.carrier and "regular flex" in n.buses.carrier:
+
+        win = n.links.loc[n.links.carrier == "winter flex"].index
+        reg = n.links.loc[n.links.carrier == "regular flex"].index
+
+        if (n.links_t.p_max_pu[[win[0], reg[0]]].sum(axis=1) > 1.).any():
+
+            # remove regular flex for winter months
+            mask = n.links_t.p_max_pu[win[0]].astype(bool)
+            n.links_t.p_max_pu.loc[mask, reg] = 0.
 
 
 if __name__ == "__main__":
@@ -934,7 +954,10 @@ if __name__ == "__main__":
     print("flexopts: \n", flexopts)
 
     if "reg" in flexopts:
-        add_regular_flexibility(n)
+        add_flexibility(n, "regular")
+    
+    if "ss" in flexopts:
+        add_flexibility(n, "winter")
     
     # import sys
     # sys.exit()
