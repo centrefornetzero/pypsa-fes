@@ -815,11 +815,11 @@ def add_regular_flexibility(n):
     )
 
     # events define time when demand flex can be used
-    event_space = pd.Series(0., index=n.snapshots)
+    event_space = pd.DataFrame(0., index=n.snapshots, columns=gb_buses.index)
 
     mask = (n.snapshots.hour >= 17) & (n.snapshots.hour <= 18)
-    event_space.loc[mask] = weekly_allowance
-
+    event_space.loc[mask] = 1.
+    
     n.madd("Link",
         gb_buses.index,
         suffix=" regular flex",
