@@ -763,7 +763,6 @@ def add_biogas(n, costs):
 def add_flexibility(n, mode):
 
     assert mode in ["winter", "regular"], f"chosen mode {mode} must be either 'winter' or 'regular'"
-
     name = mode + " flex"
 
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
