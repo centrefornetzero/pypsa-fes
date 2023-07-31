@@ -929,6 +929,7 @@ def add_batteries(n):
             efficiency_dispatch=efficiency_store,
             p_min_pu=-1.,
             max_hours=max_hours,
+            cyclic_state_of_charge=True,
         )
 
     try:
@@ -1018,7 +1019,7 @@ if __name__ == "__main__":
 
     logger.info("Scaling conventional generators to match FES.")
     scale_generation_capacity(n, snakemake.input.capacity_constraints)
-    
+
     logger.info("Converting conventional generators to links.")
     convert_generators_to_links(n, other_costs)
 

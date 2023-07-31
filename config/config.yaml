@@ -29,7 +29,7 @@ scenario:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes: # Future energy scenario considered, can be 
   # - 'CT'
-  - 'LW'
+  - 'FS'
   # - 'FS'
   # - 'ST'
       # FS: Falling Short,
@@ -37,13 +37,13 @@ scenario:
       # ST: System Transformation,
       # CT: Consumer Transformation,
   year: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
-  # - 2023
-  # - 2025
-  # - 2030
-  # - 2035
+  - 2023
+  - 2025
+  - 2030
+  - 2035
   - 2040
-  # - 2045
-  # - 2050
+  - 2045
+  - 2050
   flexopts:
   - reg-ss-v2g-heat
   # reg  # regular weekly demand flexibility (2 days max), one hour

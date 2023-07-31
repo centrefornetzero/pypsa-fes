@@ -40,12 +40,14 @@ localrules:
 
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
+    flexopts="[a-zA-Z0-9]*",
     ll="(v|c)([0-9\.]+|opt)",
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
     gb_regions="[a-zA-Z]*",
     td_event="[0-9]*",
-    fes_scenario="[A-Z]*",
+    fes="[A-Z]*",
+    year="[0-9]*",
 
 
 include: "rules/common.smk"
@@ -75,7 +77,7 @@ rule purge:
         # rmtree("resources/", ignore_errors=True)
         # rmtree("results/", ignore_errors=True)
         # rmtree("doc/_build", ignore_errors=True)
-        print("Almost purged there!")
+        print("Woah, almost purged there!")
 
 
 rule dag:

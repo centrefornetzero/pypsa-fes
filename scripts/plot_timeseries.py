@@ -201,6 +201,7 @@ if __name__ == "__main__":
     tech_colors["DC"] = tech_colors["HVDC links"]
     tech_colors["AC"] = tech_colors["AC-AC"]
     tech_colors["GAS CCS"] = tech_colors["power-to-H2"]
+    tech_colors["grid battery"] = tech_colors["battery"]
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -294,9 +295,6 @@ if __name__ == "__main__":
         for flex in flexs:
             sorting.remove(flex)
             sorting.append(flex)
-
-        print("wo sorting", inflow.resample(freq).mean())
-        print("w sorting", inflow.resample(freq).mean()[sorting])
 
         stackplot_to_ax(
             inflow.resample(freq).mean()[sorting],

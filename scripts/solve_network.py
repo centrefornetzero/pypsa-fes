@@ -628,13 +628,13 @@ def extra_functionality(n, snapshots):
     print("fixing onwind total capacity: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["onwind"])
 
+    logger.warning("Biomass, nuclear and gas commented out.")
+
+    """
     value = cc.at["nuclear", "value"] 
     print("fixing nuclear total capacity: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["nuclear"])
 
-    logger.warning("Biomass and gas commented out.")
-
-    """
     value = cc.at["biomass", "value"] 
     print("biomass: ", value)
     add_capacity_constraint(n, value, country="GB", carrier=["biomass"])
