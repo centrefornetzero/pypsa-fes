@@ -25,8 +25,8 @@ if __name__ == "__main__":
 
     configure_logging(snakemake)
 
-    fes = snakemake.wildcards["fes_scenario"]
-    year = int(snakemake.wildcards["planning_horizons"])
+    fes = snakemake.wildcards["fes"]
+    year = int(snakemake.wildcards["year"])
 
     caps = pd.DataFrame(columns=["carrier", "attr", "value", "sense"]) 
     loads = pd.DataFrame(columns=["carrier", "attr", "value", "sense"]) 
@@ -60,12 +60,14 @@ if __name__ == "__main__":
         "value": val,
         "sense": "==",})
     
+    """
     val = get_data_point("gas_ccs_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({
         "carrier": "gas ccs",
         "attr": "p_nom",
         "value": val,
         "sense": "==",})
+    """
     
     val = get_data_point("nuclear_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({
@@ -74,6 +76,7 @@ if __name__ == "__main__":
         "value": val,
         "sense": "==",})
 
+    """
     val = get_data_point("bioenergy_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({
         "carrier": "biomass",
@@ -87,5 +90,6 @@ if __name__ == "__main__":
         "attr": "p_nom",
         "value": val,
         "sense": "==",})
+    """
     
     caps.to_csv(snakemake.output["capacity_constraints"])

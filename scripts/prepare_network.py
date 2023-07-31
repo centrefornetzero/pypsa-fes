@@ -80,6 +80,7 @@ from _fes_helpers import (
     get_gb_total_transport_demand,
     get_smart_charge_v2g,
     get_power_generation_emission,
+    get_battery_capacity,
     ) 
 
 from pypsa.descriptors import expand_series
@@ -765,6 +766,8 @@ def add_flexibility(n, mode):
     assert mode in ["winter", "regular"], f"chosen mode {mode} must be either 'winter' or 'regular'"
     name = mode + " flex"
 
+    year = int(snakemake.wildcards.year)
+
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
     
@@ -772,14 +775,22 @@ def add_flexibility(n, mode):
     pop_layout = pop_layout.loc[pop_layout.index.str.contains("GB")]["total"]
 
     total_pop = pop_layout.sum()
-    
-    sm_rollout = 1.
-    opt_in_rate = 0.5
+
+    if year < snakemake.config["flexibility"]["completion_smartmeter_rollout"]:
+        sm_rollout = np.interp(
+            year,
+            [2022, snakemake.config["flexibility"]["completion_smartmeter_rollout"]],
+            [snakemake.config["flexibility"]["smartmeter_rollout_2022"]*1e-2, 1.],
+            )
+    else:
+        sm_rollout = 1.
+
+    opt_in_rate = snakemake.config["flexibility"][f"{mode}_opt_in_rate"] * 1e-2
 
     gb_population = 67_330_000
-
-    turndown_per_household = 0.5 * 1e-3     # MWh
     avg_people_per_household = 2.36         # Statista 2022
+
+    turndown_per_household = snakemake.config["flexibility"]["turndown_potential_per_household"] * 1e-3     # MWh
     turndown_per_person = turndown_per_household / avg_people_per_household
 
     weekly_allowance = 5 if mode == "winter" else 2
@@ -802,7 +813,10 @@ def add_flexibility(n, mode):
     mask = (n.snapshots.hour >= 9) & (n.snapshots.hour <= 19)
 
     if mode == "winter":
-        mask = mask & (n.snapshots.month.isin([12, 1, 2])) & (n.snapshots.weekday <= 5)
+        mask = mask & (
+            n.snapshots.month.isin(
+                snakemake.config["flexibility"]["winter_months"])
+            ) & (n.snapshots.weekday <= 5)
 
     event_space.loc[mask] = 1.
 
@@ -849,6 +863,104 @@ def add_flexibility(n, mode):
             # remove regular flex for winter months
             mask = n.links_t.p_max_pu[win[0]].astype(bool)
             n.links_t.p_max_pu.loc[mask, reg] = 0.
+
+
+def add_batteries(n):
+    """Adds battery storage (exluding V2G)
+
+    Batteries are added as Storage Units
+    Here, for PHS the distributions matches the distribution of 
+    generation capacity or ror
+    For batteries, LAES and CAES, the distribution is weighted by total load
+    
+    """
+
+    gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
+    gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
+
+    year = int(snakemake.wildcards.year)
+    scenario = snakemake.wildcards.fes
+
+    p_noms, e_noms = get_battery_capacity(scenario, year)
+
+    threshold = snakemake.config["flexibility"]["battery_ignore_threshold"]
+
+    p_noms = p_noms.loc[p_noms > threshold]
+    e_noms = e_noms.loc[p_noms.index]
+
+    logger.info(f"Adding battery storage techs {list(p_noms.index)}") 
+
+    tech = "PHS"
+    logger.info(f"Adding battery storage tech {tech} with total capacity {p_noms.loc[tech]:.2f} GW")
+        
+    gb_ror = n.generators.loc[
+        (n.generators.carrier == "ror") & 
+        (n.generators.bus.isin(gb_buses))
+        ]
+
+    if not gb_ror.empty:
+
+        buses = pd.Index(gb_ror.bus)
+
+        weights = gb_ror.p_nom
+        p_nom = weights / weights.sum() * p_noms.loc[tech]
+        p_nom.index = buses + f" {tech}"
+
+        efficiency_dispatch = n.storage_units.loc[n.storage_units.carrier == tech].efficiency_store.values[0]
+        efficiency_store = efficiency_dispatch
+
+        p_nom *= 1e3 # GW -> MW
+
+        old_phs = n.storage_units.loc[
+            (n.storage_units.bus.isin(gb_buses)) & 
+            (n.storage_units.carrier == tech)
+            ].index
+
+        max_hours = n.storage_units.loc[old_phs].max_hours.mean()
+        n.storage_units.drop(old_phs, inplace=True)
+
+        n.madd(
+            "StorageUnit",
+            buses + " PHS",
+            bus=buses,
+            p_nom=p_nom,
+            carrier=tech,
+            efficiency_store=efficiency_store,
+            efficiency_dispatch=efficiency_store,
+            p_min_pu=-1.,
+            max_hours=max_hours,
+        )
+
+    try:
+        tech = p_noms.drop("PHS").index
+    except KeyError:
+        tech = p_noms.index
+
+    if tech.empty:
+        return
+
+    buses = gb_buses
+    
+    weights = n.loads_t.p_set[gb_buses].sum()
+    p_nom = weights / weights.sum() * p_noms.loc[tech].sum()
+    e_nom = e_noms.loc[tech].sum() * 1e3 # GWh -> MWh
+    
+    p_nom *= 1e3 # GW -> MW
+
+    efficiency = 0.97
+
+    n.madd(
+        "StorageUnit",
+        buses,
+        suffix=" grid battery",
+        bus=buses,
+        p_nom=p_nom,
+        carrier="grid battery",
+        efficiency_store=efficiency,
+        efficiency_dispatch=efficiency,
+        p_min_pu=-1.,
+        max_hours=e_nom / p_nom.sum(),
+    )
 
 
 if __name__ == "__main__":
@@ -944,9 +1056,11 @@ if __name__ == "__main__":
         snakemake.config["sector"],
     )
 
+    logger.info("Adding battery storage.")
+    add_batteries(n)
+
     logger.info("Adding transmission limit.")
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
-
 
     print(snakemake.wildcards)
     flexopts = snakemake.wildcards.flexopts.split("-")
@@ -1051,6 +1165,7 @@ if __name__ == "__main__":
     n.buses.to_csv("buses.csv")
     n.generators.to_csv("generators.csv")
     n.stores.to_csv("stores.csv")
+    n.storage_units.to_csv("storage_units.csv")
     n.loads.to_csv("loads.csv")
     n.links_t.marginal_cost.to_csv("mcosts_links.csv")
     n.generators_t.marginal_cost.to_csv("mcosts_generators.csv")

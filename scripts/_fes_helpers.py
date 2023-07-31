@@ -27,29 +27,40 @@ Data sources:
 
 
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 import string
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
-data_file = "data/Data-workbook2022_V006.xlsx"
+# data_file = "data/Data-workbook2022_V006.xlsx"
+data_file = "data/FES 2023 Data Workbook V001.xlsx"
+old_file = "data/Data-workbook2022_V006.xlsx"
 if not os.path.isfile(data_file):
     # data_file = "/mnt/c/Users/s2216495/Desktop/octopus/pypsa-eur/"+data_file
     data_file = Path.cwd().parent / data_file
 
+if not os.path.isfile(old_file):
+    old_file = Path.cwd().parent / old_file
+
+# old_file = "/mnt/c/Users/s2216495/Desktop/octopus/pypsa-eur/data/Data-workbook2022_V006.xlsx"
 
 page_mapper = {
     "wind_capacity": {"sheet": "ES.E.12", "start_col": "N", "start_row": 9, "unit": "GW", "format": "gen"},
-    "offshore_wind_capacity": {"sheet": "ES.E.13", "start_col": "N", "start_row": 8, "unit": "GW", "format": "gen"},
-    "onshore_wind_capacity": {"sheet": "ES.E.14", "start_col": "N", "start_row": 8, "unit": "GW", "format": "gen"},
-    "solar_capacity": {"sheet": "ES.E.16", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
+    "offshore_wind_capacity": {"sheet": "ES.11", "start_col": "N", "start_row": 8, "unit": "GW", "format": "gen"},
+    "onshore_wind_capacity": {"sheet": "ES.12", "start_col": "N", "start_row": 8, "unit": "GW", "format": "gen"},
+    "solar_capacity": {"sheet": "ES.13", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
     "domestic_solar_capacity": {"sheet": "EC.R.19", "start_col": "N", "start_row": 6, "unit": "MW", "format": "gen"},
-    "gas_capacity": {"sheet": "ES.E.17", "start_col": "I", "start_row": 7, "unit": "GW", "format": "gen"},
+    "gas_capacity": {"sheet": "ES.15", "start_col": "I", "start_row": 7, "unit": "GW", "format": "gen"},
     "gas_ccs_capacity": {"sheet": "ES.E.18", "start_col": "I", "start_row": 7, "unit": "GW", "format": "gen"},
     "bioenergy_capacity": {"sheet": "ES.E.20", "start_col": "I", "start_row": 7, "unit": "GW", "format": "gen"},
     "bioenergy_ccs_capacity": {"sheet": "ES.E.19", "start_col": "I", "start_row": 7, "unit": "GW", "format": "gen"},
-    "nuclear_capacity": {"sheet": "ES.E.21", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
+    "nuclear_capacity": {"sheet": "ES.19", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
     "battery_charge_capacity": {"sheet": "ES.E.26", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
     "battery_discharge_capacity": {"sheet": "ES.E.26", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
 
@@ -63,7 +74,7 @@ page_mapper = {
     "ashp_installations": {"sheet": "EC.R.10", "start_col": "M", "start_row": 9, "unit": "#", "format": "cumul"},
     "elec_demand_home_heating": {"sheet": "EC.R.06", "start_col": "M", "start_row": 8, "unit": "GWh", "format": "gen"},
 
-    "bev_cars_on_road": {"sheet": "EC.T.07", "start_col": "M", "start_row": 9, "unit": "#", "format": "gen"},
+    "bev_cars_on_road": {"sheet": "EC.11", "start_col": "M", "start_row": 7, "unit": "#", "format": "gen"},
     "bev_vans_on_road": {"sheet": "EC.T.08", "start_col": "M", "start_row": 9, "unit": "#", "format": "gen"},
     "bev_hgvs_on_road": {"sheet": "EC.T.10", "start_col": "M", "start_row": 9, "unit": "#", "format": "gen"},
 }
@@ -75,11 +86,55 @@ scenario_mapper = {
     "FS": "Falling Short",
     }
 
-extra = ["elec_demand_home_heating", "total_emissions", "domestic_solar_capacity"]
+extra = ["elec_demand_home_heating",
+         "total_emissions",
+         "domestic_solar_capacity",
+         "nuclear_capacity",
+         "bev_cars_on_road",
+         ]
+
 
 def get_extra(datapoint, scenario, year):
     """Extracts datapoints that do not confirm to a common format, and need more specialized
     functions to obtain"""
+
+    if datapoint == "bev_cars_on_road":
+        col = string.ascii_uppercase.index("M")
+        df = (
+            pd.read_excel(data_file,
+                sheet_name=page_mapper[datapoint]["sheet"],
+                header=page_mapper[datapoint]["start_row"],
+                index_col=0,
+                usecols=[col+i for i in range(37)],
+                )
+        ).iloc[1:5]
+
+        df = df.loc[:,~df.isna().sum().astype(bool)]
+        df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+
+        return df.loc[scenario_mapper[scenario], year]
+
+
+    if datapoint == "nuclear_capacity":
+        col = string.ascii_uppercase.index("M")
+        df = (
+            pd.read_excel(data_file,
+                sheet_name="ES.19",
+                header=6,
+                index_col=0,
+                usecols=[col+i for i in range(15)],
+                )
+        ).iloc[1:5]
+
+        df = df.loc[:, df.columns.str.contains("Unnamed").isna()]
+        df = df.loc[:,~df.isna().sum().astype(bool)]
+        df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+
+        try:
+            return df.loc[scenario_mapper[scenario], year]
+        except KeyError:
+            return 0.
+
 
     if datapoint == "domestic_solar_capacity":
 
@@ -99,6 +154,7 @@ def get_extra(datapoint, scenario, year):
         df = df.loc[:,2020:]
 
         return df.loc[scenario_mapper[scenario], year]
+
 
     if datapoint == "total_emissions":
         sheet = page_mapper[datapoint]["sheet"]
@@ -122,13 +178,16 @@ def get_extra(datapoint, scenario, year):
 
         return df.loc[scenario, year]
 
+
     if datapoint == "elec_demand_home_heating":
 
         sheet, col, row, unit, format = list(page_mapper[datapoint].values())
         col = string.ascii_uppercase.index(col)
         
+        logger.warning("Getting heat demand from old FES")
+
         df = (
-            pd.read_excel(data_file,
+            pd.read_excel(old_file,
                 sheet_name=sheet,
                 header=row-2,
                 index_col=0,
@@ -158,20 +217,32 @@ def get_data_point(datapoint, scenario, year):
         sheet, col, row, unit, format = list(page_mapper[datapoint].values())
         col = string.ascii_uppercase.index(col)
 
+        file = data_file
+        if "bev" in datapoint:
+            logger.warning("Getting BEV data from old FES")
+            file = old_file
+        
         df = (
-            pd.read_excel(data_file,
+            pd.read_excel(file,
                 sheet_name=sheet,
                 header=row-2,
                 index_col=0,
                 nrows=5,
-                usecols=[col+i for i in range(37)],
+                usecols=[col+i for i in range(32)],
                 )
         )
     
 
     if format == "gen":
         if not (isinstance(df.columns[0], int) or isinstance(df.columns[0], np.int64)):
-            
+
+            try: 
+                df = df.loc[:, df.columns.str.contains("Unnamed").isna()]
+            except AttributeError:
+                pass
+
+            df = df.loc[list(scenario_mapper.values()), :]
+            df = df.loc[:,~df.isna().sum().astype(bool)]
             df.columns = [pd.Timestamp(dt).year for dt in df.columns]
 
         val = df.loc[scenario_mapper[scenario], year]
@@ -296,3 +367,55 @@ def get_power_generation_emission(file, scenario, year):
     emission = df.at["Electricity without BECCS", year]
 
     return abs(emission), abs(daccs), abs(beccs)
+
+
+def get_battery_capacity(scenario, year):
+
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="FL.11",
+            header=7,
+            index_col=0,
+            nrows=5,
+            usecols=range(12),
+            )
+    )
+
+    df = (
+        pd.concat(
+            (df.iloc[:, 0], df.loc[:, df.loc[:, df.iloc[0] == scenario].columns]), axis=1)
+            .iloc[1:]
+            .astype(float)
+    )
+
+    df.columns = [2022, 2030, 2050]
+
+    p_nom = pd.Series({
+        idx: np.interp(year, df.columns, df.loc[idx].values)
+        for idx in df.index
+    })
+
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="FL.11",
+            header=15,
+            index_col=0,
+            nrows=5,
+            usecols=range(12),
+            )
+    )
+
+    df = (
+        pd.concat(
+            (df.iloc[:, 0], df.loc[:, df.loc[:, df.iloc[0] == scenario].columns]), axis=1)
+            .iloc[1:]
+            .astype(float)
+    )
+    df.columns = [2022, 2030, 2050]
+
+    e_nom = pd.Series({
+        idx: np.interp(year, df.columns, df.loc[idx].values)
+        for idx in df.index
+    })
+
+    return p_nom, e_nom
