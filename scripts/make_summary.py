@@ -198,7 +198,7 @@ def calculate_costs(n, label, costs):
 
 
 def calculate_cumulative_cost():
-    planning_horizons = snakemake.config["scenario"]["planning_horizons"]
+    planning_horizons = snakemake.config["scenario"]["year"]
 
     cumulative_cost = pd.DataFrame(
         index=df["costs"].sum().index,
@@ -260,7 +260,7 @@ def calculate_nodal_capacities(n, label, nodal_capacities):
             opt_name.get(c.name, "p") + "_nom"
         ].sum()
         )
-        
+
         nodal_capacities_c = pd.concat((extendables, non_extendables))
 
         index = pd.MultiIndex.from_tuples(
@@ -661,9 +661,12 @@ def calculate_price_statistics(n, label, price_statistics):
 
 
 def make_summaries(networks_dict):
+    
+    logger.warning("Currently not doing nodal capacities")
+
     outputs = [
         "nodal_costs",
-        "nodal_capacities",
+        # "nodal_capacities",
         "nodal_cfs",
         "cfs",
         "costs",
@@ -681,7 +684,7 @@ def make_summaries(networks_dict):
 
     columns = pd.MultiIndex.from_tuples(
         networks_dict.keys(),
-        names=["gb_regions", "ll", "opt", "fes_scenario", "planning_horizon"]
+        names=["gb_regions", "ll", "opt", "flexopts", "fes", "year"]
     )
 
     df = {}
@@ -694,7 +697,7 @@ def make_summaries(networks_dict):
 
         overrides = override_component_attrs(snakemake.input.overrides)
         n = pypsa.Network(filename, override_component_attrs=overrides)
-
+        
         assign_carriers(n)
         assign_locations(n)
 
@@ -718,15 +721,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     networks_dict = {
-        (gb_regions, ll, opts, fes_scenario, planning_horizons): "results/"
+        (gb_regions, ll, opts, flexopts, fes, year): "results/"
         + snakemake.params.RDIR
-        + f"networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.nc"
+        + f"networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc"
         for simpl in snakemake.config["scenario"]["simpl"]
         for gb_regions in snakemake.config["scenario"]["gb_regions"]
         for ll in snakemake.config["scenario"]["ll"]
         for opts in snakemake.config["scenario"]["opts"]
-        for fes_scenario in snakemake.config["scenario"]["fes_scenario"]
-        for planning_horizons in snakemake.config["scenario"]["planning_horizons"]
+        for flexopts in snakemake.config["scenario"]["flexopts"]
+        for fes in snakemake.config["scenario"]["fes"]
+        for year in snakemake.config["scenario"]["year"]
     }
 
     Nyears = len(pd.date_range(freq="h", **snakemake.config["snapshots"])) / 8760

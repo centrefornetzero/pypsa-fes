@@ -76,7 +76,7 @@ rule make_summary:
         ),
         costs="data/costs_{}.csv".format(config["costs"]["year"])
         if config["foresight"] == "overnight"
-        else "data/costs_{}.csv".format(config["scenario"]["planning_horizons"][0]),
+        else "data/costs_{}.csv".format(config["scenario"]["year"][0]),
         # plots=expand(
         #     RESULTS
         #     + "maps/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_-costs-all_{fes_scenario}_{planning_horizons}.pdf",
@@ -84,7 +84,7 @@ rule make_summary:
         # ),
     output:
         nodal_costs=RESULTS + "csvs/nodal_costs.csv",
-        nodal_capacities=RESULTS + "csvs/nodal_capacities.csv",
+        # nodal_capacities=RESULTS + "csvs/nodal_capacities.csv",
         nodal_cfs=RESULTS + "csvs/nodal_cfs.csv",
         cfs=RESULTS + "csvs/cfs.csv",
         costs=RESULTS + "csvs/costs.csv",
@@ -165,3 +165,38 @@ rule plot_timeseries:
         "../envs/environment.yaml"
     script:
         "../scripts/plot_timeseries.py"
+
+
+rule summarize_gb:
+    params:
+        RDIR=RDIR,
+    input:
+        overrides="data/override_component_attrs",
+        networks=expand(
+            RESULTS
+            + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+            **config["scenario"]
+        ),
+        costs="data/costs_{}.csv".format(config["costs"]["year"])
+        if config["foresight"] == "overnight"
+        else "data/costs_{}.csv".format(config["scenario"]["year"][0]),
+        # plots=expand(
+        #     RESULTS
+        #     + "maps/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_-costs-all_{fes_scenario}_{planning_horizons}.pdf",
+        #     **config["scenario"]
+        # ),
+    output:
+        total_generation=RESULTS + "csvs/gb_generation.csv",
+        # nodal_capacities=RESULTS + "csvs/nodal_capacities.csv",
+    threads: 2
+    resources:
+        mem_mb=10000,
+    log:
+        LOGS + "summarize_gb.log",
+    benchmark:
+        BENCHMARKS + "summarize_gb"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/summarize_gb.py"
+
