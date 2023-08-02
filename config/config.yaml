@@ -60,6 +60,8 @@ scenario:
 
 flexibility:
   winter_months: [12, 1, 2]
+  event_start_hour: 17
+  event_end_hour: 19
   completion_smartmeter_rollout: 2030
   smartmeter_rollout_2022: 55 # %
   regular_opt_in_rate: 50 # %
@@ -339,6 +341,7 @@ pypsa_eur:
   - OCGT
   - CCGT
   - lignite
+  - biomass
   Generator:
   - onwind
   - offwind-ac

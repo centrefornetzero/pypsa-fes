@@ -305,12 +305,28 @@ def scale_generation_capacity(n, capacity_file):
 
     gb_gen = n.generators.loc[n.generators.bus.str.contains("GB")]
 
+    print("==========================")
+    print(constraints)
+    print("==========================")
     for fes_gen, target in generation_mapper.items():
         index = gb_gen[gb_gen.carrier.isin(target)].index
 
-        if not fes_gen in constraints.index:
+        print(target)
+        # if not fes_gen in constraints.index or constraints.loc[fes_gen] == 0.:
+        if fes_gen not in constraints.index:
+            print("ignoring that")
+            continue
+
+        if constraints.loc[fes_gen] == 0.:
+            print("dropping that")
+            
+            if index[0] in n.generators_t.marginal_cost.columns:
+                n.generators_t.marginal_cost.drop(index, axis=1, inplace=True)
+
             n.generators.drop(index, inplace=True)
             continue
+
+        print(target, constraints.loc[fes_gen])
 
         adapted = n.generators.loc[index, "p_nom"].copy()
         adapted *= constraints.loc[fes_gen] / adapted.sum() 
@@ -327,7 +343,8 @@ def convert_generators_to_links(n, costs):
     conventionals = {"CCGT": "gas",
                      "OCGT": "gas",
                      "coal": "coal",
-                     "lignite": "lignite"}
+                     "lignite": "lignite",
+                     "biomass": "biomass"}
 
     buses_to_add = list()
 
@@ -335,12 +352,12 @@ def convert_generators_to_links(n, costs):
 
         gens = gb_generation.loc[gb_generation.carrier == generator]
 
+        if not f"GB_{carrier}_bus" in n.buses.index:
+            buses_to_add.append(carrier)
+
         if gens.empty:
             print(f"nothing to do for carrier {generator}")
             continue
-
-        if not f"GB_{carrier}_bus" in n.buses.index:
-            buses_to_add.append(carrier)
 
         n.madd(
             "Link",
@@ -367,6 +384,8 @@ def convert_generators_to_links(n, costs):
     remove_elec_base_techs(n)
 
     for carrier in set(buses_to_add):
+        
+        if carrier == "biomass": continue
 
         print(f"Adding bus GB_{carrier}_bus, and generator GB_{carrier}")
 
@@ -643,7 +662,6 @@ def add_gb_co2_tracking(n, net_change_co2):
     e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
 
     print("Net change co2: ", net_change_co2)
-    print("e_max_pu: ", (-1.) ** (int(net_change_co2 < 0)))
     print("e_nom: ", abs(net_change_co2))
 
     n.add(
@@ -733,14 +751,14 @@ def add_biogas(n, costs):
     biogas_potentials = biogas_potentials.loc[gb_buses.index, "biogas"].sum()
 
     n.add("Bus",
-        f"gb biogas",
-        carrier="biogas")
+        "GB_biomass_bus",
+        carrier="biomass")
     
     n.add(
         "Store",
-        "gb biogas",
-        bus="gb biogas",
-        carrier="biogas",
+        "gb biomass",
+        bus="GB_biomass_bus",
+        carrier="biomass",
         e_nom=biogas_potentials,
         marginal_cost=costs.at["biogas", "fuel"],
         e_initial=biogas_potentials,
@@ -749,7 +767,7 @@ def add_biogas(n, costs):
     n.add(
         "Link",
         "biogas upgrading",
-        bus0="gb biogas",
+        bus0="GB_biomass_bus",
         bus1="GB_gas_bus",
         bus2="gb co2 atmosphere",
         carrier="biogas to gas",
@@ -795,6 +813,9 @@ def add_flexibility(n, mode):
 
     weekly_allowance = 5 if mode == "winter" else 2
 
+    start_hour = snakemake.config["flexibility"]["event_start_hour"]
+    end_hour = snakemake.config["flexibility"]["event_end_hour"]
+
     single_event_capacity = (
         (pop_layout / total_pop * gb_population) 
         * turndown_per_person 
@@ -810,7 +831,7 @@ def add_flexibility(n, mode):
     # events define time when demand flex can be used
     event_space = pd.DataFrame(0., index=n.snapshots, columns=gb_buses.index)
 
-    mask = (n.snapshots.hour >= 9) & (n.snapshots.hour <= 19)
+    mask = (n.snapshots.hour >= start_hour) & (n.snapshots.hour <= end_hour)
 
     if mode == "winter":
         mask = mask & (
@@ -1006,8 +1027,8 @@ if __name__ == "__main__":
         )
     )
 
-    logger.warning("Artificially setting daccs target to -2 MtCO2.")
-    daccs_removal = 2.
+    # logger.warning("Artificially setting daccs target to -2 MtCO2.")
+    # daccs_removal = 2.
 
     logger.info(f"Emission from Electricity Generation: {np.around(generation_emission, decimals=2)} MtCO2")
     logger.info(f"Direct Air Capture Removal: {np.around(daccs_removal, decimals=2)} MtCO2")
@@ -1029,11 +1050,11 @@ if __name__ == "__main__":
             'GB0 Z11 coal', 'GB0 Z10 coal', 'GB0 Z8 coal'
             ], inplace=True)
 
-    logger.info("Adding GB CO2 tracking.")
-    add_gb_co2_tracking(n, net_change_atmospheric_co2)
-
-    logger.info("Adding direct air capture.")
-    add_dac(n, other_costs)
+    # logger.info("Adding GB CO2 tracking.")
+    # add_gb_co2_tracking(n, net_change_atmospheric_co2)
+    # 
+    # logger.info("Adding direct air capture.")
+    # add_dac(n, other_costs)
 
     logger.info("Adding gas CCS generation.")
     add_gas_ccs(n, other_costs)

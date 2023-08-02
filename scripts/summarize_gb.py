@@ -189,10 +189,9 @@ if __name__ == "__main__":
                 print(snapshots[(fes, year)])
                 print("We took {} percent of snapshots".format(len(snapshots[(fes, year)])/8760))
             
-            
                 
-            inflow = inflow.loc[snapshots[(fes, year)]]
-            outflow = outflow.loc[snapshots[(fes, year)]]
+            # inflow = inflow.loc[snapshots[(fes, year)]]
+            # outflow = outflow.loc[snapshots[(fes, year)]]
 
             df[output] = df[output].reindex(
                 df[output].index.union(
