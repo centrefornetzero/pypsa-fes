@@ -65,7 +65,8 @@ flexibility:
   regular_opt_in_rate: 50 # %
   winter_opt_in_rate: 50 # %
   turndown_potential_per_household: 0.5 # kWh
-  battery_ignore_threshold: 1 # GW (ignore battery with less than this capacity)
+  battery_ignore_threshold: 1 # GW (ignore battery with less than this GB capacity)
+  select_generation_snapshots_by_flex: true # only count generation snapshots with winter/regular flex
   flexible_carriers:
     - 'regular flex'
     - 'winter flex'
@@ -80,6 +81,12 @@ flexibility:
     - 'lignite'
     - 'DC'
     - 'AC'
+  intermittent_carriers:
+    - 'solar'
+    - 'onwind'
+    - 'offwind-ac'
+    - 'offwind-dc'
+    - 'nuclear'
 
 
 # here is a list of all possible countries: 

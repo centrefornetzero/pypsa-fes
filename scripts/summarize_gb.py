@@ -15,14 +15,13 @@ idx = pd.IndexSlice
 opt_name = {"Store": "e", "Line": "s", "Transformer": "s"}
 
 
-def calculate_total_generation(n, label, df):
+# def calculate_total_generation(n, label, df, snapshots):
+
+def calculate_total_generation(n):
     """Calculate total generation for each carrier in GB."""
 
     buses = pd.Index(n.buses.location.unique())
     buses = buses[buses.str.contains("GB")]
-
-    def intersection(lst1, lst2):
-        return list(set(lst1) & set(lst2))
 
     inflow = pd.DataFrame(index=n.snapshots)
     outflow = pd.DataFrame(index=n.snapshots)
@@ -76,17 +75,8 @@ def calculate_total_generation(n, label, df):
     inflow *= 1e-3
     outflow *= 1e-3
 
-    df = df.reindex(
-        df.index.union(
-            list(set(inflow.columns.tolist() + outflow.columns.tolist())) 
-        ),
-        fill_value=0.
-    )
+    return inflow, outflow
 
-    df.loc[outflow.columns, label] = outflow.sum()
-    df.loc[inflow.columns, label] = inflow.sum()
-
-    return df
 
 
 def to_csv(df):
@@ -115,17 +105,49 @@ if __name__ == "__main__":
         for year in snakemake.config["scenario"]["year"]
     }
 
+
+    from itertools import product
+
+
     Nyears = len(pd.date_range(freq="h", **snakemake.config["snapshots"])) / 8760
 
     outputs = [
         "total_generation",
     ]
 
+    def sort_mindex(index, networks_dict):
+        
+        df = pd.DataFrame({name: index.get_level_values(name) for name in index.names})
+        df["network_names"] = list(networks_dict.values())
+        df["sort_main"] = df["flexopts"].str.len() 
+
+        df = df.sort_values(by=["sort_main", "year"], ascending=[False, True])
+
+        new_dict = {
+            tuple(row[index.names]): row["network_names"] for _, row in df.iterrows()
+        }
+        new_index = pd.MultiIndex.from_frame(df[index.names])
+
+        return new_index, new_dict
+
     columns = pd.MultiIndex.from_tuples(
         networks_dict.keys(),
         names=["gb_regions", "ll", "opt", "flexopts", "fes", "year"]
     )
-        
+
+    columns, networks_dict = sort_mindex(columns, networks_dict)
+
+    snapshots = None
+    if snakemake.config["flexibility"]["select_generation_snapshots_by_flex"]:
+        snapshots = {(scenario, year): None 
+                    for scenario, year in product(
+                        snakemake.config["scenario"]["fes"],
+                        snakemake.config["scenario"]["year"],
+                    )}
+
+    year_index = list(columns.names).index("year")
+    fes_index = list(columns.names).index("fes") 
+    
     df = {}
 
     for output in outputs:
@@ -134,13 +156,59 @@ if __name__ == "__main__":
     for label, filename in networks_dict.items():
         logger.info(f"Make summary for scenario {label}, using {filename}")
 
+        year = label[year_index]
+        fes = label[fes_index]
+
         overrides = override_component_attrs(snakemake.input.overrides)
         n = pypsa.Network(filename, override_component_attrs=overrides)
-        
+
         assign_carriers(n)
         assign_locations(n)
 
         for output in outputs:
-            df[output] = globals()["calculate_" + output](n, label, df[output])
+            inflow, outflow = globals()["calculate_" + output](n)
 
-        to_csv(df)
+            if snapshots[(fes, year)] is None:
+                
+                mask = inflow[["regular flex", "winter flex"]].sum(axis=1) > 1.5
+                snapshots[(fes, year)] = inflow[mask].index 
+
+                import matplotlib.pyplot as plt
+
+                if year == 2040:
+                    fig, ax = plt.subplots(1, 1, figsize=(16, 4))
+
+                    ax.plot(snapshots[(fes, year)],
+                            inflow.loc[snapshots[(fes, year)], ["regular flex", "winter flex"]].sum(axis=1), label="inflow")
+                    plt.savefig("flexoverview.pdf")
+                    plt.show()
+
+                print("====================================================")
+                print(label)
+                print("Setting snapshots")
+                print(snapshots[(fes, year)])
+                print("We took {} percent of snapshots".format(len(snapshots[(fes, year)])/8760))
+            
+            
+                
+            inflow = inflow.loc[snapshots[(fes, year)]]
+            outflow = outflow.loc[snapshots[(fes, year)]]
+
+            df[output] = df[output].reindex(
+                df[output].index.union(
+                    list(set(inflow.columns.tolist() + outflow.columns.tolist())) 
+                ),
+                fill_value=0.
+            )
+
+            df[output].loc[inflow.columns, label] += (
+                np.maximum(inflow.values, np.zeros_like(inflow.values))
+                .sum(axis=0)
+                )
+
+    # df.loc[outflow.columns, label] += outflow.abs().sum()
+    # df.loc[inflow.columns, label] += inflow.abs().sum()
+
+    # return df
+
+    to_csv(df)

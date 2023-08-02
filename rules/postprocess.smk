@@ -200,3 +200,25 @@ rule summarize_gb:
     script:
         "../scripts/summarize_gb.py"
 
+
+rule plot_gb_totals:
+    params:
+        RDIR=RDIR,
+    input:
+        total_generation=RESULTS + "csvs/gb_generation.csv",
+        costs="data/costs_{}.csv".format(config["costs"]["year"])
+        if config["foresight"] == "overnight"
+        else "data/costs_{}.csv".format(config["scenario"]["year"][0]),
+    output:
+        total_generation=RESULTS + "graphs/gb_generation.pdf",
+    threads: 2
+    resources:
+        mem_mb=10000,
+    log:
+        LOGS + "plot_gb_totals.log",
+    benchmark:
+        BENCHMARKS + "plot_gb_totals"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/plot_gb_totals.py"
