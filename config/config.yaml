@@ -41,7 +41,8 @@ scenario:
   - 2045
   - 2050
   flexopts:
-  - reg-ss-bev-heat
+  # - reg-ss-bev-heat
+  - heat
   - ''
   # reg  # regular weekly demand flexibility (2 days max), one hour
   # ss   # one hour events, any weekday in winter, Saving Sessions style
@@ -58,6 +59,17 @@ flexibility:
   winter_months: [12, 1, 2]
   event_start_hour: 17
   event_end_hour: 19
+  heat_share_smart_tariff: 0.5 # share of consumers with heat pumps that have a smart tariff 
+  heat_shift_size: 3 # hours
+  heat_flex_windows:
+    morning:
+      start: 7
+      end: 9
+    evening: 
+      start: 17
+      end: 19
+  hourly_heat_loss: 0.
+
   completion_smartmeter_rollout: 2030
   smartmeter_rollout_2022: 55 # %
   regular_opt_in_rate: 50 # %

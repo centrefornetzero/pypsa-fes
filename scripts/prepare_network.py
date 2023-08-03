@@ -440,6 +440,7 @@ def add_gas_ccs(n, costs):
     efficiency=costs.at["gas CCS", "efficiency"],
     """
 
+
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
 def add_heat_pump_load(
     n,
@@ -518,7 +519,185 @@ def add_heat_pump_load(
         * (hp_load_future - hp_load_base) 
     )
 
-    n.loads_t.p_set[gb_regions] += heat_demand
+    gb_nodes = heat_demand.columns
+    print("heat demand index")
+    print(gb_nodes)
+
+    #########################################################################################################
+    # add infrastructure for flexibility
+    # grid -> house -> link to thermal inertia -> thermal inertia store -> link to house     
+    
+    hp_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
+
+    n.madd(
+        "Bus",
+        gb_nodes,
+        location=gb_nodes,
+        suffix=" elec heat demand",
+        carrier="elec heat demand",
+        unit="MWh_el",
+    )
+
+    n.madd(
+        "Load",
+        gb_nodes, 
+        suffix = " elec heat demand",
+        bus=gb_nodes + " elec heat demand",
+        carrier="elec heat demand",
+        p_set=hp_heat_demand,
+    )
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(1, 1, figsize=(16, 4))
+
+    hp_heat_demand.iloc[:200].sum(axis=1).plot(ax=ax, label="hp_heat_demand")
+    plt.savefig("hp_heat_demand.png")
+
+    plt.show()
+
+    n.loads_t.p_set[gb_regions] -= heat_demand / heat_demand.sum().sum() * hp_load_base
+
+    share_smart_tariff = snakemake.config["flexibility"]["heat_share_smart_tariff"]
+    heatflex = "heat" in snakemake.wildcards["flexopts"].split("-")
+
+    if share_smart_tariff > 0. and heatflex:
+
+        logger.info("Adding heat flexibility")
+    
+        mor_start = snakemake.config["flexibility"]["heat_flex_windows"]["morning"]["start"]
+        mor_end = snakemake.config["flexibility"]["heat_flex_windows"]["morning"]["end"]
+
+        eve_start = snakemake.config["flexibility"]["heat_flex_windows"]["evening"]["start"]
+        eve_end = snakemake.config["flexibility"]["heat_flex_windows"]["evening"]["end"]
+
+        shift_size = snakemake.config["flexibility"]["heat_shift_size"]
+
+        s = n.snapshots
+        
+        logger.warning("Check timezone-issue!!")
+
+        charging_window = pd.Series(0., s)
+        charge_mask = (
+            (s.hour.isin(range(mor_start-shift_size, mor_end))) |
+            (s.hour.isin(range(eve_start-shift_size, eve_end)))
+            )
+
+        charging_window[charge_mask] = 1.
+
+        discharging_window = pd.Series(0., s)
+        discharge_mask = (
+            (s.hour.isin(range(mor_start, mor_end))) |
+            (s.hour.isin(range(eve_start, eve_end)))
+            )
+
+        discharging_window[discharge_mask] = 1.
+
+        store_use_window = charging_window
+
+        daily_p_max = (
+            hp_heat_demand
+            .groupby(pd.Grouper(freq="h"))
+            .max()
+            .reindex(s, method="ffill")
+        )
+
+        daily_p_max.columns = gb_nodes
+
+        p_nom = daily_p_max.max() * share_smart_tariff
+        p_max_pu = (daily_p_max / p_nom).mul(charging_window, axis=0)
+        p_min_pu = - (daily_p_max / p_nom).mul(discharging_window, axis=0)
+
+        print("p_nom")
+        print(p_nom)        
+        print("p_max_pu")
+        print(p_max_pu)
+        print("p_min_pu")
+        print(p_min_pu)
+
+        # p_nom.index += " thermal ine"
+        # p_max_pu.columns += " lhv heat"
+        # p_min_pu.columns += " lhv heat"
+
+        daily_e_max = (
+            hp_heat_demand
+            .rolling(shift_size)
+            .sum()
+            .shift(-shift_size)
+            .fillna(0.)
+        )
+
+        daily_e_max.columns = gb_nodes
+
+        e_nom = daily_e_max.max() * share_smart_tariff
+        e_max_pu = (daily_e_max / e_nom).mul(store_use_window, axis=0)
+
+        # e_nom.index += " thermal inertia"
+        # e_max_pu.columns += " thermal inertia"
+
+        n.madd(
+            "Bus",
+            gb_nodes,
+            location=gb_nodes,
+            suffix=" thermal inertia",
+            carrier="thermal inertia",
+            unit="MWh_el",
+        )
+
+        n.madd(
+            "Store",
+            gb_nodes,
+            suffix=" thermal inertia",
+            bus=gb_nodes + " thermal inertia",
+            e_nom=e_nom,
+            e_max_pu=e_max_pu,
+        )
+
+        n.madd(
+            "Link",
+            gb_nodes,
+            suffix=" thermal inertia",
+            bus0=gb_nodes + " elec heat demand",
+            bus1=gb_nodes + " thermal inertia",
+            p_nom=p_nom,
+            p_max_pu=p_max_pu,
+            p_min_pu=p_min_pu,
+        )
+
+
+
+
+        print("daily max")
+        print(daily_p_max.head())
+
+        print("gb nodes")
+        print(gb_nodes)
+
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(3, 1, figsize=(16, 10))
+
+        steps = 200
+        
+        e_max_pu.mean(axis=1).iloc[:steps].plot(ax=axs[0], label="e_nom_max")
+        p_max_pu.mean(axis=1).iloc[:steps].plot(ax=axs[0], label="p_nom_max")
+        p_min_pu.mean(axis=1).iloc[:steps].plot(ax=axs[0], label="p_nom_max")
+
+        p_nom.plot.bar(ax=axs[1])
+        e_nom.plot.bar(ax=axs[2])
+
+        # daily_e_max.mean(axis=1).iloc[:steps].mean(axis=1).plot(ax=axs[1], label="daily max")
+        # daily_p_max.mean(axis=1).iloc[:steps].mean(axis=1).plot(ax=axs[1], label="daily max")
+        # store_use_max.iloc[:steps].mean(axis=1).plot(ax=ax, label="store use max")
+        # discharging_max.iloc[:steps].mean(axis=1).plot(ax=ax, label="discharging max", linestyle=":")
+        # charging_max.iloc[:steps].mean(axis=1).plot(ax=ax, label="charging max", linestyle=":")
+
+        axs[0].legend()
+        
+        plt.savefig("heat_flexibility.pdf")
+        plt.show()
+
+
+    #########################################################################################################
+    # n.loads_t.p_set[gb_regions] += heat_demand
 
 
 def add_bev(n, transport_config):
@@ -530,13 +709,12 @@ def add_bev(n, transport_config):
     year = int(snakemake.wildcards.year)
 
     bev_flexibility = "bev" in snakemake.wildcards.opts.split("-")
-    
+
     transport = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
     )
-    number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)[
-        "number cars"
-    ]
+    number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)["number cars"]
+
     avail_profile = pd.read_csv(
         snakemake.input.avail_profile, index_col=0, parse_dates=True
     )
@@ -653,6 +831,10 @@ def add_bev(n, transport_config):
                 e_max_pu=1,
                 e_min_pu=dsm_profile[gb_nodes],
             )
+
+
+
+
 
 
 def add_gb_co2_tracking(n, net_change_co2):
@@ -936,7 +1118,13 @@ def add_batteries(n):
         p_nom = weights / weights.sum() * p_noms.loc[tech]
         p_nom.index = buses + f" {tech}"
 
-        efficiency_dispatch = n.storage_units.loc[n.storage_units.carrier == tech].efficiency_store.values[0]
+        efficiency_dispatch = (
+            n.storage_units
+            .loc[n.storage_units.carrier == tech]
+            .efficiency_store
+            .values[0]
+        )
+
         efficiency_store = efficiency_dispatch
 
         p_nom *= 1e3 # GW -> MW
@@ -956,7 +1144,7 @@ def add_batteries(n):
             p_nom=p_nom,
             carrier=tech,
             efficiency_store=efficiency_store,
-            efficiency_dispatch=efficiency_store,
+            efficiency_dispatch=efficiency_dispatch,
             p_min_pu=-1.,
             max_hours=max_hours,
             cyclic_state_of_charge=True,
