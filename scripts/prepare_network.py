@@ -302,13 +302,14 @@ def scale_generation_capacity(n, capacity_file):
     }
 
     constraints = pd.read_csv(capacity_file, index_col=1)["value"]
-
     gb_gen = n.generators.loc[n.generators.bus.str.contains("GB")]
 
     print("==========================")
     print(constraints)
     print("==========================")
+
     for fes_gen, target in generation_mapper.items():
+        
         index = gb_gen[gb_gen.carrier.isin(target)].index
 
         print(target)
@@ -318,7 +319,8 @@ def scale_generation_capacity(n, capacity_file):
             continue
 
         if constraints.loc[fes_gen] == 0.:
-            print("dropping that")
+            
+            logger.info(f"dropping generators \n {index}")
             
             if index[0] in n.generators_t.marginal_cost.columns:
                 n.generators_t.marginal_cost.drop(index, axis=1, inplace=True)
@@ -340,11 +342,13 @@ def convert_generators_to_links(n, costs):
     # logger.info("Converting generators to links")
 
     gb_generation = n.generators.loc[n.generators.bus.str.contains("GB")]
-    conventionals = {"CCGT": "gas",
-                     "OCGT": "gas",
-                     "coal": "coal",
-                     "lignite": "lignite",
-                     "biomass": "biomass"}
+    conventionals = {
+        "CCGT": "gas",
+        "OCGT": "gas",
+        "coal": "coal",
+        "lignite": "lignite",
+        "biomass": "biomass",
+    }
 
     buses_to_add = list()
 
@@ -525,6 +529,8 @@ def add_bev(n, transport_config):
 
     year = int(snakemake.wildcards.year)
 
+    bev_flexibility = "bev" in snakemake.wildcards.opts.split("-")
+    
     transport = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
     )
@@ -611,7 +617,7 @@ def add_bev(n, transport_config):
             snakemake.wildcards.fes,
             year)
         
-        if v2g_share > 0.:
+        if v2g_share > 0. and bev_flexibility:
             logger.info("Assuming V2G efficiency of 0.9")
             v2g_efficiency = 0.9
             n.madd(
@@ -626,7 +632,7 @@ def add_bev(n, transport_config):
                 efficiency=v2g_efficiency,
             )
 
-        if smart_share > 0.:
+        if smart_share > 0. and bev_flexibility:
             logger.info("Assuming average capacity size of 0.05 MWh")
             avg_battery_size = 0.05
             e_nom = (
@@ -750,6 +756,9 @@ def add_biogas(n, costs):
     biogas_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
     biogas_potentials = biogas_potentials.loc[gb_buses.index, "biogas"].sum()
 
+    logger.info("Adding biogas with potentials")
+    logger.info(f"Biogas potentials: {int(biogas_potentials*1e-6)} TWh_th")
+
     n.add("Bus",
         "GB_biomass_bus",
         carrier="biomass")
@@ -861,7 +870,7 @@ def add_flexibility(n, mode):
         carrier=name,
         e_nom=single_event_capacity.sum() * weekly_allowance,
     )
-    
+
     n.madd("Link",
         gb_buses.index,
         suffix=f" {name}", 
@@ -893,7 +902,7 @@ def add_batteries(n):
     Here, for PHS the distributions matches the distribution of 
     generation capacity or ror
     For batteries, LAES and CAES, the distribution is weighted by total load
-    
+
     """
 
     gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
@@ -1027,14 +1036,12 @@ if __name__ == "__main__":
         )
     )
 
-    # logger.warning("Artificially setting daccs target to -2 MtCO2.")
-    # daccs_removal = 2.
-
     logger.info(f"Emission from Electricity Generation: {np.around(generation_emission, decimals=2)} MtCO2")
     logger.info(f"Direct Air Capture Removal: {np.around(daccs_removal, decimals=2)} MtCO2")
     logger.info(f"Removal through Carbon Capture Biomass: {np.around(beccs_removal, decimals=2)} MtCO2")
 
     net_change_atmospheric_co2 = generation_emission - daccs_removal - beccs_removal
+
     logger.info(("\n Net change in atmospheric CO2: ",
         f"{np.around(net_change_atmospheric_co2, decimals=2)} MtCO2"))
 
@@ -1050,11 +1057,11 @@ if __name__ == "__main__":
             'GB0 Z11 coal', 'GB0 Z10 coal', 'GB0 Z8 coal'
             ], inplace=True)
 
-    # logger.info("Adding GB CO2 tracking.")
-    # add_gb_co2_tracking(n, net_change_atmospheric_co2)
-    # 
-    # logger.info("Adding direct air capture.")
-    # add_dac(n, other_costs)
+    logger.info("Adding GB CO2 tracking.")
+    add_gb_co2_tracking(n, net_change_atmospheric_co2)
+     
+    logger.info("Adding direct air capture.")
+    add_dac(n, other_costs)
 
     logger.info("Adding gas CCS generation.")
     add_gas_ccs(n, other_costs)
@@ -1084,9 +1091,15 @@ if __name__ == "__main__":
     logger.info("Adding transmission limit.")
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
 
-    print(snakemake.wildcards)
     flexopts = snakemake.wildcards.flexopts.split("-")
-    print("flexopts: \n", flexopts)
+
+    assert sum(list(map(lambda x: x in {"ss", "reg", "bev", "heat"}, flexopts))) == len(flexopts), (
+        "flexopts must be a combination of 'ss', 'reg', 'bev', 'heat', currently is {}".format(
+            snakemake.wildcards.flexopts
+        )
+    )
+
+    logger.info(f"Using Flexibility Options: {flexopts}")
 
     if "reg" in flexopts:
         add_flexibility(n, "regular")

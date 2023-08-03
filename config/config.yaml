@@ -28,14 +28,10 @@ scenario:
   gb_regions:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes: # Future energy scenario considered, can be 
-  # - 'CT'
-  - 'FS'
-  # - 'FS'
-  # - 'ST'
-      # FS: Falling Short,
-      # LW: Leading the Way,
-      # ST: System Transformation,
-      # CT: Consumer Transformation,
+  # - 'CT' # Consumer Transformation
+  - 'FS' # Falling Short
+  # - 'LW' # Leading the Way 
+  # - 'ST' # System Transformation
   year: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
   - 2023
   - 2025
@@ -45,7 +41,7 @@ scenario:
   - 2045
   - 2050
   flexopts:
-  - reg-ss-v2g-heat
+  - reg-ss-bev-heat
   - ''
   # reg  # regular weekly demand flexibility (2 days max), one hour
   # ss   # one hour events, any weekday in winter, Saving Sessions style
@@ -677,7 +673,6 @@ solving:
   #tmpdir: "path/to/tmp"
   options:
     clip_p_max_pu: 1.e-2
-    # load_shedding: true
     load_shedding: false 
     transmission_losses: 0
     noisy_costs: true

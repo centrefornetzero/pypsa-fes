@@ -616,17 +616,14 @@ def extra_functionality(n, snapshots):
     # fix generation capacities according to FES
     cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
 
-    value = cc.at["solar", "value"]
-    print("fixing solar total capacity: ", value)
-    add_capacity_constraint(n, value, country="GB", carrier=["solar"])
+    carriers = ["solar", "onwind", "offwind"]
+    pypsa_carriers = ["solar", "onwind",["offwind-ac", "offwind-dc"]]
 
-    value = cc.at["offwind", "value"]
-    print("fixing offwind total capacity: ", value)
-    add_capacity_constraint(n, value, country="GB", carrier=["offwind-ac", "offwind-dc"])
 
-    value = cc.at["onwind", "value"]
-    print("fixing onwind total capacity: ", value)
-    add_capacity_constraint(n, value, country="GB", carrier=["onwind"])
+    for carrier, pypsa_carrier in zip(carriers, pypsa_carriers):
+        value = cc.at[carrier, "value"]
+        logger.info(f"Fixing {carrier} total capacity: {value:.2f} MW.")
+        add_capacity_constraint(n, value, country="GB", carrier=pypsa_carrier)
 
     logger.warning("Biomass, nuclear and gas commented out.")
 
@@ -662,6 +659,39 @@ def solve_network(n, config, opts="", **kwargs):
     n.opts = opts
 
     skip_iterations = cf_solving.get("skip_iterations", False)
+
+    # prevent constraints on p_nom exceeding p_nom_max   
+
+    cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
+
+    def maybe_adjust_p_nom_max(n, const, country="GB", carrier="solar"):
+
+        if not isinstance(carrier, list):
+            carrier = [carrier]
+
+        const = float(const)
+
+        mask = n.generators.bus.str.startswith(country) * (n.generators.carrier.isin(carrier))
+        index = n.generators.loc[mask].index
+
+        if (pypsa_max := n.generators.loc[index, "p_nom_max"].sum()) < const:
+            logger.warning(f"FES target for {', '.join(carrier)} {const:.2f} MW exceeds p_nom_max: {pypsa_max:.2f} MW")
+            logger.warning(f"Linearly scaling p_nom_max accordingly.")
+
+            # adding +1. feels numerically safer, but does it matter?
+            n.generators.loc[index, "p_nom_max"] *= (const + 1.) / pypsa_max
+
+
+    value = cc.at["solar", "value"]
+    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["solar"])
+
+    value = cc.at["offwind", "value"]
+    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["offwind-ac", "offwind-dc"])
+
+    value = cc.at["onwind", "value"]
+    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["onwind"])
+    
+
     if not n.lines.s_nom_extendable.any():
         skip_iterations = True
         logger.info("No expandable lines found. Skipping iterative solving.")
