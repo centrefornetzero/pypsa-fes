@@ -22,15 +22,13 @@ scenario:
   simpl:
   - ''
   ll:  # allowed transmission line volume expansion, can be any float >= 1.0 with a prefix v|c (today) or "copt"
-  - v1.0
-  # clusters:  # number of nodes in Europe, any integer between 37 (1 node per country-zone) and several hundred
-  # - 37
+  - v1.5
   gb_regions:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes: # Future energy scenario considered, can be 
   # - 'CT' # Consumer Transformation
-  - 'FS' # Falling Short
-  # - 'LW' # Leading the Way 
+  # - 'FS' # Falling Short
+  - 'LW' # Leading the Way 
   # - 'ST' # System Transformation
   year: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
   - 2023
@@ -41,8 +39,8 @@ scenario:
   - 2045
   - 2050
   flexopts:
-  # - reg-ss-bev-heat
-  - heat
+  - reg-ss-v2g-heat
+  # - heat
   - ''
   # reg  # regular weekly demand flexibility (2 days max), one hour
   # ss   # one hour events, any weekday in winter, Saving Sessions style
@@ -97,6 +95,8 @@ flexibility:
     - 'offwind-ac'
     - 'offwind-dc'
     - 'nuclear'
+  
+  coal_phaseout_year_uk: 2026  # assuming no coal capacity in the system after this year
 
 
 # here is a list of all possible countries: 

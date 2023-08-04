@@ -13,6 +13,7 @@ Builds constraints for generation capacities based on the FES scenarios
 """
 
 import pandas as pd
+import numpy as np
 
 from _fes_helpers import get_data_point
 from _helpers import configure_logging
@@ -76,6 +77,13 @@ if __name__ == "__main__":
         "value": val,
         "sense": "==",})
 
+    coal_phaseout = snakemake.config["flexibility"]["coal_phaseout_uk"]
+    caps.loc[len(caps)] = pd.Series({
+        "carrier": "coal",
+        "attr": "p_nom",
+        "value": np.interp(year, [2023, coal_phaseout], [2_520., 0]),
+        "sense": "==",})
+
     """
     val = get_data_point("bioenergy_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({
@@ -83,7 +91,7 @@ if __name__ == "__main__":
         "attr": "p_nom",
         "value": val,
         "sense": "==",})
-    
+
     val = get_data_point("bioenergy_ccs_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({
         "carrier": "biomass ccs",
@@ -91,5 +99,5 @@ if __name__ == "__main__":
         "value": val,
         "sense": "==",})
     """
-    
+
     caps.to_csv(snakemake.output["capacity_constraints"])

@@ -88,7 +88,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("make_summary")
+        snakemake = mock_snakemake("summarize_gb")
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
@@ -188,10 +188,9 @@ if __name__ == "__main__":
                 print("Setting snapshots")
                 print(snapshots[(fes, year)])
                 print("We took {} percent of snapshots".format(len(snapshots[(fes, year)])/8760))
-            
-                
-            # inflow = inflow.loc[snapshots[(fes, year)]]
-            # outflow = outflow.loc[snapshots[(fes, year)]]
+
+            inflow = inflow.loc[snapshots[(fes, year)]]
+            outflow = outflow.loc[snapshots[(fes, year)]]
 
             df[output] = df[output].reindex(
                 df[output].index.union(

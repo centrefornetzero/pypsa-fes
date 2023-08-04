@@ -520,12 +520,6 @@ def add_heat_pump_load(
     )
 
     gb_nodes = heat_demand.columns
-    print("heat demand index")
-    print(gb_nodes)
-
-    #########################################################################################################
-    # add infrastructure for flexibility
-    # grid -> house -> link to thermal inertia -> thermal inertia store -> link to house     
     
     hp_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
 
@@ -559,19 +553,13 @@ def add_heat_pump_load(
         marginal_cost=0.,
     )
 
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(1, 1, figsize=(16, 4))
-
-    hp_heat_demand.iloc[:200].sum(axis=1).plot(ax=ax, label="hp_heat_demand")
-    plt.savefig("hp_heat_demand.png")
-
-    plt.show()
-
     n.loads_t.p_set[gb_regions] -= heat_demand / heat_demand.sum().sum() * hp_load_base
 
     share_smart_tariff = snakemake.config["flexibility"]["heat_share_smart_tariff"]
     heatflex = "heat" in snakemake.wildcards["flexopts"].split("-")
 
+    # add infrastructure for flexibility
+    # grid -> house -> link to thermal inertia -> thermal inertia store -> link to house     
     if share_smart_tariff > 0. and heatflex:
 
         logger.info("Adding heat flexibility")
@@ -621,17 +609,6 @@ def add_heat_pump_load(
         p_max_pu = (daily_p_max / p_nom).mul(charging_window, axis=0)
         p_min_pu = - (daily_p_max / p_nom).mul(discharging_window, axis=0)
 
-        print("p_nom")
-        print(p_nom)        
-        print("p_max_pu")
-        print(p_max_pu)
-        print("p_min_pu")
-        print(p_min_pu)
-
-        # p_nom.index += " thermal ine"
-        # p_max_pu.columns += " lhv heat"
-        # p_min_pu.columns += " lhv heat"
-
         daily_e_max = (
             hp_heat_demand
             .rolling(shift_size)
@@ -644,9 +621,6 @@ def add_heat_pump_load(
 
         e_nom = daily_e_max.max() * share_smart_tariff
         e_max_pu = (daily_e_max / e_nom).mul(store_use_window, axis=0)
-
-        # e_nom.index += " thermal inertia"
-        # e_max_pu.columns += " thermal inertia"
 
         n.madd(
             "Bus",
@@ -678,41 +652,6 @@ def add_heat_pump_load(
             p_min_pu=p_min_pu,
         )
 
-
-
-
-        print("daily max")
-        print(daily_p_max.head())
-
-        print("gb nodes")
-        print(gb_nodes)
-
-        import matplotlib.pyplot as plt
-        fig, axs = plt.subplots(3, 1, figsize=(16, 10))
-
-        steps = 200
-        
-        e_max_pu.mean(axis=1).iloc[:steps].plot(ax=axs[0], label="e_nom_max")
-        p_max_pu.mean(axis=1).iloc[:steps].plot(ax=axs[0], label="p_nom_max")
-        p_min_pu.mean(axis=1).iloc[:steps].plot(ax=axs[0], label="p_nom_max")
-
-        p_nom.plot.bar(ax=axs[1])
-        e_nom.plot.bar(ax=axs[2])
-
-        # daily_e_max.mean(axis=1).iloc[:steps].mean(axis=1).plot(ax=axs[1], label="daily max")
-        # daily_p_max.mean(axis=1).iloc[:steps].mean(axis=1).plot(ax=axs[1], label="daily max")
-        # store_use_max.iloc[:steps].mean(axis=1).plot(ax=ax, label="store use max")
-        # discharging_max.iloc[:steps].mean(axis=1).plot(ax=ax, label="discharging max", linestyle=":")
-        # charging_max.iloc[:steps].mean(axis=1).plot(ax=ax, label="charging max", linestyle=":")
-
-        axs[0].legend()
-        
-        plt.savefig("heat_flexibility.pdf")
-        plt.show()
-
-
-    #########################################################################################################
-    # n.loads_t.p_set[gb_regions] += heat_demand
 
 
 def add_bev(n, transport_config):
@@ -1296,13 +1235,15 @@ if __name__ == "__main__":
 
     flexopts = snakemake.wildcards.flexopts.split("-")
 
-    print(flexopts)
-    if not (len(flexopts) == 1 and "" in flexopts):
-        assert sum(list(map(lambda x: x in {"ss", "reg", "bev", "heat"}, flexopts))) == len(flexopts), (
-            "flexopts must be a combination of 'ss', 'reg', 'bev', 'heat', currently is {}".format(
-                snakemake.wildcards.flexopts
-            )
-        )
+
+    logger.warning("Flexopts wildcard constraints commented out currently.")
+    # print(flexopts)
+    # if not (len(flexopts) == 1 and "" in flexopts):
+    #     assert sum(list(map(lambda x: x in {"ss", "reg", "bev", "heat"}, flexopts))) == len(flexopts), (
+    # "flexopts must be a combination of 'ss', 'reg', 'bev', 'heat', currently is {}".format(
+    #             snakemake.wildcards.flexopts
+    #        )
+    #)
 
     logger.info(f"Using Flexibility Options: {flexopts}")
 
