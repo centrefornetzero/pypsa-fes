@@ -662,7 +662,7 @@ def add_bev(n, transport_config):
 
     year = int(snakemake.wildcards.year)
 
-    bev_flexibility = "bev" in snakemake.wildcards.opts.split("-")
+    bev_flexibility = "bev" in snakemake.wildcards.flexopts.split("-")
 
     transport = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
@@ -822,7 +822,6 @@ def add_dac(n, costs):
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
 
-    logger.info("Adding direct air capture")
     logger.warning("Neglecting heat demand of direct air capture")
 
     # logger.warning("Changed sign of DAC efficiency to be positive")
@@ -1147,7 +1146,7 @@ def add_import_export_balance(n):
     e_max_pu = pd.Series(1., n.snapshots) 
     e_max_pu.iloc[0] = 0.
     e_max_pu.iloc[-1] = 0.
-    
+
     n.add(
         "Store",
         "import export tracker",
@@ -1159,7 +1158,7 @@ def add_import_export_balance(n):
 
     dc = n.links.loc[n.links.carrier == "DC"]
     index = dc.loc[dc.bus0.str.contains("GB") ^ dc.bus1.str.contains("GB")].index
-    
+
     n.links.loc[index, "bus2"] = "import export tracker"
     n.links.loc[index, "efficiency2"] = 1.
 
