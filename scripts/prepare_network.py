@@ -547,6 +547,18 @@ def add_heat_pump_load(
         p_set=hp_heat_demand,
     )
 
+    n.madd(
+        "Link",
+        gb_nodes, 
+        suffix = " heat pump",
+        bus0=gb_nodes,
+        bus1=gb_nodes + " elec heat demand",
+        carrier="heat pump",
+        p_nom_extendable=True,
+        capital_cost=0.,
+        marginal_cost=0.,
+    )
+
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(1, 1, figsize=(16, 4))
 
@@ -571,6 +583,8 @@ def add_heat_pump_load(
         eve_end = snakemake.config["flexibility"]["heat_flex_windows"]["evening"]["end"]
 
         shift_size = snakemake.config["flexibility"]["heat_shift_size"]
+
+        standing_loss = snakemake.config["flexibility"]["hourly_heat_loss"]
 
         s = n.snapshots
         
@@ -650,6 +664,7 @@ def add_heat_pump_load(
             bus=gb_nodes + " thermal inertia",
             e_nom=e_nom,
             e_max_pu=e_max_pu,
+            standing_loss=standing_loss,
         )
 
         n.madd(
@@ -1281,11 +1296,13 @@ if __name__ == "__main__":
 
     flexopts = snakemake.wildcards.flexopts.split("-")
 
-    assert sum(list(map(lambda x: x in {"ss", "reg", "bev", "heat"}, flexopts))) == len(flexopts), (
-        "flexopts must be a combination of 'ss', 'reg', 'bev', 'heat', currently is {}".format(
-            snakemake.wildcards.flexopts
+    print(flexopts)
+    if not (len(flexopts) == 1 and "" in flexopts):
+        assert sum(list(map(lambda x: x in {"ss", "reg", "bev", "heat"}, flexopts))) == len(flexopts), (
+            "flexopts must be a combination of 'ss', 'reg', 'bev', 'heat', currently is {}".format(
+                snakemake.wildcards.flexopts
+            )
         )
-    )
 
     logger.info(f"Using Flexibility Options: {flexopts}")
 
