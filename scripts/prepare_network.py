@@ -787,10 +787,6 @@ def add_bev(n, transport_config):
             )
 
 
-
-
-
-
 def add_gb_co2_tracking(n, net_change_co2):
     # can also be negative
     n.add(
@@ -1136,6 +1132,39 @@ def add_batteries(n):
     )
 
 
+def add_import_export_balance(n):
+
+    n.add(
+        "Bus",
+        "import export tracker",
+        carrier="import export tracker",
+    )
+
+    cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
+    total_p_nom = cc.at["DC", "value"]
+    max_hours = snakemake.config["flexibility"]["balance_link_max_hours"]
+
+    e_max_pu = pd.Series(1., n.snapshots) 
+    e_max_pu.iloc[0] = 0.
+    e_max_pu.iloc[-1] = 0.
+    
+    n.add(
+        "Store",
+        "import export tracker",
+        bus="import export tracker",
+        e_nom=max_hours * total_p_nom,
+        e_max_pu=e_max_pu,
+        e_min_pu=-e_max_pu,
+        )
+
+    dc = n.links.loc[n.links.carrier == "DC"]
+    index = dc.loc[dc.bus0.str.contains("GB") ^ dc.bus1.str.contains("GB")].index
+    
+    n.links.loc[index, "bus2"] = "import export tracker"
+    n.links.loc[index, "efficiency2"] = 1.
+
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1253,8 +1282,9 @@ if __name__ == "__main__":
     if "ss" in flexopts:
         add_flexibility(n, "winter")
     
-    # import sys
-    # sys.exit()
+    if snakemake.config["flexibility"]["balance_import_export"]:
+        logger.info("Adding interconnector import/export balance.")
+        add_import_export_balance(n)
 
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)

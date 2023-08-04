@@ -63,6 +63,7 @@ page_mapper = {
     "nuclear_capacity": {"sheet": "ES.19", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
     "battery_charge_capacity": {"sheet": "ES.E.26", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
     "battery_discharge_capacity": {"sheet": "ES.E.26", "start_col": "M", "start_row": 7, "unit": "GW", "format": "gen"},
+    "interconnector_capacity": {"sheet": "ES.25", "start_col": "M", "start_row": 8, "unit": "GW", "format": "gen"},
 
     "ashp_installations": {"sheet": "EC.R.10", "start_col": "M", "start_row": 9, "unit": "#", "format": "cumul"},
     "elec_demand_home_heating": {"sheet": "EC.R.06", "start_col": "M", "start_row": 8, "unit": "GWh", "format": "gen"},
@@ -419,3 +420,20 @@ def get_battery_capacity(scenario, year):
     })
 
     return p_nom, e_nom
+
+
+def get_interconnector_capacity(scenario, year):
+
+    row = 8
+    col = string.ascii_uppercase.index("M")
+
+    df = pd.read_excel(data_file,
+        sheet_name="ES.25",
+        header=row,
+        index_col=0,
+        nrows=5,
+        usecols=[col+i for i in range(32)],
+        ).iloc[:4]
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+
+    return df.loc[scenario_mapper[scenario], year] * 1e3

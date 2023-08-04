@@ -15,7 +15,7 @@ Builds constraints for generation capacities based on the FES scenarios
 import pandas as pd
 import numpy as np
 
-from _fes_helpers import get_data_point
+from _fes_helpers import get_data_point, get_interconnector_capacity
 from _helpers import configure_logging
 
 
@@ -77,11 +77,18 @@ if __name__ == "__main__":
         "value": val,
         "sense": "==",})
 
-    coal_phaseout = snakemake.config["flexibility"]["coal_phaseout_uk"]
+    coal_phaseout = snakemake.config["flexibility"]["coal_phaseout_year_uk"]
     caps.loc[len(caps)] = pd.Series({
         "carrier": "coal",
         "attr": "p_nom",
         "value": np.interp(year, [2023, coal_phaseout], [2_520., 0]),
+        "sense": "==",})
+
+    val = get_interconnector_capacity(fes, year)
+    caps.loc[len(caps)] = pd.Series({
+        "carrier": "DC",
+        "attr": "p_nom",
+        "value": val,
         "sense": "==",})
 
     """

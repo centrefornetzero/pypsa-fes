@@ -587,6 +587,22 @@ def add_capacity_constraint(n, const, country="GB", carrier="solar"):
         )
 
 
+def add_interconnector_constraint(n, const):
+    
+    mask = (
+        (n.links.bus0.str.contains("GB") ^ (n.links.bus1.str.contains("GB")))
+        * (n.links.carrier == "DC")
+    )
+
+    index = n.links.loc[mask].index
+    p_nom = n.model['Link-p_nom'].loc[index]
+
+    n.model.add_constraints(
+        p_nom.sum() == const,
+        name=f"interconnector_capacity_constraint"
+        )
+
+
 def extra_functionality(n, snapshots):
     """
     Collects supplementary constraints which will be passed to
@@ -619,13 +635,20 @@ def extra_functionality(n, snapshots):
     carriers = ["solar", "onwind", "offwind"]
     pypsa_carriers = ["solar", "onwind",["offwind-ac", "offwind-dc"]]
 
-
     for carrier, pypsa_carrier in zip(carriers, pypsa_carriers):
         value = cc.at[carrier, "value"]
         logger.info(f"Fixing {carrier} total capacity: {value:.2f} MW.")
         add_capacity_constraint(n, value, country="GB", carrier=pypsa_carrier)
 
     logger.warning("Biomass, nuclear and gas commented out.")
+
+    value = cc.at["DC", "value"]
+    logger.info(f"Fixing p_nom of interconnectors {value*1e-3:.2f} GW.")
+    add_interconnector_constraint(n, value)
+
+
+
+    
 
     """
     value = cc.at["nuclear", "value"] 
