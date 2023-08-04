@@ -154,6 +154,8 @@ rule plot_timeseries:
         timeseries_england_short=RESULTS + "graphs/timeseries-short-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
         # emission_timeseries=RESULTS + "graphs/timeseries-emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
         co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+        timeseries_inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        timeseries_outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
     threads: 1
     resources:
         mem_mb=10000,

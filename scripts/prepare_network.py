@@ -1163,6 +1163,9 @@ def add_import_export_balance(n):
     n.links.loc[index, "bus2"] = "import export tracker"
     n.links.loc[index, "efficiency2"] = 1.
 
+    # swap bus0 and bus1 where the GB bus is bus1
+    swap_index = dc.loc[index].loc[dc.loc[index].bus1.str.contains("GB")].index
+    n.links.loc[swap_index, ["bus0", "bus1"]] = n.links.loc[swap_index, ["bus1", "bus0"]].values
 
 
 if __name__ == "__main__":

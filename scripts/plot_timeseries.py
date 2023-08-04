@@ -202,6 +202,7 @@ if __name__ == "__main__":
     tech_colors["AC"] = tech_colors["AC-AC"]
     tech_colors["GAS CCS"] = tech_colors["power-to-H2"]
     tech_colors["grid battery"] = tech_colors["battery"]
+    tech_colors["electricity demand"] = tech_colors["Electric load"]
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -280,12 +281,16 @@ if __name__ == "__main__":
 
                     outflow["DAC"] = - c.pnl.p2[subset.index].sum(axis=1)
 
-
         load *= 1e-3
         inflow *= 1e-3
         outflow *= 1e-3
 
         total = inflow.sum(axis=1) + outflow.sum(axis=1) - load
+        outflow["electricity demand"] = -load
+
+        if target == "gb":
+            inflow.to_csv(snakemake.output.timeseries_inflow)
+            outflow.to_csv(snakemake.output.timeseries_outflow)
 
         # make whole year plot
         fig, ax = plt.subplots(1, 1, figsize=(16, 6))
@@ -314,7 +319,7 @@ if __name__ == "__main__":
                 color="black",
                 label="Kirchhoff Check",
                 linestyle="--",
-                )        
+                )  
 
         ax.set_ylabel("Generation (GW)")
 
@@ -323,6 +328,7 @@ if __name__ == "__main__":
             f"{ scenario_mapper[snakemake.wildcards.fes]};"
             f"{ snakemake.wildcards.year}"
         )        
+
         ax.set_title(title)
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
