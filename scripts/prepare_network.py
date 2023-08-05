@@ -645,6 +645,7 @@ def add_heat_pump_load(
             "Link",
             gb_nodes,
             suffix=" thermal inertia",
+            carrier="thermal inertia",
             bus0=gb_nodes + " elec heat demand",
             bus1=gb_nodes + " thermal inertia",
             p_nom=p_nom,

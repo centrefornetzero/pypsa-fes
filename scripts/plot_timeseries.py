@@ -203,6 +203,8 @@ if __name__ == "__main__":
     tech_colors["GAS CCS"] = tech_colors["power-to-H2"]
     tech_colors["grid battery"] = tech_colors["battery"]
     tech_colors["electricity demand"] = tech_colors["Electric load"]
+    tech_colors["heat demand"] = tech_colors["CHP heat"]
+    tech_colors["thermal inertia"] = tech_colors["nuclear"]
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -275,18 +277,56 @@ if __name__ == "__main__":
                     outflow[carrier] = np.minimum(flow.values, 0.)
 
                 if c.name == "Link":
-                    logger.warning("Hardcoded data gathering of DAC")
+                    logger.warning("Hardcoded data gathering of DAC.")
                     dac = c.df.loc[c.df.carrier == "DAC"]
                     subset = dac.loc[dac.bus2.isin(buses)]
 
                     outflow["DAC"] = - c.pnl.p2[subset.index].sum(axis=1)
 
-        load *= 1e-3
+                    dac = c.df.loc[c.df.carrier == "DAC"]
+
+                    logger.warning("Hardcoded data gathering of thermal inertia.")
+                    thermal_inertia_idx = c.df.loc[c.df.bus1.str.contains("thermal inertia")].index
+
+                    thermal_flow = - c.pnl.p0[thermal_inertia_idx].sum(axis=1)
+
+                    inflow["thermal inertia"] = np.maximum(thermal_flow.values, 0.)
+                    outflow["thermal inertia"] = np.minimum(thermal_flow.values, 0.)
+
+
+        outflow["electricity demand"] = - load
+
+        heat_load_idx = n.loads.loc[
+            (n.loads.carrier == "elec heat demand") &
+            (n.buses.loc[n.loads.bus, "location"].isin(buses))
+            ].index
+
+        outflow["heat demand"] = - n.loads_t.p_set[heat_load_idx].sum(axis=1)
+        if "heat pump" in outflow.columns:
+            outflow.drop(columns="heat pump", inplace=True)
+    
+        both = inflow.loc[:, ((inflow > 0.).any() * (inflow < 0.).any())].columns
+        outflow[both] = np.minimum(inflow[both].values, 0.)
+        inflow[both] = np.maximum(inflow[both].values, 0.)
+
+        if not both.empty:
+            print(f"Added columns {', '.join(both.tolist())} to outflow.")
+
+        both = outflow.loc[:, ((outflow > 0.).any() * (outflow < 0.).any())].columns
+        inflow[both] = np.maximum(outflow[both].values, 0.)
+        outflow[both] = np.minimum(outflow[both].values, 0.)
+
+        if not both.empty:
+            print(f"Added columns {', '.join(both.tolist())} to inflow.")
+
+        assert (inflow >= 0.).all().all(), "Inflow contains negative values."
+        assert (outflow <= 0.).all().all(), "Outflow contains positive values."
+
         inflow *= 1e-3
         outflow *= 1e-3
 
-        total = inflow.sum(axis=1) + outflow.sum(axis=1) - load
-        outflow["electricity demand"] = -load
+        total = inflow.sum(axis=1) + outflow.sum(axis=1)
+
 
         if target == "gb":
             inflow.to_csv(snakemake.output.timeseries_inflow)
