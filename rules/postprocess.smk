@@ -169,6 +169,7 @@ rule plot_timeseries:
         "../scripts/plot_timeseries.py"
 
 
+
 rule summarize_gb:
     params:
         RDIR=RDIR,
@@ -201,6 +202,36 @@ rule summarize_gb:
         "../envs/environment.yaml"
     script:
         "../scripts/summarize_gb.py"
+
+
+rule make_barplots:
+    params:
+        RDIR=RDIR,
+    input:
+        overrides="data/override_component_attrs",
+        inflows=expand(
+            RESULTS
+            + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+            **config["scenario"]
+        ),
+        outflows=expand(
+            RESULTS
+            + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+            **config["scenario"]
+        ),
+    output:
+        flexibility_barplot=RESULTS + "summaries/flexibility_normalized.csv",
+    threads: 2
+    resources:
+        mem_mb=10000,
+    log:
+        LOGS + "make_barplots.log",
+    benchmark:
+        BENCHMARKS + "make_barplots"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/make_barplots.py"
 
 
 rule plot_gb_totals:
