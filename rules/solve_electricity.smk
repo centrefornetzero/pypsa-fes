@@ -18,7 +18,7 @@ rule solve_network:
         + "solve_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_python.log",
     benchmark:
         BENCHMARKS + "solve_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
-    threads: 4
+    threads: 1
     resources:
         mem_mb=memory,
     shadow:
