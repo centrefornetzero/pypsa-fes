@@ -132,7 +132,7 @@ def get_extra(datapoint, scenario, year):
         df.columns = [pd.Timestamp(dt).year for dt in df.columns]
 
         try:
-            return df.loc[scenario_mapper[scenario], year]
+            return df.loc[scenario_mapper[scenario], year] * 1e3
         except KeyError:
             return 0.
 

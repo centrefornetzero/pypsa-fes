@@ -28,16 +28,16 @@ scenario:
   fes: # Future energy scenario considered, can be 
   # - 'CT' # Consumer Transformation
   - 'FS' # Falling Short
-  - 'LW' # Leading the Way 
+  # - 'LW' # Leading the Way 
   # - 'ST' # System Transformation
   year: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
   - 2023
-  - 2025
-  - 2030
-  - 2035
-  - 2040
-  - 2045
-  - 2050
+  # - 2025
+  # - 2030
+  # - 2035
+  # - 2040
+  # - 2045
+  # - 2050
   flexopts:
   - reg-ss-bev-heat
   - ''
@@ -97,6 +97,8 @@ flexibility:
     - 'lignite'
     - 'DC'
     - 'AC'
+    - 'biomass'
+    - 'thermal inertia'
   intermittent_carriers:
     - 'solar'
     - 'onwind'

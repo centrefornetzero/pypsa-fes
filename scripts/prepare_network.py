@@ -293,7 +293,7 @@ def remove_elec_base_techs(n):
 
 
 def scale_generation_capacity(n, capacity_file):
-    
+
     generation_mapper = {
         "gas": ["OCGT", "CCGT"],
         "coal": ["coal", "lignite"],
@@ -302,21 +302,24 @@ def scale_generation_capacity(n, capacity_file):
     }
 
     constraints = pd.read_csv(capacity_file, index_col=1)["value"]
+
+    assert snakemake.wildcards["fes"] in capacity_file and snakemake.wildcards["year"] in capacity_file, (
+        f"snakemake wildcards {snakemake.wildcards} not consistent with received file {capacity_file}."
+    )
+
     gb_gen = n.generators.loc[n.generators.bus.str.contains("GB")]
 
-    print("==========================")
-    print(constraints)
-    print("==========================")
-
     for fes_gen, target in generation_mapper.items():
+
+        if fes_gen not in constraints.index:
+            logger.info(f"Carrier {target} not in constraints; Skipping...")
+            continue
         
         index = gb_gen[gb_gen.carrier.isin(target)].index
 
-        print(target)
-        # if not fes_gen in constraints.index or constraints.loc[fes_gen] == 0.:
-        if fes_gen not in constraints.index:
-            print("ignoring that")
-            continue
+        c0 = n.generators.loc[index]["p_nom"].sum() * 1e-3
+        c1 = constraints.loc[fes_gen] * 1e-3
+        logger.info(f"Scaling {', '.join(target)} from {c0:.2f} GW to {c1:.2f} GW.")
 
         if constraints.loc[fes_gen] == 0.:
             
@@ -327,8 +330,6 @@ def scale_generation_capacity(n, capacity_file):
 
             n.generators.drop(index, inplace=True)
             continue
-
-        print(target, constraints.loc[fes_gen])
 
         adapted = n.generators.loc[index, "p_nom"].copy()
         adapted *= constraints.loc[fes_gen] / adapted.sum() 
@@ -652,7 +653,6 @@ def add_heat_pump_load(
             p_max_pu=p_max_pu,
             p_min_pu=p_min_pu,
         )
-
 
 
 def add_bev(n, transport_config):
