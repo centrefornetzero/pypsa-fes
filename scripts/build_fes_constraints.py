@@ -15,7 +15,10 @@ Builds constraints for generation capacities based on the FES scenarios
 import pandas as pd
 import numpy as np
 
-from _fes_helpers import get_data_point, get_interconnector_capacity
+from _fes_helpers import (
+    get_data_point,
+    get_interconnector_capacity
+    )
 from _helpers import configure_logging
 
 

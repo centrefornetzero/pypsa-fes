@@ -294,6 +294,41 @@ if __name__ == "__main__":
                     outflow["thermal inertia"] = np.minimum(thermal_flow.values, 0.)
 
 
+        if "bev" in snakemake.wildcards.flexopts:
+            # split BEV charger into transfer into transport and into EV battery for
+            ev_batteries = n.stores.loc[
+                (n.stores.carrier == "battery storage") &
+                (n.stores.location.isin(buses))
+                ].index
+
+            outflow["intelligent EV charging"] = np.minimum(n.stores_t.p[ev_batteries].sum(axis=1), 0.)
+            inflow["intelligent EV charging"] = np.maximum(n.stores_t.p[ev_batteries].sum(axis=1), 0.)
+
+            ev_transport = n.loads.loc[n.loads.carrier == "land transport EV"].index
+            outflow["land transport EV"] = - n.loads_t.p_set[ev_transport].sum(axis=1)
+
+            if target == "gb":
+                fig, ax = plt.subplots(1, 1, figsize=(16, 4))
+
+                outflow[["intelligent EV charging", "land transport EV"]].iloc[:300].plot(ax=ax)
+                inflow[["intelligent EV charging", "V2G"]].iloc[:300].plot(ax=ax)
+
+                (
+                    pd.concat((
+                        outflow[["intelligent EV charging", "land transport EV"]],
+                        inflow[["intelligent EV charging", "V2G"]]
+                    ), axis=1).sum(axis=1).iloc[:300]
+                ).plot(ax=ax, linestyle="--", label="Balance")
+
+                ax.legend()
+                ax.set_ylabel("Power (GW)")
+                ax.set_xlabel("Time")
+
+                plt.tight_layout()
+                plt.savefig("ev_charging.pdf")
+                plt.show()
+
+        # add electricity demand
         outflow["electricity demand"] = - load
 
         heat_load_idx = n.loads.loc[
@@ -326,7 +361,6 @@ if __name__ == "__main__":
         outflow *= 1e-3
 
         total = inflow.sum(axis=1) + outflow.sum(axis=1)
-
 
         if target == "gb":
             inflow.to_csv(snakemake.output.timeseries_inflow)

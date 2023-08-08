@@ -749,7 +749,7 @@ def add_bev(n, transport_config):
             snakemake.input.fes_table,
             snakemake.wildcards.fes,
             year)
-        
+
         if v2g_share > 0. and bev_flexibility:
             logger.info("Assuming V2G efficiency of 0.9")
             v2g_efficiency = 0.9
@@ -781,10 +781,12 @@ def add_bev(n, transport_config):
                 suffix=" battery storage",
                 bus=gb_nodes + " EV battery",
                 carrier="battery storage",
+                location=gb_nodes,
                 e_cyclic=True,
                 e_nom=e_nom,
                 e_max_pu=1,
                 e_min_pu=dsm_profile[gb_nodes],
+                standing_loss=0.01, # prevent abuse of storage
             )
 
 
@@ -800,8 +802,7 @@ def add_gb_co2_tracking(n, net_change_co2):
     e_max_pu = pd.Series(1., n.snapshots)
     e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
 
-    print("Net change co2: ", net_change_co2)
-    print("e_nom: ", abs(net_change_co2))
+    logger.info("Net change of atmospheric CO2: ", net_change_co2)
 
     n.add(
         "Store",

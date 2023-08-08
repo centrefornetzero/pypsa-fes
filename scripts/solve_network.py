@@ -646,10 +646,6 @@ def extra_functionality(n, snapshots):
     logger.info(f"Fixing p_nom of interconnectors {value*1e-3:.2f} GW.")
     add_interconnector_constraint(n, value)
 
-
-
-    
-
     """
     value = cc.at["nuclear", "value"] 
     print("fixing nuclear total capacity: ", value)
