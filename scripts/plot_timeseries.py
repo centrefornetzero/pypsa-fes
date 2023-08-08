@@ -205,6 +205,7 @@ if __name__ == "__main__":
     tech_colors["electricity demand"] = tech_colors["Electric load"]
     tech_colors["heat demand"] = tech_colors["CHP heat"]
     tech_colors["thermal inertia"] = tech_colors["nuclear"]
+    tech_colors["intelligent EV charging"] = tech_colors["hydrogen"]
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -300,6 +301,9 @@ if __name__ == "__main__":
                 (n.stores.carrier == "battery storage") &
                 (n.stores.location.isin(buses))
                 ].index
+            
+            input_from_grid = n.links.loc[(n.links.carrier == "BEV charger")].index
+            input_from_grid = - n.links_t.p1[input_from_grid].sum(axis=1)
 
             outflow["intelligent EV charging"] = np.minimum(n.stores_t.p[ev_batteries].sum(axis=1), 0.)
             inflow["intelligent EV charging"] = np.maximum(n.stores_t.p[ev_batteries].sum(axis=1), 0.)
@@ -307,26 +311,7 @@ if __name__ == "__main__":
             ev_transport = n.loads.loc[n.loads.carrier == "land transport EV"].index
             outflow["land transport EV"] = - n.loads_t.p_set[ev_transport].sum(axis=1)
 
-            if target == "gb":
-                fig, ax = plt.subplots(1, 1, figsize=(16, 4))
-
-                outflow[["intelligent EV charging", "land transport EV"]].iloc[:300].plot(ax=ax)
-                inflow[["intelligent EV charging", "V2G"]].iloc[:300].plot(ax=ax)
-
-                (
-                    pd.concat((
-                        outflow[["intelligent EV charging", "land transport EV"]],
-                        inflow[["intelligent EV charging", "V2G"]]
-                    ), axis=1).sum(axis=1).iloc[:300]
-                ).plot(ax=ax, linestyle="--", label="Balance")
-
-                ax.legend()
-                ax.set_ylabel("Power (GW)")
-                ax.set_xlabel("Time")
-
-                plt.tight_layout()
-                plt.savefig("ev_charging.pdf")
-                plt.show()
+            outflow.drop(columns=["BEV charger"], inplace=True)
 
         # add electricity demand
         outflow["electricity demand"] = - load
