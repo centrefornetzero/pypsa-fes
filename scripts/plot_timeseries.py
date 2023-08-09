@@ -307,9 +307,6 @@ if __name__ == "__main__":
             if len(charging_eta) > 1:
                 raise ValueError("Charging efficiency is not unique, code not built for this right now.")
 
-            print("V2G efficiency is")
-            print(n.links.loc[n.links.carrier == "V2G"].efficiency.unique())
-
             charging_eta = charging_eta[0]
 
             outflow["intelligent EV discharging"] = np.minimum(n.stores_t.p[ev_batteries].sum(axis=1), 0.) / charging_eta
@@ -347,10 +344,6 @@ if __name__ == "__main__":
         if not both.empty:
             print(f"Added columns {', '.join(both.tolist())} to inflow.")
 
-        print(f"============================================== {target} =====================================")
-        print(f"Outflows are {', '.join(outflow.columns.tolist())}")
-        print(f"Inflows are {', '.join(inflow.columns.tolist())}")
-
         #removing always zero inflows and outflows
         inflow = inflow.loc[:, (inflow != 0.).any()]
         outflow = outflow.loc[:, (outflow != 0.).any()]
@@ -358,11 +351,9 @@ if __name__ == "__main__":
         assert (inflow >= 0.).all().all(), "Inflow contains negative values."
         assert (outflow <= 0.).all().all(), "Outflow contains positive values."
 
-        total_balance = (inflow.sum().sum() + outflow.sum().sum()) * 1e-6
-
-        print(f"Total balance is {total_balance:.2f} TWh.")
-        print(f"Relative to total inflow: {inflow.sum().sum() * 1e-6:.2f}. TWh")
-        print(f"Which amounts to {(total_balance * 1e6 / inflow.sum().sum())*100:.2f} %")
+        total_balance = abs((inflow.sum().sum() + outflow.sum().sum()) / inflow.sum().sum())
+        if not np.allclose(total_balance, 0., atol=1e-3):
+            logger.warning(f"Total imbalance in- and outflow {total_balance*100:.2f}% exceeds 0.1% for {target}.")
 
         inflow *= 1e-3
         outflow *= 1e-3
