@@ -81,6 +81,8 @@ from _fes_helpers import (
     get_smart_charge_v2g,
     get_power_generation_emission,
     get_battery_capacity,
+    get_industrial_demand,
+    get_commercial_demand,
     ) 
 
 from pypsa.descriptors import expand_series
@@ -572,7 +574,6 @@ def add_heat_pump_load(
         eve_end = snakemake.config["flexibility"]["heat_flex_windows"]["evening"]["end"]
 
         shift_size = snakemake.config["flexibility"]["heat_shift_size"]
-
         standing_loss = snakemake.config["flexibility"]["hourly_heat_loss"]
 
         s = n.snapshots
@@ -801,8 +802,6 @@ def add_gb_co2_tracking(n, net_change_co2):
 
     e_max_pu = pd.Series(1., n.snapshots)
     e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
-
-    logger.info("Net change of atmospheric CO2: ", net_change_co2)
 
     n.add(
         "Store",
@@ -1153,6 +1152,7 @@ def add_import_export_balance(n):
         "Store",
         "import export tracker",
         bus="import export tracker",
+        carrier="import export tracker",
         e_nom=max_hours * total_p_nom,
         e_max_pu=e_max_pu,
         e_min_pu=-e_max_pu,
@@ -1167,6 +1167,28 @@ def add_import_export_balance(n):
     # swap bus0 and bus1 where the GB bus is bus1
     swap_index = dc.loc[index].loc[dc.loc[index].bus1.str.contains("GB")].index
     n.links.loc[swap_index, ["bus0", "bus1"]] = n.links.loc[swap_index, ["bus1", "bus0"]].values
+
+
+def scale_load(n, fes, year):
+    """Scales p_set according to estimated changes
+    in demand from industrial and commercial sectors"""
+
+    fes_year = int(year)
+
+    index = n.loads.loc[n.loads.bus.str.contains("GB")].index
+    total = n.loads_t.p_set[index].sum().sum()
+    
+    industrial_base, industrial_demand = get_industrial_demand(fes, fes_year)
+    commercial_base, commercial_demand = get_commercial_demand(fes, fes_year)
+
+    new_demand = (
+        total 
+        - industrial_base 
+        - commercial_base 
+        + industrial_demand 
+        + commercial_demand
+    )
+    n.loads_t.p_set[index] *= new_demand / total
 
 
 if __name__ == "__main__":
@@ -1202,6 +1224,10 @@ if __name__ == "__main__":
         snakemake.config["costs"],
         1.,
     )
+
+
+    scale_load(n, fes, year)
+
 
     generation_emission, daccs_removal, beccs_removal = (
         get_power_generation_emission(

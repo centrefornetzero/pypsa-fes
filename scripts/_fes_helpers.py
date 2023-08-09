@@ -437,3 +437,44 @@ def get_interconnector_capacity(scenario, year):
     df.columns = [pd.Timestamp(dt).year for dt in df.columns]
 
     return df.loc[scenario_mapper[scenario], year] * 1e3
+
+
+def get_industrial_demand(scenario, year):
+    """Get reference and future value for industrial elecitricity demand"""
+
+    col = string.ascii_uppercase.index("N")
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="EC.15",
+            header=6,
+            index_col=0,
+            nrows=5,
+            usecols=[col+i for i in range(37)],
+            ).iloc[1:5]
+    )
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    value = df.loc[scenario_mapper[scenario], year] * 1e3
+    reference = df.loc[scenario_mapper[scenario], 2022] * 1e3
+
+    return reference, value
+
+
+def get_commercial_demand(scenario, year):
+    """Get reference and future value for commercial elecitricity demand"""
+
+    col = string.ascii_uppercase.index("N")
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="EC.18",
+            header=6,
+            index_col=0,
+            nrows=5,
+            usecols=[col+i for i in range(37)],
+            ).iloc[1:5]
+    )
+
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    value = df.loc[scenario_mapper[scenario], year] * 1e-3
+    reference = df.loc[scenario_mapper[scenario], 2022] * 1e-3
+
+    return reference, value
