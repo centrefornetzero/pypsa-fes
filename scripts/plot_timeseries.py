@@ -205,7 +205,8 @@ if __name__ == "__main__":
     tech_colors["electricity demand"] = tech_colors["Electric load"]
     tech_colors["heat demand"] = tech_colors["CHP heat"]
     tech_colors["thermal inertia"] = tech_colors["nuclear"]
-    tech_colors["intelligent EV charging"] = tech_colors["hydrogen"]
+    tech_colors["intelligent EV charging"] = "#808080"
+    tech_colors["intelligent EV discharging"] = "#CCCCCC"
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -301,12 +302,19 @@ if __name__ == "__main__":
                 (n.stores.carrier == "battery storage") &
                 (n.stores.location.isin(buses))
                 ].index
-            
-            input_from_grid = n.links.loc[(n.links.carrier == "BEV charger")].index
-            input_from_grid = - n.links_t.p1[input_from_grid].sum(axis=1)
 
-            outflow["intelligent EV charging"] = np.minimum(n.stores_t.p[ev_batteries].sum(axis=1), 0.)
+            charging_eta = n.links.loc[n.links.carrier == "BEV charger"].efficiency.unique()
+            if len(charging_eta) > 1:
+                raise ValueError("Charging efficiency is not unique, code not built for this right now.")
+
+            print("V2G efficiency is")
+            print(n.links.loc[n.links.carrier == "V2G"].efficiency.unique())
+
+            charging_eta = charging_eta[0]
+
+            outflow["intelligent EV discharging"] = np.minimum(n.stores_t.p[ev_batteries].sum(axis=1), 0.) / charging_eta
             inflow["intelligent EV charging"] = np.maximum(n.stores_t.p[ev_batteries].sum(axis=1), 0.)
+            inflow["intelligent EV charging"] -= inflow["V2G"]
 
             ev_transport = n.loads.loc[n.loads.carrier == "land transport EV"].index
             outflow["land transport EV"] = - n.loads_t.p_set[ev_transport].sum(axis=1)
@@ -324,7 +332,7 @@ if __name__ == "__main__":
         outflow["heat demand"] = - n.loads_t.p_set[heat_load_idx].sum(axis=1)
         if "heat pump" in outflow.columns:
             outflow.drop(columns="heat pump", inplace=True)
-    
+
         both = inflow.loc[:, ((inflow > 0.).any() * (inflow < 0.).any())].columns
         outflow[both] = np.minimum(inflow[both].values, 0.)
         inflow[both] = np.maximum(inflow[both].values, 0.)
@@ -339,8 +347,22 @@ if __name__ == "__main__":
         if not both.empty:
             print(f"Added columns {', '.join(both.tolist())} to inflow.")
 
+        print(f"============================================== {target} =====================================")
+        print(f"Outflows are {', '.join(outflow.columns.tolist())}")
+        print(f"Inflows are {', '.join(inflow.columns.tolist())}")
+
+        #removing always zero inflows and outflows
+        inflow = inflow.loc[:, (inflow != 0.).any()]
+        outflow = outflow.loc[:, (outflow != 0.).any()]
+
         assert (inflow >= 0.).all().all(), "Inflow contains negative values."
         assert (outflow <= 0.).all().all(), "Outflow contains positive values."
+
+        total_balance = (inflow.sum().sum() + outflow.sum().sum()) * 1e-6
+
+        print(f"Total balance is {total_balance:.2f} TWh.")
+        print(f"Relative to total inflow: {inflow.sum().sum() * 1e-6:.2f}. TWh")
+        print(f"Which amounts to {(total_balance * 1e6 / inflow.sum().sum())*100:.2f} %")
 
         inflow *= 1e-3
         outflow *= 1e-3
