@@ -1188,6 +1188,8 @@ def scale_load(n, fes, year):
         + industrial_demand 
         + commercial_demand
     )
+
+    logger.info(f"Scaling Total Demand to {(new_demand*1e-6):.2f} TWh.")
     n.loads_t.p_set[index] *= new_demand / total
 
 

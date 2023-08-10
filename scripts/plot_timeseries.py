@@ -18,6 +18,8 @@ import calendar
 import pypsa
 import seaborn as sns
 
+from collections.abc import Iterable
+
 from _helpers import override_component_attrs
 from _fes_helpers import scenario_mapper
 from make_summary import assign_carriers, assign_locations 
@@ -160,7 +162,7 @@ def make_co2_barplot(n):
         ax=axs[0],
         **bar_kwargs
         )
-        
+
     sns.barplot(
         data=storing_t,
         ax=axs[1],
@@ -185,14 +187,36 @@ def make_co2_barplot(n):
     plt.show()
 
 
-
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("plot_timeseries")
+    
+    carrier_grouper = {
+        "onshore wind": ["onwind"],
+        "offshore wind": ["offwind-ac", "offwind-dc"],
+        "solar": ["solar"],
+        "hydropower": ["PHS", "hydro", "ror"],
+        "unabated gas": ["OCGT", "CCGT"],
+        "gas CC": ["allam", "biomass"],
+        "turndown events": ["regular flex", "winter flex"], 
+        "smart heat pump": ["thermal inertia"],
+        "smart EV charger": ["intelligent EV charging", "intelligent EV discharging"],
+        "vehicle to grid": ["V2G"],
+        "interconnector": ["DC"],
+        "transport demand": ["land transport EV"],
+        "direct air capture": ["DAC"],
+    }
 
-    tech_colors = snakemake.config["plotting"]["tech_colors"]
+    flex_grouping = {
+        "load shifting": ["smart heat pump", "smart EV charger"],
+        "demand reduction": ["turndown events", "vehicle to grid"],
+    }
+    
+    config = snakemake.config
+
+    tech_colors = config["plotting"]["tech_colors"]
     tech_colors["wind"] = tech_colors["onwind"]
     tech_colors["H2 dispatch"] = tech_colors["H2 Fuel Cell"]
     tech_colors["H2 charge"] = tech_colors["H2 Electrolysis"]
@@ -207,185 +231,86 @@ if __name__ == "__main__":
     tech_colors["thermal inertia"] = tech_colors["nuclear"]
     tech_colors["intelligent EV charging"] = "#808080"
     tech_colors["intelligent EV discharging"] = "#CCCCCC"
-
-    overrides = override_component_attrs(snakemake.input.overrides)
-    n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
-
-    # plot_emission_timeseries(n)    
-
-    assign_carriers(n)
-    assign_locations(n)
-
-    freq = snakemake.config["plotting"]["timeseries_freq"]
-    month = snakemake.config["plotting"]["timeseries_month"]
     
-    target_files = ["gb", "scotland", "england"]
-    bus_names = ["all",
-            snakemake.config["plotting"]["timeseries_groups"]["scotland"],
-            snakemake.config["plotting"]["timeseries_groups"]["england"]
-    ]
+    for key, value in carrier_grouper.items():
+        tech_colors[key] = tech_colors[value[0]]
+    for key, value in flex_grouping.items():
+        tech_colors[key] = tech_colors[value[0]]
 
-    for buses, target in zip(bus_names, target_files):
+    inflow = pd.read_csv(snakemake.input.inflow, index_col=0, parse_dates=True)
+    outflow = pd.read_csv(snakemake.input.outflow, index_col=0, parse_dates=True)
+    
+    if (mode := snakemake.wildcards.timeseries_mode) in ["month", "year"]:
+        freq = config["flexibility"]["timeseries_params"][mode].get("freq", "1H")
+        month = config["flexibility"]["timeseries_params"][mode].get("month", range(1, 13))
 
-        logger.info(f"Plotting timeseries for {target}...")
+        if not isinstance(month, Iterable):
+            month = [month]
+        
+        s = inflow.index[inflow.index.month.isin(month)]
 
-        if buses == "all":
-            buses = pd.Index(n.buses.location.unique())
-            buses = buses[buses.str.contains("GB")]
+        inflow = inflow.loc[s].resample(freq).mean()
+        outflow = outflow.loc[s].resample(freq).mean()
+    
+    elif (mode := snakemake.wildcards.timeseries_mode) in ["shortweek", "longweek"]:
+        start = config["flexibility"]["timeseries_params"][mode]["start"] 
+        end = config["flexibility"]["timeseries_params"][mode]["end"] 
 
-        def intersection(lst1, lst2):
-            return list(set(lst1) & set(lst2))
+        s = inflow.index[(inflow.index >= pd.Timestamp(start)) & (inflow.index <= pd.Timestamp(end))]
+        inflow = inflow.loc[s]
+        outflow = outflow.loc[s]
 
-        load = n.loads_t.p_set.loc[:, intersection(n.loads.index, buses)].sum(axis=1)
-        inflow = pd.DataFrame(index=n.snapshots)
-        outflow = pd.DataFrame(index=n.snapshots)
+    else:
+        raise ValueError(f"Unknown mode {mode}, should be one of 'month', 'year', 'shortweek', 'longweek'")
 
-        for c in n.iterate_components(n.one_port_components | n.branch_components):
 
-            if c.name == "Load":
+    def group_by_dict(df, grouper):
+        for key, value in grouper.items():
+
+            if len(value) == 1 and key == value[0]:
                 continue
 
-            if c.name in ["Generator", "StorageUnit"]: 
-                idx = c.df.loc[c.df.bus.isin(buses)].index
+            if len(overlap := df.columns.intersection(value)) > 0:
+                df[key] = df[overlap].sum(axis=1)
+                df.drop(overlap, axis=1, inplace=True)
+        return df
 
-                c_energies = (
-                    c.pnl.p
-                    .loc[:, idx]
-                    .multiply(n.snapshot_weightings.generators, axis=0)
-                )
+    if config["flexibility"]["timeseries_params"]["do_group"]:
+        
+        inflow = group_by_dict(inflow, carrier_grouper)
+        outflow = group_by_dict(outflow, carrier_grouper)
 
-                for carrier in c.df.loc[idx, "carrier"].unique():
-                    cols = c.df.loc[idx].loc[c.df.loc[idx, "carrier"] == carrier].index
+        if config["flexibility"]["timeseries_params"]["do_group_flex"]:
 
-                    inflow[carrier] = c_energies.loc[:, cols].sum(axis=1)
+            inflow = group_by_dict(inflow, flex_grouping)
+            outflow = group_by_dict(outflow, flex_grouping)
 
-            elif c.name in ["Link", "Line"]:
+    else:
+        assert not config["flexibility"]["timeseries_params"]["do_group_flex"], (
+            "Cannot group flexibility without grouping technologies")
 
-                inout = ((c.df.bus0.isin(buses)) ^ (c.df.bus1.isin(buses))).rename("choice")
+    total = inflow.sum(axis=1) + outflow.sum(axis=1)
 
-                subset = c.df.loc[inout]
-                asbus0 = subset.loc[subset.bus0.isin(buses)].index
-                asbus1 = subset.loc[subset.bus1.isin(buses)].index
+    # make whole year plot
+    fig, ax = plt.subplots(1, 1, figsize=(16, 6))
 
-                inout = pd.concat((
-                    - c.pnl.p0[asbus0],
-                    - c.pnl.p1[asbus1]
-                ), axis=1)
+    inflow_sorting = inflow.mean().sort_values(ascending=False).index.tolist()
 
-                for carrier in c.df.loc[subset.index, "carrier"].unique():
-                    flow = inout[subset.loc[subset.carrier == carrier].index].sum(axis=1)
+    stackplot_to_ax(
+        inflow[inflow_sorting],
+        ax=ax,
+        color_mapper=tech_colors,
+        )
 
-                    inflow[carrier] = np.maximum(flow.values, 0.)
-                    outflow[carrier] = np.minimum(flow.values, 0.)
-
-                if c.name == "Link":
-                    logger.warning("Hardcoded data gathering of DAC.")
-                    dac = c.df.loc[c.df.carrier == "DAC"]
-                    subset = dac.loc[dac.bus2.isin(buses)]
-
-                    outflow["DAC"] = - c.pnl.p2[subset.index].sum(axis=1)
-
-                    dac = c.df.loc[c.df.carrier == "DAC"]
-
-                    logger.warning("Hardcoded data gathering of thermal inertia.")
-                    thermal_inertia_idx = c.df.loc[c.df.bus1.str.contains("thermal inertia")].index
-
-                    thermal_flow = - c.pnl.p0[thermal_inertia_idx].sum(axis=1)
-
-                    inflow["thermal inertia"] = np.maximum(thermal_flow.values, 0.)
-                    outflow["thermal inertia"] = np.minimum(thermal_flow.values, 0.)
-
-
-        if "bev" in snakemake.wildcards.flexopts:
-            # split BEV charger into transfer into transport and into EV battery for
-            ev_batteries = n.stores.loc[
-                (n.stores.carrier == "battery storage") &
-                (n.stores.location.isin(buses))
-                ].index
-
-            charging_eta = n.links.loc[n.links.carrier == "BEV charger"].efficiency.unique()
-            if len(charging_eta) > 1:
-                raise ValueError("Charging efficiency is not unique, code not built for this right now.")
-
-            charging_eta = charging_eta[0]
-
-            outflow["intelligent EV discharging"] = np.minimum(n.stores_t.p[ev_batteries].sum(axis=1), 0.) / charging_eta
-            inflow["intelligent EV charging"] = np.maximum(n.stores_t.p[ev_batteries].sum(axis=1), 0.)
-            inflow["intelligent EV charging"] -= inflow["V2G"]
-
-            ev_transport = n.loads.loc[n.loads.carrier == "land transport EV"].index
-            outflow["land transport EV"] = - n.loads_t.p_set[ev_transport].sum(axis=1)
-
-            outflow.drop(columns=["BEV charger"], inplace=True)
-
-        # add electricity demand
-        outflow["electricity demand"] = - load
-
-        heat_load_idx = n.loads.loc[
-            (n.loads.carrier == "elec heat demand") &
-            (n.buses.loc[n.loads.bus, "location"].isin(buses))
-            ].index
-
-        outflow["heat demand"] = - n.loads_t.p_set[heat_load_idx].sum(axis=1)
-        if "heat pump" in outflow.columns:
-            outflow.drop(columns="heat pump", inplace=True)
-
-        both = inflow.loc[:, ((inflow > 0.).any() * (inflow < 0.).any())].columns
-        outflow[both] = np.minimum(inflow[both].values, 0.)
-        inflow[both] = np.maximum(inflow[both].values, 0.)
-
-        if not both.empty:
-            print(f"Added columns {', '.join(both.tolist())} to outflow.")
-
-        both = outflow.loc[:, ((outflow > 0.).any() * (outflow < 0.).any())].columns
-        inflow[both] = np.maximum(outflow[both].values, 0.)
-        outflow[both] = np.minimum(outflow[both].values, 0.)
-
-        if not both.empty:
-            print(f"Added columns {', '.join(both.tolist())} to inflow.")
-
-        #removing always zero inflows and outflows
-        inflow = inflow.loc[:, (inflow != 0.).any()]
-        outflow = outflow.loc[:, (outflow != 0.).any()]
-
-        assert (inflow >= 0.).all().all(), "Inflow contains negative values."
-        assert (outflow <= 0.).all().all(), "Outflow contains positive values."
-
-        total_balance = abs((inflow.sum().sum() + outflow.sum().sum()) / inflow.sum().sum())
-        if not np.allclose(total_balance, 0., atol=1e-3):
-            logger.warning(f"Total imbalance in- and outflow {total_balance*100:.2f}% exceeds 0.1% for {target}.")
-
-        inflow *= 1e-3
-        outflow *= 1e-3
-
-        total = inflow.sum(axis=1) + outflow.sum(axis=1)
-
-        if target == "gb":
-            inflow.to_csv(snakemake.output.timeseries_inflow)
-            outflow.to_csv(snakemake.output.timeseries_outflow)
-
-        # make whole year plot
-        fig, ax = plt.subplots(1, 1, figsize=(16, 6))
-
-        sorting = inflow.std().sort_values().index.tolist()
-        flexs = [carrier for carrier in inflow.columns if "flex" in carrier]
-        for flex in flexs:
-            sorting.remove(flex)
-            sorting.append(flex)
-
+    if not outflow.empty:
+        outflow_sorting = outflow.mean().sort_values(ascending=False).index.tolist()
         stackplot_to_ax(
-            inflow.resample(freq).mean()[sorting],
+            outflow[outflow_sorting],
             ax=ax,
             color_mapper=tech_colors,
             )
 
-        if not outflow.empty:
-            stackplot_to_ax(
-                outflow.resample(freq).mean(),
-                ax=ax,
-                color_mapper=tech_colors,
-                )
-
+    if config["flexibility"]["timeseries_params"]["add_kirchhoff"]:
         ax.plot(total.index,
                 total,
                 color="black",
@@ -393,78 +318,27 @@ if __name__ == "__main__":
                 linestyle="--",
                 )  
 
-        ax.set_ylabel("Generation (GW)")
+    ax.set_ylabel("Generation (GW)")
 
-        title = (
-            f"{target.upper()};"
-            f"{ scenario_mapper[snakemake.wildcards.fes]};"
-            f"{ snakemake.wildcards.year}"
-        )        
-
-        ax.set_title(title)
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        ax.legend(
-            by_label.values(),
-            by_label.keys(),
-            bbox_to_anchor=(0.75, -0.05),
-            fancybox=True,
-            shadow=True,
-            ncol=5,
-            )
-
-        plt.tight_layout()
-        plt.savefig(snakemake.output[f"timeseries_{target}_year"])
-        plt.show()
-
-        # make plot of one month
-        fig, ax = plt.subplots(1, 1, figsize=(16, 6))
-
-        stackplot_to_ax(
-            inflow.loc[inflow.index.month == month][sorting],
-            ax=ax,
-            color_mapper=tech_colors,
-            )
-
-        if not outflow.empty:
-            stackplot_to_ax(
-                outflow.loc[inflow.index.month == month],
-                ax=ax,
-                color_mapper=tech_colors,
-                )
-
-        ax.plot(total.loc[inflow.index.month == month].index,
-                total.loc[inflow.index.month == month],
-                color="black",
-                label="Kirchhoff Check",
-                linestyle="--",
-                linewidth=1.,
-                )
-
-        ax.set_ylabel("Generation (GW)")
-        title = (
-            f"{target.upper()};"
-            f" {scenario_mapper[snakemake.wildcards.fes]};"
-            f" {snakemake.wildcards.year};"
-            f" {calendar.month_name[month]}"
+    title = (
+        f"{config['flexibility']['timeseries_region'].upper()};"
+        f" {scenario_mapper[snakemake.wildcards.fes]};"
+        f" {snakemake.wildcards.year}"
+    )        
+    ax.set_title(title)
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    ax.legend(
+        by_label.values(),
+        by_label.keys(),
+        bbox_to_anchor=(0.75, -0.05),
+        fancybox=True,
+        shadow=True,
+        ncol=5,
         )
 
-        ax.set_title(title)
+    plt.tight_layout()
+    plt.savefig(snakemake.output["timeseries"])
+    plt.show()
 
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        ax.legend(
-            by_label.values(),
-            by_label.keys(),
-            bbox_to_anchor=(0.75, -0.05),
-            fancybox=True,
-            shadow=True,
-            ncol=5,
-            )
-
-        plt.tight_layout() 
-
-        plt.savefig(snakemake.output[f"timeseries_{target}_short"])
-        plt.show()
-
-    make_co2_barplot(n)
+    # make_co2_barplot(n)

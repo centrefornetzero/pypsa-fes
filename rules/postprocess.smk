@@ -139,35 +139,68 @@ rule plot_summary:
         "../scripts/plot_summary.py"
 
 
-rule plot_timeseries:
+rule make_timeseries:
     params:
         RDIR=RDIR,
     input:
         network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
         overrides="data/override_component_attrs",
     output:
-        timeseries_gb_year=RESULTS + "graphs/timeseries-year-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
-        timeseries_gb_short=RESULTS + "graphs/timeseries-short-gb_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
-        timeseries_scotland_year=RESULTS + "graphs/timeseries-year-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
-        timeseries_scotland_short=RESULTS + "graphs/timeseries-short-scotland_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
-        timeseries_england_year=RESULTS + "graphs/timeseries-year-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
-        timeseries_england_short=RESULTS + "graphs/timeseries-short-england_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
-        # emission_timeseries=RESULTS + "graphs/timeseries-emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes_scenario}_{planning_horizons}.pdf",
-        co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
-        timeseries_inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
-        timeseries_outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
     threads: 1
     resources:
         mem_mb=10000,
     log:
-        LOGS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
+        LOGS + "make_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
     benchmark:
-        BENCHMARKS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
+        BENCHMARKS + "make_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/make_timeseries.py"
+
+
+rule plot_emissions:
+    params:
+        RDIR=RDIR,
+    input:
+        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+        overrides="data/override_component_attrs",
+    output:
+        co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+    threads: 1
+    resources:
+        mem_mb=10000,
+    log:
+        LOGS + "plot_emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
+    benchmark:
+        BENCHMARKS + "plot_emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/plot_emissions.py"
+
+
+rule plot_timeseries:
+    params:
+        RDIR=RDIR,
+    input:
+        inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+    output:
+        timeseries=RESULTS + "graphs/timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}.pdf",
+    threads: 1
+    resources:
+        mem_mb=10000,
+    log:
+        LOGS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}.log",
+    benchmark:
+        BENCHMARKS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}"
     conda:
         "../envs/environment.yaml"
     script:
         "../scripts/plot_timeseries.py"
-
 
 
 rule summarize_gb:

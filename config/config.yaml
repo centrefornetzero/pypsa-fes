@@ -52,6 +52,12 @@ scenario:
   - ''
   sector_opts: # this is where the main scenario settings are
   - Co2L0-3H-T-H-B-I-A-solar+p3-dist1
+  timeseries_mode:
+  # - month # plots the month defined in timeseries_params below
+  # - year # plots a full year, with adjusted freq
+  - shortweek # plots a week in which generation was low, but demand was high
+  # - longweek # plots a week in which generation was high, but demand was low
+
 
 flexibility:
 
@@ -68,7 +74,7 @@ flexibility:
     evening: 
       start: 17
       end: 19
-  hourly_heat_loss: 0.
+  hourly_heat_loss: 0. # as share between 0 and 1
   completion_smartmeter_rollout: 2030
   smartmeter_rollout_2022: 55 # %
   regular_opt_in_rate: 50 # %
@@ -106,8 +112,29 @@ flexibility:
     - 'offwind-dc'
     - 'nuclear'
 
-# here is a list of all possible countries: 
-# countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
+  timeseries_region: 'gb' # can also be scotland or england (see below)
+  regions:
+    scotland: ["GB0 Z1_1", "GB0 Z1_2", "GB0 Z1_3", "GB0 Z1_4", "GB0 Z2", "GB0 Z3", "GB0 Z5"]
+    england: ["GB0 Z6", "GB0 Z7", "GB0 Z8", "GB0 Z9", "GB0 Z10", "GB0 Z11", "GB0 Z12", "GB0 Z13", "GB0 Z14", "GB0 Z15", "GB0 Z16", "GB0 Z17"]
+
+  timeseries_params: 
+    month:
+      freq: h
+      month: 1
+    year:
+      freq: d
+    shortweek:
+      freq: h
+      start: 2022-01-21
+      end: 2022-01-27
+    longweek:
+      freq: h
+      start: 2022-10-28
+      end: 2022-11-04
+    do_group: true
+    do_group_flex: false 
+    add_kirchhoff: true
+
 countries: ['BE', 'DE', 'DK', 'FR', 'GB', 'IE', 'LU', 'NL', 'NO', 'SE']
 
 snapshots:
@@ -778,11 +805,6 @@ plotting:
   energy_max: 20000
   energy_min: -20000
   energy_threshold: 50.
-  timeseries_freq: d
-  timeseries_month: 1
-  timeseries_groups:
-    scotland: ["GB0 Z1_1", "GB0 Z1_2", "GB0 Z1_3", "GB0 Z1_4", "GB0 Z2", "GB0 Z3", "GB0 Z5"]
-    england: ["GB0 Z6", "GB0 Z7", "GB0 Z8", "GB0 Z9", "GB0 Z10", "GB0 Z11", "GB0 Z12", "GB0 Z13", "GB0 Z14", "GB0 Z15", "GB0 Z16", "GB0 Z17"]
   vre_techs:
   - onwind
   - offwind-ac
