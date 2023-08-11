@@ -187,6 +187,37 @@ def make_co2_barplot(n):
     plt.show()
 
 
+def get_timeseries_subset(*args , timeseries_mode="month", config=None):
+
+    assert sum(
+        [isinstance(arg, pd.DataFrame) or
+         isinstance(arg, pd.Series) for arg in args]) == len(args), "Only one DataFrame can be passed as argument"
+
+    assert config is not None, "kwarg config has to be passed as non-None value"
+
+    if (mode := timeseries_mode) in ["month", "year"]:
+        freq = config["flexibility"]["timeseries_params"][mode].get("freq", "1H")
+        month = config["flexibility"]["timeseries_params"][mode].get("month", range(1, 13))
+
+        if not isinstance(month, Iterable):
+            month = [month]
+        
+        s = args[0].index[args[0].index.month.isin(month)]
+        args = list(map(lambda x: x.loc[s].resample(freq).mean(), args))
+
+    
+    elif mode in ["shortweek", "longweek"]:
+        start = config["flexibility"]["timeseries_params"][mode]["start"] 
+        end = config["flexibility"]["timeseries_params"][mode]["end"] 
+
+        s = args[0].index[(args[0].index >= pd.Timestamp(start)) & (args[0].index <= pd.Timestamp(end))]
+
+        args = list(map(lambda x: x.loc[s], args))
+
+    else:
+        raise ValueError(f"Unknown mode {mode}, should be one of 'month', 'year', 'shortweek', 'longweek'")
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -240,29 +271,13 @@ if __name__ == "__main__":
     inflow = pd.read_csv(snakemake.input.inflow, index_col=0, parse_dates=True)
     outflow = pd.read_csv(snakemake.input.outflow, index_col=0, parse_dates=True)
     
-    if (mode := snakemake.wildcards.timeseries_mode) in ["month", "year"]:
-        freq = config["flexibility"]["timeseries_params"][mode].get("freq", "1H")
-        month = config["flexibility"]["timeseries_params"][mode].get("month", range(1, 13))
+    # def get_timeseries_subset(*args , timeseries_mode="month", config=None):
 
-        if not isinstance(month, Iterable):
-            month = [month]
-        
-        s = inflow.index[inflow.index.month.isin(month)]
-
-        inflow = inflow.loc[s].resample(freq).mean()
-        outflow = outflow.loc[s].resample(freq).mean()
-    
-    elif (mode := snakemake.wildcards.timeseries_mode) in ["shortweek", "longweek"]:
-        start = config["flexibility"]["timeseries_params"][mode]["start"] 
-        end = config["flexibility"]["timeseries_params"][mode]["end"] 
-
-        s = inflow.index[(inflow.index >= pd.Timestamp(start)) & (inflow.index <= pd.Timestamp(end))]
-        inflow = inflow.loc[s]
-        outflow = outflow.loc[s]
-
-    else:
-        raise ValueError(f"Unknown mode {mode}, should be one of 'month', 'year', 'shortweek', 'longweek'")
-
+    ts_mode = snakemake.wildcards["timeseries_mode"]
+    inflow, outflow = get_timeseries_subset(inflow, outflow,
+        timeseries_mode=ts_mode,
+        config=snakemake.config,
+        )
 
     def group_by_dict(df, grouper):
         for key, value in grouper.items():

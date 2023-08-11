@@ -558,7 +558,13 @@ def add_heat_pump_load(
 
     n.loads_t.p_set[gb_regions] -= heat_demand / heat_demand.sum().sum() * hp_load_base
 
-    share_smart_tariff = snakemake.config["flexibility"]["heat_share_smart_tariff"]
+    complete_rollout_year = snakemake.config["flexibility"]["heat_shift_size"]
+    share_smart_tariff = np.interp(
+        year, 
+        [2023, complete_rollout_year],
+        [0., 1.]
+        )
+
     heatflex = "heat" in snakemake.wildcards["flexopts"].split("-")
 
     # add infrastructure for flexibility
