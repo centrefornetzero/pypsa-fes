@@ -187,13 +187,13 @@ def make_co2_barplot(n):
     plt.show()
 
 
-def get_timeseries_subset(*args , timeseries_mode="month", config=None):
+def get_timeseries_subset(*args, timeseries_mode="month", config=None):
+
+    assert args, "No dataframes passed"
 
     assert sum(
         [isinstance(arg, pd.DataFrame) or
          isinstance(arg, pd.Series) for arg in args]) == len(args), "Only one DataFrame can be passed as argument"
-
-    assert config is not None, "kwarg config has to be passed as non-None value"
 
     if (mode := timeseries_mode) in ["month", "year"]:
         freq = config["flexibility"]["timeseries_params"][mode].get("freq", "1H")
@@ -207,15 +207,29 @@ def get_timeseries_subset(*args , timeseries_mode="month", config=None):
 
     
     elif mode in ["shortweek", "longweek"]:
-        start = config["flexibility"]["timeseries_params"][mode]["start"] 
-        end = config["flexibility"]["timeseries_params"][mode]["end"] 
 
-        s = args[0].index[(args[0].index >= pd.Timestamp(start)) & (args[0].index <= pd.Timestamp(end))]
+        frame = config["flexibility"]["timeseries_params"][mode]
+
+        start = pd.Timestamp(
+            year=2022,
+            month=frame["start_month"],
+            day=frame["start_day"]
+        )
+
+        end = pd.Timestamp(
+            year=2022,
+            month=frame["end_month"],
+            day=frame["end_day"]
+        )
+
+        s = args[0].index[(args[0].index >= start) & (args[0].index <= end)]
 
         args = list(map(lambda x: x.loc[s], args))
 
     else:
         raise ValueError(f"Unknown mode {mode}, should be one of 'month', 'year', 'shortweek', 'longweek'")
+    
+    return args
 
 
 if __name__ == "__main__":
@@ -274,6 +288,9 @@ if __name__ == "__main__":
     # def get_timeseries_subset(*args , timeseries_mode="month", config=None):
 
     ts_mode = snakemake.wildcards["timeseries_mode"]
+
+    logger.info(f"Found time series mode {ts_mode}.")
+
     inflow, outflow = get_timeseries_subset(inflow, outflow,
         timeseries_mode=ts_mode,
         config=snakemake.config,

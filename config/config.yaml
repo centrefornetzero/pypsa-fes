@@ -27,8 +27,8 @@ scenario:
   - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes: # Future energy scenario considered, can be 
   # - 'CT' # Consumer Transformation
-  - 'FS' # Falling Short
-  # - 'LW' # Leading the Way 
+  # - 'FS' # Falling Short
+  - 'LW' # Leading the Way 
   # - 'ST' # System Transformation
   year: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
   - 2023
@@ -65,7 +65,7 @@ flexibility:
   winter_months: [12, 1, 2]
   event_start_hour: 17
   event_end_hour: 19
-  heat_share_smart_tariff: 0.5 # share of consumers with heat pumps that have a smart tariff 
+  smart_heat_rollout_completion: 2030 # year where all heat pumps contribute to smart heat
   heat_shift_size: 3 # hours
   heat_flex_windows:
     morning:
@@ -122,15 +122,17 @@ flexibility:
       freq: h
       month: 1
     year:
-      freq: d
+      freq: w
     shortweek:
-      freq: h
-      start: 2022-01-21
-      end: 2022-01-27
+      start_month: 1
+      start_day: 21
+      end_month: 1
+      end_day: 27
     longweek:
-      freq: h
-      start: 2022-10-28
-      end: 2022-11-04
+      start_month: 10
+      start_day: 28
+      end_month: 11
+      end_day: 4
     do_group: true
     do_group_flex: false 
     add_kirchhoff: true

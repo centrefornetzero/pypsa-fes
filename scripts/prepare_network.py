@@ -560,7 +560,7 @@ def add_heat_pump_load(
 
     complete_rollout_year = snakemake.config["flexibility"]["heat_shift_size"]
     share_smart_tariff = np.interp(
-        year, 
+        year,
         [2023, complete_rollout_year],
         [0., 1.]
         )
