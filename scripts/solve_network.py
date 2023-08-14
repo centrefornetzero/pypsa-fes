@@ -613,6 +613,8 @@ def extra_functionality(n, snapshots):
     ``snakemake.config`` are expected to be attached to the network.
     """
     opts = n.opts
+
+    logger.info(f"Solving with pypsa-eur options {opts}.")
     config = n.config
     if "BAU" in opts and n.generators.p_nom_extendable.any():
         add_BAU_constraints(n, config)
@@ -642,9 +644,11 @@ def extra_functionality(n, snapshots):
 
     logger.warning("Biomass, nuclear and gas commented out.")
 
-    value = cc.at["DC", "value"]
-    logger.info(f"Fixing p_nom of interconnectors {value*1e-3:.2f} GW.")
-    add_interconnector_constraint(n, value)
+    
+    if not "ATK" in opts:
+        value = cc.at["DC", "value"]
+        logger.info(f"Fixing p_nom of interconnectors {value*1e-3:.2f} GW.")
+        add_interconnector_constraint(n, value)
 
     """
     value = cc.at["nuclear", "value"] 

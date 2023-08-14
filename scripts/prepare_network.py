@@ -409,12 +409,14 @@ def convert_generators_to_links(n, costs):
                 marginal_cost=costs.at[carrier, "fuel"],
                 )
 
+
 def add_gas_ccs(n, costs):
 
     gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
     gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
 
     logger.warning("Adding Allam cycle...")
+    # logger.warning("Allam set to high cost right now")
 
     n.madd(
         "Link",
@@ -807,7 +809,9 @@ def add_gb_co2_tracking(n, net_change_co2):
     )
 
     e_max_pu = pd.Series(1., n.snapshots)
-    e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
+
+    logger.warning("Carbon tracking currently switched off!")
+    # e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
 
     n.add(
         "Store",
