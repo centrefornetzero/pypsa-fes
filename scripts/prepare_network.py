@@ -560,7 +560,7 @@ def add_heat_pump_load(
 
     n.loads_t.p_set[gb_regions] -= heat_demand / heat_demand.sum().sum() * hp_load_base
 
-    complete_rollout_year = snakemake.config["flexibility"]["heat_shift_size"]
+    complete_rollout_year = snakemake.config["flexibility"]["smart_heat_rollout_completion"]
     share_smart_tariff = np.interp(
         year,
         [2023, complete_rollout_year],
@@ -759,7 +759,9 @@ def add_bev(n, transport_config):
             snakemake.wildcards.fes,
             year)
 
-        if v2g_share > 0. and bev_flexibility:
+        logger.warning("V2G currently switched off!")
+        # if v2g_share > 0. and bev_flexibility:
+        if False:
             logger.info("Assuming V2G efficiency of 0.9")
             v2g_efficiency = 0.9
             n.madd(
@@ -775,7 +777,7 @@ def add_bev(n, transport_config):
             )
 
         if smart_share > 0. and bev_flexibility:
-            logger.info("Assuming average capacity size of 0.05 MWh")
+            logger.info("Assuming average ev battery storage capacity of 0.05 MWh")
             avg_battery_size = 0.05
             e_nom = (
                 number_cars
