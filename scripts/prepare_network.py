@@ -394,7 +394,7 @@ def convert_generators_to_links(n, costs):
         
         if carrier == "biomass": continue
 
-        print(f"Adding bus GB_{carrier}_bus, and generator GB_{carrier}")
+        logger.info(f"Adding bus GB_{carrier}_bus, and generator GB_{carrier}")
 
         n.add("Bus",
             f"GB_{carrier}_bus",
@@ -737,6 +737,7 @@ def add_bev(n, transport_config):
             * electric_share
         )
 
+        # logger.warning("BEV charge efficiency set to 1.")
         logger.info("Assuming BEV charge efficiency of 0.9")
         n.madd(
             "Link",
@@ -748,6 +749,7 @@ def add_bev(n, transport_config):
             carrier="BEV charger",
             p_max_pu=avail_profile[gb_nodes],
             efficiency=0.9,
+            # efficiency=1.,
             # These were set non-zero to find LU infeasibility when availability = 0.25
             # p_nom_extendable=True,
             # p_nom_min=p_nom,
@@ -759,9 +761,7 @@ def add_bev(n, transport_config):
             snakemake.wildcards.fes,
             year)
 
-        logger.warning("V2G currently switched off!")
-        # if v2g_share > 0. and bev_flexibility:
-        if False:
+        if v2g_share > 0. and bev_flexibility:
             logger.info("Assuming V2G efficiency of 0.9")
             v2g_efficiency = 0.9
             n.madd(
@@ -797,7 +797,7 @@ def add_bev(n, transport_config):
                 e_nom=e_nom,
                 e_max_pu=1,
                 e_min_pu=dsm_profile[gb_nodes],
-                standing_loss=0.01, # prevent abuse of storage
+                # standing_loss=0.01, # prevent abuse of storage
             )
 
 
@@ -1039,7 +1039,7 @@ def add_flexibility(n, mode):
             n.links_t.p_max_pu.loc[mask, reg] = 0.
 
 
-def add_batteries(n):
+def add_batteries(n, opts=[], costs=None):
     """Adds battery storage (exluding V2G)
 
     Batteries are added as Storage Units
@@ -1049,6 +1049,19 @@ def add_batteries(n):
 
     """
 
+    if "100percent" in opts:
+        assert costs is not None, "In 100 percent renewables, cost kwargs must be passed"
+            
+        costs_dict = {}
+    
+    else:
+        costs_dict = {}
+
+    import sys
+    sys.exit()
+
+    wy = snakemake.wildcards.year
+    
     gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
     gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
 
@@ -1301,22 +1314,13 @@ if __name__ == "__main__":
     )
 
     logger.info("Adding battery storage.")
-    add_batteries(n)
+    other_costs.to_csv("costs.csv")
+    add_batteries(n, opts=opts, costs=other_costs)
 
     logger.info("Adding transmission limit.")
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
 
     flexopts = snakemake.wildcards.flexopts.split("-")
-
-
-    logger.warning("Flexopts wildcard constraints commented out currently.")
-    # print(flexopts)
-    # if not (len(flexopts) == 1 and "" in flexopts):
-    #     assert sum(list(map(lambda x: x in {"ss", "reg", "bev", "heat"}, flexopts))) == len(flexopts), (
-    # "flexopts must be a combination of 'ss', 'reg', 'bev', 'heat', currently is {}".format(
-    #             snakemake.wildcards.flexopts
-    #        )
-    #)
 
     logger.info(f"Using Flexibility Options: {flexopts}")
 
