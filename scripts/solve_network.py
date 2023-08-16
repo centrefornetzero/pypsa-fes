@@ -632,37 +632,43 @@ def extra_functionality(n, snapshots):
     add_pipe_retrofit_constraint(n)
 
     # fix generation capacities according to FES
+    logger.warning(f"From opts {snakemake.wildcards.opts}.")
+    logger.warning("Concluding 100percent renewable: ")
+    logger.warning("100percent" in snakemake.wildcards.opts.split("-"))
+
     cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
 
-    carriers = ["solar", "onwind", "offwind"]
-    pypsa_carriers = ["solar", "onwind",["offwind-ac", "offwind-dc"]]
+    if not "100percent" in snakemake.wildcards.opts.split("-"):
 
-    for carrier, pypsa_carrier in zip(carriers, pypsa_carriers):
-        value = cc.at[carrier, "value"]
-        logger.info(f"Fixing {carrier} total capacity: {value:.2f} MW.")
-        add_capacity_constraint(n, value, country="GB", carrier=pypsa_carrier)
+        carriers = ["solar", "onwind", "offwind"]
+        pypsa_carriers = ["solar", "onwind",["offwind-ac", "offwind-dc"]]
 
-    logger.warning("Biomass, nuclear and gas commented out.")
+        for carrier, pypsa_carrier in zip(carriers, pypsa_carriers):
+            value = cc.at[carrier, "value"]
+            logger.info(f"Fixing {carrier} total capacity: {value:.2f} MW.")
+            add_capacity_constraint(n, value, country="GB", carrier=pypsa_carrier)
+
+        logger.warning("Biomass, nuclear and gas commented out.")
+
+        """
+        value = cc.at["nuclear", "value"] 
+        print("fixing nuclear total capacity: ", value)
+        add_capacity_constraint(n, value, country="GB", carrier=["nuclear"])
+
+        value = cc.at["biomass", "value"] 
+        print("biomass: ", value)
+        add_capacity_constraint(n, value, country="GB", carrier=["biomass"])
+
+        value = cc.at["gas", "value"]
+        print("gas: ", value)
+        add_capacity_constraint(n, value, country="GB", carrier=["OCGT", "CCGT"])
+        """
 
     
     if not "ATK" in opts:
         value = cc.at["DC", "value"]
         logger.info(f"Fixing p_nom of interconnectors {value*1e-3:.2f} GW.")
         add_interconnector_constraint(n, value)
-
-    """
-    value = cc.at["nuclear", "value"] 
-    print("fixing nuclear total capacity: ", value)
-    add_capacity_constraint(n, value, country="GB", carrier=["nuclear"])
-
-    value = cc.at["biomass", "value"] 
-    print("biomass: ", value)
-    add_capacity_constraint(n, value, country="GB", carrier=["biomass"])
-
-    value = cc.at["gas", "value"]
-    print("gas: ", value)
-    add_capacity_constraint(n, value, country="GB", carrier=["OCGT", "CCGT"])
-    """
 
 
 def solve_network(n, config, opts="", **kwargs):

@@ -294,7 +294,7 @@ def remove_elec_base_techs(n):
         # n.carriers.drop(to_remove, inplace=True, errors="ignore")
 
 
-def scale_generation_capacity(n, capacity_file):
+def scale_generation_capacity(n, capacity_file, opts):
 
     generation_mapper = {
         "gas": ["OCGT", "CCGT"],
@@ -304,6 +304,11 @@ def scale_generation_capacity(n, capacity_file):
     }
 
     constraints = pd.read_csv(capacity_file, index_col=1)["value"]
+
+    if "100percent" in opts:
+        constraints = pd.Series(0., constraints.index)
+        logger.info("Due to 100 percent scenario, setting all generation to 0:")
+        logger.info(constraints)
 
     assert snakemake.wildcards["fes"] in capacity_file and snakemake.wildcards["year"] in capacity_file, (
         f"snakemake wildcards {snakemake.wildcards} not consistent with received file {capacity_file}."
@@ -316,7 +321,7 @@ def scale_generation_capacity(n, capacity_file):
         if fes_gen not in constraints.index:
             logger.info(f"Carrier {target} not in constraints; Skipping...")
             continue
-        
+
         index = gb_gen[gb_gen.carrier.isin(target)].index
 
         c0 = n.generators.loc[index]["p_nom"].sum() * 1e-3
@@ -324,9 +329,9 @@ def scale_generation_capacity(n, capacity_file):
         logger.info(f"Scaling {', '.join(target)} from {c0:.2f} GW to {c1:.2f} GW.")
 
         if constraints.loc[fes_gen] == 0.:
-            
+
             logger.info(f"dropping generators \n {index}")
-            
+
             if index[0] in n.generators_t.marginal_cost.columns:
                 n.generators_t.marginal_cost.drop(index, axis=1, inplace=True)
 
@@ -341,8 +346,6 @@ def scale_generation_capacity(n, capacity_file):
 
 
 def convert_generators_to_links(n, costs):
-
-    # logger.info("Converting generators to links")
 
     gb_generation = n.generators.loc[n.generators.bus.str.contains("GB")]
     conventionals = {
@@ -363,8 +366,10 @@ def convert_generators_to_links(n, costs):
             buses_to_add.append(carrier)
 
         if gens.empty:
-            print(f"nothing to do for carrier {generator}")
+            logger.info(f"No generation capacity to convert for {generator}.")
             continue
+
+        logger.info(f"Converting {generator} to link.")
 
         n.madd(
             "Link",
@@ -1039,7 +1044,7 @@ def add_flexibility(n, mode):
             n.links_t.p_max_pu.loc[mask, reg] = 0.
 
 
-def add_batteries(n, opts=[], costs=None):
+def add_batteries(n, costs=None, opts=[]):
     """Adds battery storage (exluding V2G)
 
     Batteries are added as Storage Units
@@ -1052,18 +1057,20 @@ def add_batteries(n, opts=[], costs=None):
     if "100percent" in opts:
         assert costs is not None, "In 100 percent renewables, cost kwargs must be passed"
             
-        costs_dict = {}
+        battery_kwargs = {
+            "p_nom_extendable": True,
+            "capital_cost": costs.at["battery storage", "capital_cost"],
+            "marginal_cost": costs.at["battery", "marginal_cost"],
+        }
     
     else:
-        costs_dict = {}
+        battery_kwargs = {}
 
-    import sys
-    sys.exit()
-
-    wy = snakemake.wildcards.year
+    year = snakemake.wildcards.year
     
     gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
     gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
+    logger.warning(f"Batteries installed at \n {', '.join(gb_buses)}")
 
     year = int(snakemake.wildcards.year)
     scenario = snakemake.wildcards.fes
@@ -1154,6 +1161,7 @@ def add_batteries(n, opts=[], costs=None):
         efficiency_dispatch=efficiency,
         p_min_pu=-1.,
         max_hours=e_nom / p_nom.sum(),
+        **battery_kwargs
     )
 
 
@@ -1201,6 +1209,9 @@ def scale_load(n, fes, year):
     fes_year = int(year)
 
     index = n.loads.loc[n.loads.bus.str.contains("GB")].index
+    logger.warning("Loads that are scaled according to future industr., comm. load")
+    logger.warning(index)
+
     total = n.loads_t.p_set[index].sum().sum()
     
     industrial_base, industrial_demand = get_industrial_demand(fes, fes_year)
@@ -1218,6 +1229,60 @@ def scale_load(n, fes, year):
     n.loads_t.p_set[index] *= new_demand / total
 
 
+def attach_stores(n, costs):
+    """
+    Attaching battery stores for 100 percent renewable scenario
+    (Slightly adapted from scripts.add_extra_components.attach_stores)
+    """
+
+    gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
+    gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
+
+    n.madd(
+        "Bus",
+        gb_buses,
+        suffix=" battery store",
+        carrier="battery store",
+        location=gb_buses,
+    )
+
+    n.madd(
+        "Store",
+        gb_buses,
+        bus=gb_buses + " battery store",
+        suffix=" battery store",
+        carrier="battery store",
+        e_cyclic=True,
+        e_nom_extendable=True,
+        capital_cost=costs.at["battery storage", "capital_cost"],
+        marginal_cost=costs.at["battery", "marginal_cost"],
+    )
+
+    n.madd(
+        "Link",
+        gb_buses + " charger",
+        bus0=gb_buses,
+        bus1=gb_buses + " battery store",
+        carrier="battery charger",
+        # the efficiencies are "round trip efficiencies"
+        efficiency=costs.at["battery inverter", "efficiency"] ** 0.5,
+        capital_cost=costs.at["battery inverter", "capital_cost"],
+        p_nom_extendable=True,
+        marginal_cost=costs.at["battery inverter", "marginal_cost"],
+    )
+
+    n.madd(
+        "Link",
+        gb_buses + " discharger",
+        bus0=gb_buses + " battery store",
+        bus1=gb_buses,
+        carrier="battery discharger",
+        efficiency=costs.at["battery inverter", "efficiency"] ** 0.5,
+        p_nom_extendable=True,
+        marginal_cost=costs.at["battery inverter", "marginal_cost"],
+    )
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1228,6 +1293,8 @@ if __name__ == "__main__":
     configure_logging(snakemake)
 
     opts = snakemake.wildcards.opts.split("-")
+    if "100percent" in opts:
+        logger.warning("Running 100 percent renewable system.")
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
@@ -1238,7 +1305,7 @@ if __name__ == "__main__":
 
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
 
-    costs = load_costs(
+    elec_costs = load_costs(
         snakemake.input.tech_costs,
         snakemake.config["costs"],
         snakemake.config["electricity"],
@@ -1252,9 +1319,8 @@ if __name__ == "__main__":
         1.,
     )
 
-
+    logger.info("Scaling electricity load according to scenario and year.")
     scale_load(n, fes, year)
-
 
     generation_emission, daccs_removal, beccs_removal = (
         get_power_generation_emission(
@@ -1274,7 +1340,7 @@ if __name__ == "__main__":
         f"{np.around(net_change_atmospheric_co2, decimals=2)} MtCO2"))
 
     logger.info("Scaling conventional generators to match FES.")
-    scale_generation_capacity(n, snakemake.input.capacity_constraints)
+    scale_generation_capacity(n, snakemake.input.capacity_constraints, opts)
 
     logger.info("Converting conventional generators to links.")
     convert_generators_to_links(n, other_costs)
@@ -1285,14 +1351,15 @@ if __name__ == "__main__":
             'GB0 Z11 coal', 'GB0 Z10 coal', 'GB0 Z8 coal'
             ], inplace=True)
 
-    logger.info("Adding GB CO2 tracking.")
-    add_gb_co2_tracking(n, net_change_atmospheric_co2)
-     
-    logger.info("Adding direct air capture.")
-    add_dac(n, other_costs)
+    if not "100percent" in opts:
+        logger.info("Adding GB CO2 tracking.")
+        add_gb_co2_tracking(n, net_change_atmospheric_co2)
+        
+        logger.info("Adding direct air capture.")
+        add_dac(n, other_costs)
 
-    logger.info("Adding gas CCS generation.")
-    add_gas_ccs(n, other_costs)
+        logger.info("Adding gas CCS generation.")
+        add_gas_ccs(n, other_costs)
 
     logger.info("Adding biogas to the system")
     add_biogas(n, other_costs)
@@ -1314,8 +1381,12 @@ if __name__ == "__main__":
     )
 
     logger.info("Adding battery storage.")
-    other_costs.to_csv("costs.csv")
-    add_batteries(n, opts=opts, costs=other_costs)
+    elec_costs.to_csv("costs.csv")
+    add_batteries(n, elec_costs, opts=opts)
+
+    if "100percent" in opts:
+        logger.info("Adding extendable stores.")
+        attach_stores(n, elec_costs)
 
     logger.info("Adding transmission limit.")
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
@@ -1403,7 +1474,7 @@ if __name__ == "__main__":
             add_emission_prices_t(n) 
 
     ll_type, factor = snakemake.wildcards.ll[0], snakemake.wildcards.ll[1:]
-    set_transmission_limit(n, ll_type, factor, costs, Nyears)
+    set_transmission_limit(n, ll_type, factor, elec_costs, Nyears)
 
     set_line_nom_max(
         n,
