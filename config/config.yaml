@@ -49,7 +49,9 @@ scenario:
   dt_event:
   - '1' # selects file for turndown timing and magnitude in data/turndown_events/
   opts: # only relevant for PyPSA-Eur
-  - 'ATK'
+  #- 'ATK'
+  - "100percent" # 100% renewable scenario, balancing through intercons, battery storage, no thermal gen
+  # - ""
   sector_opts: # this is where the main scenario settings are
   - Co2L0-3H-T-H-B-I-A-solar+p3-dist1
   timeseries_mode:
@@ -136,6 +138,16 @@ flexibility:
     do_group: true
     do_group_flex: false 
     add_kirchhoff: true
+  
+  map_grouping:
+    onshore wind: ["onshore wind"]
+    offshore wind: ["offshore wind"]
+    solar: ["solar PV"]
+    hydroelectricity: ["hydroelectricity"]
+    nuclear: ["nuclear"]
+    thermal generation unabated: ["CCGT", "OCGT", "biomass", "biogas", "coal", "lignite"]
+    thermal generation CC: ["allam"]
+    grid battery: ["battery storage"]
 
 countries: ['BE', 'DE', 'DK', 'FR', 'GB', 'IE', 'LU', 'NL', 'NO', 'SE']
 
@@ -793,9 +805,9 @@ solving:
 
 plotting:
   map:
-    boundaries: [-7, 8, 47, 63]
+    boundaries: [-7, 3.5, 49, 60]
     color_geomap:
-      ocean: lightskyblue 
+      ocean: white 
       land: white
   eu_node_location:
     x: -5.5

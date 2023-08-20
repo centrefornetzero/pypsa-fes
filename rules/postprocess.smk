@@ -12,12 +12,13 @@ rule plot_network:
     input:
         overrides="data/override_component_attrs",
         network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
-        regions=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
+        # regions=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
+        regions="data/eso_zones.geojson",
     output:
         map=RESULTS
         + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}-costs-all_{fes}_{year}.pdf",
-        today=RESULTS
-        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}_{fes}_{year}-today.pdf",
+        # today=RESULTS
+        # + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}_{fes}_{year}-today.pdf",
     threads: 2
     resources:
         mem_mb=10000,
