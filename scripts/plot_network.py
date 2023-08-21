@@ -27,6 +27,7 @@ from cartopy.io import shapereader
 from make_summary import assign_carriers
 from plot_summary import preferred_order, rename_techs
 from pypsa.plot import add_legend_circles, add_legend_lines, add_legend_patches
+from shapely.ops import unary_union
 
 plt.style.use(["ggplot", "matplotlibrc"])
 
@@ -198,11 +199,10 @@ def plot_map(
     # link_widths = link_widths.replace(line_lower_threshold, 0)
 
     proj = ccrs.EqualEarth()
+
     fig, ax = plt.subplots(subplot_kw={"projection": proj})
     fig.set_size_inches(12, 10)
 
-    logger.warning("regions not yet visualized!")
-    regions["vals"] = np.random.normal(size=len(regions))
     regions = regions.to_crs(proj.proj4_init)
 
     carrier_grouping = snakemake.config["flexibility"]["map_grouping"]
@@ -230,6 +230,9 @@ def plot_map(
 
     map_opts["color_geomap"] = False
 
+    if not with_legend:
+        map_opts["boundaries"][1] -= 1.
+        
     n.plot(
         bus_sizes=costs / bus_size_factor,
         bus_colors=tech_colors,
@@ -241,18 +244,12 @@ def plot_map(
         **map_opts,
     )
 
-    color_smoother = 5.
     regions.plot(
         ax=ax,
-        # column="vals",
-        # cmap="Greys",
         color="palegoldenrod",
-        alpha=0.3,
         linewidths=1,
         edgecolor="k",
         legend=True,
-        # vmax=regions["vals"].max()+color_smoother+3,
-        # vmin=regions["vals"].min()-color_smoother+3,
         legend_kwds={
             "label": "Value",
             "shrink": 0.7,
@@ -273,59 +270,23 @@ def plot_map(
     other_countries = df.loc[df['ADMIN'].isin([
         "Ireland", "France", "Belgium", "Netherlands", "United Kingdom"
         ])]
+
     other_shapes = other_countries['geometry']
     other_shapes.index = other_countries["ADMIN"]
-
     other_shapes = other_shapes.to_crs(proj.proj4_init)
 
     uk_shape = gpd.GeoDataFrame(geometry=list(other_shapes.loc["United Kingdom"]))
-
-    from shapely.ops import unary_union
-
-    #regions = regions.to_crs(proj.proj4_init)
     uk_shape = uk_shape.set_crs(proj.proj4_init)
-    # print(uk_shape.geometry.intersection(regions.geometry).area)
-    # ni_shape = uk_shape.loc[uk_shape.geometry.intersection(regions.geometry).area == 0]
-
-    print("here")
-    # print(unary_union(regions.geometry))
-    """
-    ni_shape = uk_shape.loc[
-        ~uk_shape.overlaps(unary_union(regions.geometry))
-        ]
-    """
-
-    print("before shape: ", len(uk_shape))
-    print(uk_shape.sjoin(regions))
-    print(uk_shape.sjoin(regions)["index_right"].unique())
-    print("after shape: ", len(uk_shape.sjoin(regions)))
-
-    print(uk_shape.loc[uk_shape.sjoin(regions).index.unique()].shape)
-
-    print(gpd.sjoin(uk_shape, regions, how="left").shape)
-    
     ni_shape = uk_shape.drop(uk_shape.loc[uk_shape.sjoin(regions).index.unique()].index)
-
-    print("here2")
-    print("============================")
-    print(ni_shape)
-    print("============================")
     
     other_shapes.at["United Kingdom"] = unary_union(
         ni_shape.geometry.tolist())
-    print("here2")
-
-    # ax.add_geometries(poly, crs=proj, facecolor='none', edgecolor='0.5')
 
     other_shapes.plot(
         ax=ax,
-        # column="vals",
-        # cmap="Greys",
         color="white",
         linewidths=1,
         edgecolor="k",
-        # vmax=regions["vals"].max()+color_smoother+3,
-        # vmin=regions["vals"].min()-color_smoother+3,
     )
 
     """
@@ -410,7 +371,6 @@ if __name__ == "__main__":
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
 
-    # regions = gpd.read_file(snakemake.input.regions).set_index("name")
     regions = gpd.read_file(snakemake.input.regions).set_index("Name_1")
     regions = regions.loc[regions.index.str.contains("Z")]
 
@@ -425,4 +385,5 @@ if __name__ == "__main__":
         components=["generators", "links", "stores", "storage_units"],
         bus_size_factor=2e10,
         transmission=False,
+        with_legend=True,
     )

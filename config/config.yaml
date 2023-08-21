@@ -807,7 +807,7 @@ plotting:
   map:
     boundaries: [-7, 3.5, 49, 60]
     color_geomap:
-      ocean: white 
+      ocean: lightskyblue 
       land: white
   eu_node_location:
     x: -5.5
