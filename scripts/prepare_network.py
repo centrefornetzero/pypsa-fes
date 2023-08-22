@@ -817,8 +817,8 @@ def add_gb_co2_tracking(n, net_change_co2):
 
     e_max_pu = pd.Series(1., n.snapshots)
 
-    logger.warning("Carbon tracking currently switched off!")
-    # e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
+    # logger.warning("Carbon tracking currently switched off!")
+    e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
 
     n.add(
         "Store",
