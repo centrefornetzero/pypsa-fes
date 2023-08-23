@@ -260,7 +260,6 @@ if __name__ == "__main__":
     }
     
     config = snakemake.config
-
     tech_colors = config["plotting"]["tech_colors"]
     tech_colors["wind"] = tech_colors["onwind"]
     tech_colors["H2 dispatch"] = tech_colors["H2 Fuel Cell"]
