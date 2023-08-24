@@ -29,7 +29,8 @@ from plot_gb_validation import stackplot_to_ax
 carrier_grouper = {
     "wind": ["offwind-ac", "offwind-dc", "onwind"],
     "solar": ["solar"],
-    "hydropower": ["PHS", "hydro", "ror"],
+    "hydro generation": ["hydro", "ror"],
+    "hydro storage": ["PHS"],
     "thermal generation unabated": ["OCGT", "CCGT", "lignite", "coal"],
     "thermal generation CC": ["allam", "biomass"],
     "event flexibility": ["regular flex", "winter flex"], 
@@ -37,7 +38,7 @@ carrier_grouper = {
     "smart EV charger": ["intelligent EV charging", "intelligent EV discharging"],
     "vehicle to grid": ["V2G"],
     "interconnector": ["DC"],
-    "transport demand": ["land transport EV"],
+    "transport demand": ["land transport EV", "BEV charger"],
     "direct air capture": ["DAC"],
 }
 
@@ -47,6 +48,19 @@ flex_grouping = {
 }
 
 demands = ["electricity demand", "heat demand", "transport demand"]
+generators = [
+    "wind",
+    "solar",
+    "hydropower",
+    "thermal generation unabated",
+    "thermal generation CC",
+    ]
+shifters = [
+    "hydro storage",
+    "grid battery",
+    "smart heat pump",
+    "smart EV charger",
+]
 
 dropcols = ["direct air capture", "DAC"]
 
@@ -286,6 +300,11 @@ if __name__ == "__main__":
     tech_colors["intelligent EV charging"] = "#808080"
     tech_colors["intelligent EV discharging"] = "#CCCCCC"
     tech_colors["turndown events"] = tech_colors["winter flex"]
+    tech_colors["hydro generation"] = tech_colors["ror"]
+    tech_colors["hydro storage"] = tech_colors["PHS"]
+    tech_colors["ev battery"] = tech_colors["home battery"]
+    tech_colors["residential building heat inertia"] = tech_colors["nuclear"]
+
     
     for key, value in carrier_grouper.items():
         tech_colors[key] = tech_colors[value[0]]
@@ -318,6 +337,12 @@ if __name__ == "__main__":
 
         return df
 
+    print("inflow cols")
+    print(inflow.columns)
+    print("outflow cols")
+    print(outflow.columns)
+    print("==========================")
+
     if config["flexibility"]["timeseries_params"]["do_group"]:
         
         inflow = group_by_dict(inflow, carrier_grouper)
@@ -332,46 +357,110 @@ if __name__ == "__main__":
         assert not config["flexibility"]["timeseries_params"]["do_group_flex"], (
             "Cannot group flexibility without grouping technologies")
 
+    print("==========================")
+    print("inflow cols")
+    print(inflow.columns)
+    print("outflow cols")
+    print(outflow.columns)
+
     inflow.drop(inflow.columns.intersection(dropcols), axis=1, inplace=True)
     outflow.drop(outflow.columns.intersection(dropcols), axis=1, inplace=True)
 
     total = inflow.sum(axis=1) + outflow.sum(axis=1)
 
     # make whole year plot
-    fig, axs = plt.subplots(3, 1, figsize=(16, 12))
+    fig, axs = plt.subplots(4, 1, figsize=(16, 16))
 
     inflow_sorting = inflow.mean().sort_values(ascending=False).index.tolist()
 
     stackplot_to_ax(
         inflow[inflow_sorting],
-        ax=ax,
+        ax=axs[0],
         color_mapper=tech_colors,
         )
 
     if not outflow.empty:
-        outflow_sorting = outflow.mean().sort_values(ascending=False).index.tolist()
+        outflow_sorting = (
+            outflow[demands]
+            .mean()
+            .sort_values(ascending=False)
+            .index
+            .tolist()
+        )
         stackplot_to_ax(
-            outflow[outflow_sorting],
-            ax=ax,
+            - outflow[outflow_sorting],
+            ax=axs[1],
             color_mapper=tech_colors,
             )
+    
+    axs[2].plot(
+        - outflow[outflow.columns.intersection(demands)].sum(axis=1),
+        label="Demand",
+    )
 
+    axs[2].plot(
+        inflow[inflow.columns.intersection(generators)].sum(axis=1),
+        label="Generation",
+    )
+
+    shifter = pd.Index(shifters)
+    charge = pd.DataFrame(index=inflow.index)
+
+    if "PHS" in outflow.columns and "PHS" in inflow.columns:
+        charge["hydro storage"] = (- outflow["PHS"] - inflow["PHS"]).cumsum()
+
+    if "smart EV charger" in outflow.columns and "smart EV charger" in inflow.columns:
+        charge["ev battery"] = (
+            - outflow["smart EV charger"]
+            - inflow["smart EV charger"]
+        )
+        if "V2G" in inflow.columns:
+            charge["ev battery"] -= inflow["V2G"]
+        charge["ev battery"] = charge["ev battery"].cumsum()
+
+    if "smart heat pump" in outflow.columns and "smart heat pump" in inflow.columns:
+        charge["residential building heat inertia"] = (
+            - outflow["smart heat pump"]
+            - inflow["smart heat pump"]).cumsum()
+
+    if "grid battery" in outflow.columns and "grid battery" in inflow.columns:
+        charge["grid battery"] = (
+            - outflow["grid battery"]
+            - inflow["grid battery"]
+        ).cumsum()
+
+    stackplot_to_ax(
+        charge,
+        ax=axs[3],
+        color_mapper=tech_colors,
+        )
+
+    axs[-1].set_ylabel("Stored Energy (GWh)")
+    axs[-1].legend(loc="upper left")
+
+    logger.warning("Kirchhoff currently switched off.")
+
+    """
     if config["flexibility"]["timeseries_params"]["add_kirchhoff"]:
-        ax.plot(total.index,
+        axs.plot(total.index,
                 total,
                 color="black",
                 label="Kirchhoff Check",
                 linestyle="--",
                 )
+    """
 
-    ax.set_ylabel("Generation (GW)")
+    for ax in axs[:-1]:
+        ax.set_ylabel("Generation (GW)")
 
     title = (
         f"{config['flexibility']['timeseries_region'].upper()};"
         f" {scenario_mapper[snakemake.wildcards.fes]};"
         f" {snakemake.wildcards.year}"
     )
-    ax.set_title(title)
+    axs[0].set_title(title)
+
+    """
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     ax.legend(
@@ -382,6 +471,10 @@ if __name__ == "__main__":
         shadow=True,
         ncol=5,
         )
+    """
+
+    for ax in axs:
+        ax.legend(loc="upper left")
 
     plt.tight_layout()
     plt.savefig(snakemake.output["timeseries"])
