@@ -137,7 +137,7 @@ flexibility:
       end_day: 4
     do_group: true
     do_group_flex: false 
-    add_kirchhoff: true
+    add_kirchhoff: false
   
   map_grouping:
     onshore wind: ["onshore wind"]

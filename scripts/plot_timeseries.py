@@ -239,13 +239,12 @@ if __name__ == "__main__":
         snakemake = mock_snakemake("plot_timeseries")
     
     carrier_grouper = {
-        "onshore wind": ["onwind"],
-        "offshore wind": ["offwind-ac", "offwind-dc"],
+        "wind": ["offwind-ac", "offwind-dc", "onwind"],
         "solar": ["solar"],
         "hydropower": ["PHS", "hydro", "ror"],
-        "unabated gas": ["OCGT", "CCGT"],
-        "gas CC": ["allam", "biomass"],
-        "turndown events": ["regular flex", "winter flex"], 
+        "thermal generation unabated": ["OCGT", "CCGT", "lignite", "coal"],
+        "thermal generation CC": ["allam", "biomass"],
+        "event flexibility": ["regular flex", "winter flex"], 
         "smart heat pump": ["thermal inertia"],
         "smart EV charger": ["intelligent EV charging", "intelligent EV discharging"],
         "vehicle to grid": ["V2G"],
@@ -347,7 +346,7 @@ if __name__ == "__main__":
                 color="black",
                 label="Kirchhoff Check",
                 linestyle="--",
-                )  
+                )
 
     ax.set_ylabel("Generation (GW)")
 
@@ -355,7 +354,7 @@ if __name__ == "__main__":
         f"{config['flexibility']['timeseries_region'].upper()};"
         f" {scenario_mapper[snakemake.wildcards.fes]};"
         f" {snakemake.wildcards.year}"
-    )        
+    )
     ax.set_title(title)
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
