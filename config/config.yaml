@@ -120,7 +120,7 @@ flexibility:
     england: ["GB0 Z6", "GB0 Z7", "GB0 Z8", "GB0 Z9", "GB0 Z10", "GB0 Z11", "GB0 Z12", "GB0 Z13", "GB0 Z14", "GB0 Z15", "GB0 Z16", "GB0 Z17"]
 
   timeseries_params: 
-    month:
+    month: # only plots two weeks right now
       freq: h
       month: 1
     year:

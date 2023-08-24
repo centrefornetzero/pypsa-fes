@@ -26,6 +26,31 @@ from make_summary import assign_carriers, assign_locations
 from plot_gb_validation import stackplot_to_ax
 
 
+carrier_grouper = {
+    "wind": ["offwind-ac", "offwind-dc", "onwind"],
+    "solar": ["solar"],
+    "hydropower": ["PHS", "hydro", "ror"],
+    "thermal generation unabated": ["OCGT", "CCGT", "lignite", "coal"],
+    "thermal generation CC": ["allam", "biomass"],
+    "event flexibility": ["regular flex", "winter flex"], 
+    "smart heat pump": ["thermal inertia"],
+    "smart EV charger": ["intelligent EV charging", "intelligent EV discharging"],
+    "vehicle to grid": ["V2G"],
+    "interconnector": ["DC"],
+    "transport demand": ["land transport EV"],
+    "direct air capture": ["DAC"],
+}
+
+flex_grouping = {
+    "load shifting": ["smart heat pump", "smart EV charger"],
+    "demand reduction": ["turndown events", "vehicle to grid"],
+}
+
+demands = ["electricity demand", "heat demand", "transport demand"]
+
+dropcols = ["direct air capture", "DAC"]
+
+
 def plot_emission_timeseries(n):
 
     year = str(snakemake.wildcards["year"])
@@ -193,7 +218,7 @@ def get_timeseries_subset(*args, timeseries_mode="month", config=None):
 
     assert sum(
         [isinstance(arg, pd.DataFrame) or
-         isinstance(arg, pd.Series) for arg in args]) == len(args), "Only one DataFrame can be passed as argument"
+         isinstance(arg, pd.Series) for arg in args]) == len(args), "Only DataFrames can be passed as argument"
 
     if (mode := timeseries_mode) in ["month", "year"]:
         freq = config["flexibility"]["timeseries_params"][mode].get("freq", "1H")
@@ -203,6 +228,11 @@ def get_timeseries_subset(*args, timeseries_mode="month", config=None):
             month = [month]
         
         s = args[0].index[args[0].index.month.isin(month)]
+
+        if mode == "month":
+            logger.warning("Currently only shows two weeks in mode 'month'.")
+            s = s[s < s[0] + pd.Timedelta(days=14)]        
+
         args = list(map(lambda x: x.loc[s].resample(freq).mean(), args))
 
     
@@ -238,25 +268,6 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake("plot_timeseries")
     
-    carrier_grouper = {
-        "wind": ["offwind-ac", "offwind-dc", "onwind"],
-        "solar": ["solar"],
-        "hydropower": ["PHS", "hydro", "ror"],
-        "thermal generation unabated": ["OCGT", "CCGT", "lignite", "coal"],
-        "thermal generation CC": ["allam", "biomass"],
-        "event flexibility": ["regular flex", "winter flex"], 
-        "smart heat pump": ["thermal inertia"],
-        "smart EV charger": ["intelligent EV charging", "intelligent EV discharging"],
-        "vehicle to grid": ["V2G"],
-        "interconnector": ["DC"],
-        "transport demand": ["land transport EV"],
-        "direct air capture": ["DAC"],
-    }
-
-    flex_grouping = {
-        "load shifting": ["smart heat pump", "smart EV charger"],
-        "demand reduction": ["turndown events", "vehicle to grid"],
-    }
     
     config = snakemake.config
     tech_colors = config["plotting"]["tech_colors"]
@@ -274,6 +285,7 @@ if __name__ == "__main__":
     tech_colors["thermal inertia"] = tech_colors["nuclear"]
     tech_colors["intelligent EV charging"] = "#808080"
     tech_colors["intelligent EV discharging"] = "#CCCCCC"
+    tech_colors["turndown events"] = tech_colors["winter flex"]
     
     for key, value in carrier_grouper.items():
         tech_colors[key] = tech_colors[value[0]]
@@ -303,6 +315,7 @@ if __name__ == "__main__":
             if len(overlap := df.columns.intersection(value)) > 0:
                 df[key] = df[overlap].sum(axis=1)
                 df.drop(overlap, axis=1, inplace=True)
+
         return df
 
     if config["flexibility"]["timeseries_params"]["do_group"]:
@@ -319,10 +332,13 @@ if __name__ == "__main__":
         assert not config["flexibility"]["timeseries_params"]["do_group_flex"], (
             "Cannot group flexibility without grouping technologies")
 
+    inflow.drop(inflow.columns.intersection(dropcols), axis=1, inplace=True)
+    outflow.drop(outflow.columns.intersection(dropcols), axis=1, inplace=True)
+
     total = inflow.sum(axis=1) + outflow.sum(axis=1)
 
     # make whole year plot
-    fig, ax = plt.subplots(1, 1, figsize=(16, 6))
+    fig, axs = plt.subplots(3, 1, figsize=(16, 12))
 
     inflow_sorting = inflow.mean().sort_values(ascending=False).index.tolist()
 
