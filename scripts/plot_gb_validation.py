@@ -139,7 +139,7 @@ def preprocess_generation_eso(df, mapper):
     return ts
 
 
-def stackplot_to_ax(df, ax, color_mapper={}, stackplot_kwargs={}):
+def stackplot_to_ax(df, ax, color_mapper={}, stackplot_kwargs={}, legend=True):
     if color_mapper:
         colors = [color_mapper[tech] for tech in df.columns]
     else:
@@ -152,11 +152,13 @@ def stackplot_to_ax(df, ax, color_mapper={}, stackplot_kwargs={}):
         "alpha": 0.9,
         }
     stackplot_kwargs_default.update(stackplot_kwargs)
+
+    if legend:
+        stackplot_kwargs_default["labels"] = df.columns
     
     ax.stackplot(df.index,
                  df.values.T,
                  colors=colors,
-                 labels=df.columns,
                  **stackplot_kwargs_default)
     ax.set_xlim(df.index[0], df.index[-1])
 

@@ -47,7 +47,7 @@ flex_grouping = {
     "demand reduction": ["turndown events", "vehicle to grid"],
 }
 
-demands = ["electricity demand", "heat demand", "transport demand"]
+demands = ["electricity demand", "heat demand", "transport demand"][::-1]
 generators = [
     "wind",
     "solar",
@@ -411,11 +411,12 @@ if __name__ == "__main__":
 
     if "smart EV charger" in outflow.columns and "smart EV charger" in inflow.columns:
         charge["ev battery"] = (
-            - outflow["smart EV charger"]
+            - outflow["smart EV charger"] * 0.9
             - inflow["smart EV charger"]
         )
-        if "V2G" in inflow.columns:
-            charge["ev battery"] -= inflow["V2G"]
+        if "vehicle to grid" in inflow.columns:
+            charge["ev battery"] -= inflow["vehicle to grid"] * 0.9
+        
         charge["ev battery"] = charge["ev battery"].cumsum()
 
     if "smart heat pump" in outflow.columns and "smart heat pump" in inflow.columns:
@@ -428,14 +429,23 @@ if __name__ == "__main__":
             - outflow["grid battery"]
             - inflow["grid battery"]
         ).cumsum()
-
+    
+    charge_plus = charge.clip(lower=0)
+    charge_minus = charge.clip(upper=0)
+    
     stackplot_to_ax(
-        charge,
+        charge_plus,
         ax=axs[3],
         color_mapper=tech_colors,
         )
+    stackplot_to_ax(
+        charge_minus,
+        ax=axs[3],
+        color_mapper=tech_colors,
+        legend=False,
+        )
 
-    axs[-1].set_ylabel("Stored Energy (GWh)")
+    axs[-1].set_ylabel("Volume Shifted Energy (GWh)")
     axs[-1].legend(loc="upper left")
 
     logger.warning("Kirchhoff currently switched off.")
@@ -450,8 +460,16 @@ if __name__ == "__main__":
                 )
     """
 
-    for ax in axs[:-1]:
-        ax.set_ylabel("Generation (GW)")
+    axs[0].set_ylabel("Generation (GW)")
+    axs[1].set_ylabel("Load (GW)")
+    axs[2].set_ylabel("Load vs Generation (GW)")
+
+    axs[2].set_xlim(inflow.index[0], inflow.index[-1])
+    for ax in axs:
+        labels = [item.get_text() for item in ax.get_xticklabels()]
+        # switch all years to current year
+        labels = [label.replace("2022", str(snakemake.wildcards.year)) for label in labels]
+        ax.set_xticklabels(labels)
 
     title = (
         f"{config['flexibility']['timeseries_region'].upper()};"
