@@ -38,8 +38,11 @@ carrier_grouper = {
     "smart EV charger": ["intelligent EV charging", "intelligent EV discharging"],
     "vehicle to grid": ["V2G"],
     "interconnector": ["DC"],
-    "transport demand": ["land transport EV", "BEV charger"],
     "direct air capture": ["DAC"],
+}
+
+demand_renaming = {
+    "transport demand": ["land transport EV", "BEV charger"],
 }
 
 flex_grouping = {
@@ -296,6 +299,7 @@ if __name__ == "__main__":
     tech_colors["grid battery"] = tech_colors["battery"]
     tech_colors["electricity demand"] = tech_colors["Electric load"]
     tech_colors["heat demand"] = tech_colors["CHP heat"]
+    tech_colors["transport demand"] = tech_colors["BEV charger"]
     tech_colors["thermal inertia"] = tech_colors["nuclear"]
     tech_colors["intelligent EV charging"] = "#808080"
     tech_colors["intelligent EV discharging"] = "#CCCCCC"
@@ -304,6 +308,7 @@ if __name__ == "__main__":
     tech_colors["hydro storage"] = tech_colors["PHS"]
     tech_colors["ev battery"] = tech_colors["home battery"]
     tech_colors["residential building heat inertia"] = tech_colors["nuclear"]
+    tech_colors["battery discharger"] = tech_colors["H2 dispatch"]
 
     
     for key, value in carrier_grouper.items():
@@ -356,6 +361,8 @@ if __name__ == "__main__":
     else:
         assert not config["flexibility"]["timeseries_params"]["do_group_flex"], (
             "Cannot group flexibility without grouping technologies")
+    
+    outflow = group_by_dict(outflow, demand_renaming)
 
     print("==========================")
     print("inflow cols")
@@ -419,7 +426,10 @@ if __name__ == "__main__":
         
         charge["ev battery"] = charge["ev battery"].cumsum()
 
-    if "smart heat pump" in outflow.columns and "smart heat pump" in inflow.columns:
+    if (
+        "smart heat pump" in outflow.columns and 
+        "smart heat pump" in inflow.columns):
+
         charge["residential building heat inertia"] = (
             - outflow["smart heat pump"]
             - inflow["smart heat pump"]).cumsum()

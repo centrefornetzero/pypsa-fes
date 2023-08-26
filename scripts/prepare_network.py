@@ -1404,6 +1404,11 @@ if __name__ == "__main__":
     if snakemake.config["flexibility"]["balance_import_export"]:
         logger.info("Adding interconnector import/export balance.")
         add_import_export_balance(n)
+    
+    if "cphase" in opts:
+        logger.info("Adjusting coal price phase out.")
+        assert int(snakemake.wildcards.year) <= 2030, "No coal in the system after 2030."
+        n.generators.loc["GB_coal", "marginal_cost"] = 30 # EUR/MWh
 
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)
