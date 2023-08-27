@@ -136,7 +136,7 @@ flexibility:
       start_day: 28
       end_month: 11
       end_day: 4
-    do_group: false 
+    do_group: true
     do_group_flex: false 
     add_kirchhoff: false
   
