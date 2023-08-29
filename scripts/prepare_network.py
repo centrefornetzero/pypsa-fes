@@ -1492,19 +1492,5 @@ if __name__ == "__main__":
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
 
-
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
-
-    n.links.to_csv("links.csv")
-    n.lines.to_csv("lines.csv")
-    n.buses.to_csv("buses.csv")
-    n.generators.to_csv("generators.csv")
-    n.stores.to_csv("stores.csv")
-    n.storage_units.to_csv("storage_units.csv")
-    n.loads.to_csv("loads.csv")
-    n.links_t.marginal_cost.to_csv("mcosts_links.csv")
-    n.generators_t.marginal_cost.to_csv("mcosts_generators.csv")
-    n.stores_t.marginal_cost.to_csv("mcosts_stores.csv")
-    n.loads_t.p_set.to_csv("loads_pset.csv")
-
     n.export_to_netcdf(snakemake.output[0])
