@@ -26,7 +26,7 @@ The present repo is a work in progress, but will feature interactive scenario pr
 
 For more details on the underlying PyPSA-Eur model, we refer to the [model documentation](https://pypsa-eur.readthedocs.io) or related research for instance [PyPSA-Eur: An Open Optimisation Model of the European Transmission System](https://arxiv.org/abs/1806.01613), 2018, [arXiv:1806.01613](https://arxiv.org/abs/1806.01613). The model building routines are defined through a snakemake workflow.  Please see the [documentation](https://pypsa-eur.readthedocs.io/) for installation instructions and other useful information about the snakemake workflow. The model is designed to be imported into the open toolbox [PyPSA](https://github.com/PyPSA/PyPSA).
 
-![PyPSA-Eur Grid Model](doc/img/elec.png)
+![PyPSA-Eur Grid Model](doc/img/fes_capacity_expansion.png)
 
 The network is built up on the transmission network nodes from [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur):
 
