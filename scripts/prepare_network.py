@@ -966,7 +966,7 @@ def add_flexibility(n, mode):
     gb_population = 67_330_000
     avg_people_per_household = 2.36         # Statista 2022
 
-    turndown_per_household = snakemake.config["flexibility"]["turndown_potential_per_household"] * 1e-3     # MWh
+    turndown_per_household = snakemake.config["flexibility"]["turndown_potential_per_household"] * 1e-3 # MWh
     turndown_per_person = turndown_per_household / avg_people_per_household
 
     weekly_allowance = 5 if mode == "winter" else 2
@@ -1026,7 +1026,7 @@ def add_flexibility(n, mode):
         bus0=name,
         bus1=gb_buses.index,
         carrier=name,
-        p_nom=single_event_capacity * weekly_allowance,
+        p_nom=single_event_capacity,
         p_max_pu=event_space,
         marginal_cost=0.,
     )
