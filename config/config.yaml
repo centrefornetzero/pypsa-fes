@@ -44,8 +44,7 @@ scenario:
   # - heat
   # reg  # regular weekly demand flexibility (2 days max), one hour
   # ss   # one hour events, any weekday in winter, Saving Sessions style
-  # v2g  # included by default, numbers are share of intelligent tariff and V2G
-  # hp   # included by default, numbers are share of heat pumps controlled intelligently
+  # bev  # included by default, numbers are share of intelligent tariff and V2G
   dt_event:
   - '1' # selects file for turndown timing and magnitude in data/turndown_events/
   opts: # only relevant for PyPSA-Eur
