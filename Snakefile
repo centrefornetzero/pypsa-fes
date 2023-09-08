@@ -77,7 +77,7 @@ rule purge:
         # rmtree("resources/", ignore_errors=True)
         # rmtree("results/", ignore_errors=True)
         # rmtree("doc/_build", ignore_errors=True)
-        print("Woah, almost purged there!")
+        print("This would have been a purged!")
 
 
 rule dag:
