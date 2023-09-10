@@ -13,14 +13,11 @@ logger = logging.getLogger(__name__)
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 import calendar
-import pypsa
 import seaborn as sns
 
 from collections.abc import Iterable
 
-from _helpers import override_component_attrs
 from _fes_helpers import scenario_mapper
 from make_summary import assign_carriers, assign_locations 
 from plot_gb_validation import stackplot_to_ax
@@ -284,8 +281,7 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("plot_timeseries")
-    
-    
+
     config = snakemake.config
     tech_colors = config["plotting"]["tech_colors"]
     tech_colors["wind"] = tech_colors["onwind"]
