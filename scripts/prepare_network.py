@@ -1283,6 +1283,34 @@ def attach_stores(n, costs):
     )
 
 
+def add_gas_shortage(n):
+    """
+    puts a constraint on gas fuel availability, and adds storage units for gas across GB
+    according to GB's gas storage capacity
+    """
+
+    gas_p_nom = n.links.loc[n.links.carrier.isin(["CCGT", "OCGT"])].p_nom.sum()
+    reduction = 1. - snakemake.config["flexibility"]["gas_reduction_factor"]
+    gas_for_power_share = snakemake.config["flexibility"]["gas_for_power_share"]
+
+    assert 0. <= reduction <= 1., f"reduction factor {reduction} must be in [0, 1]"
+
+    logger.info(f"Reducing gas availability by {100*(1 - reduction):.2f}%")
+
+    n.add(
+        "StorageUnit",
+        "gas shortage",
+        bus="GB_gas_bus",
+        carrier="gas",
+        p_nom=77_000 * gas_for_power_share, # MW from nationalgas Winter Review and Consultation 2023
+        max_hours=11*24, # 11 days of gas storage
+        cyclic_state_of_charge=True,
+        state_of_charge_initial=77_000 * gas_for_power_share * 5.5 * 24, # 50 percent full
+    )
+
+    n.generators.at["GB_gas", "p_nom"] *= reduction
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1410,6 +1438,10 @@ if __name__ == "__main__":
         assert int(snakemake.wildcards.year) <= 2030, "No coal in the system after 2030."
         n.generators.loc["GB_coal", "marginal_cost"] = 30 # EUR/MWh
 
+    if "gasshort" in opts:
+        logger.info("Adding infrastructure to test effect of gas shortage.")
+        add_gas_shortage(n)
+
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)
         if m is not None:
@@ -1491,6 +1523,6 @@ if __name__ == "__main__":
         enforce_autarky(n)
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
-
+        
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])

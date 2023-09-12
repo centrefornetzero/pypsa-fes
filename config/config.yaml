@@ -88,6 +88,10 @@ flexibility:
   coal_phaseout_year_uk: 2026  # assuming no coal capacity in the system after this year
   balance_import_export: true # enforce balance of GB electricity imports and exports
   balance_link_max_hours: 6 # Storage capacity imbalance storage = max_hours * p_nom_expimp
+
+  # gas shortage parameters
+  gas_reduction_factor: 0. # reduces gas availability gas generator capacity by this factor
+  gas_for_power_share: 0.18
   
   # plotting
   select_generation_snapshots_by_flex: true # only count generation snapshots with winter/regular flex
