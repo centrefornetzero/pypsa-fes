@@ -78,6 +78,8 @@ flexibility:
       end: 19
   hourly_heat_loss: 0. # as share between 0 and 1
   completion_smartmeter_rollout: 2030
+  smartmeter_rollout_2023: 17300000 # households
+  household_turndown: 0.00012 # MW; avg reduction per household during saving sessions 
   smartmeter_rollout_2022: 55 # %
   regular_opt_in_rate: 33 # %
   winter_opt_in_rate: 33 # %

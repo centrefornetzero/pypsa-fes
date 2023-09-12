@@ -937,12 +937,13 @@ def add_biogas(n, costs):
     )
 
 
-def add_flexibility(n, mode):
+def add_event_flex(n, mode):
 
     assert mode in ["winter", "regular"], f"chosen mode {mode} must be either 'winter' or 'regular'"
     name = mode + " flex"
 
     year = int(snakemake.wildcards.year)
+    config = snakemake.config
 
     gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
     gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
@@ -950,35 +951,25 @@ def add_flexibility(n, mode):
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)     
     pop_layout = pop_layout.loc[pop_layout.index.str.contains("GB")]["total"]
 
-    total_pop = pop_layout.sum()
+    gb_pop = 67_330_000          # GB population
+    household_occ = 2.36         # avg household occupancy Statista 2022
 
-    if year < snakemake.config["flexibility"]["completion_smartmeter_rollout"]:
-        sm_rollout = np.interp(
-            year,
-            [2022, snakemake.config["flexibility"]["completion_smartmeter_rollout"]],
-            [snakemake.config["flexibility"]["smartmeter_rollout_2022"]*1e-2, 1.],
-            )
-    else:
-        sm_rollout = 1.
+    smartmeter_households = np.interp(year,
+        [2023, config["flexibility"]["completion_smartmeter_rollout"]],
+        [config["flexibility"]["smartmeter_rollout_2023"], gb_pop / household_occ],
+    )
 
-    opt_in_rate = snakemake.config["flexibility"][f"{mode}_opt_in_rate"] * 1e-2
-
-    gb_population = 67_330_000
-    avg_people_per_household = 2.36         # Statista 2022
-
-    turndown_per_household = snakemake.config["flexibility"]["turndown_potential_per_household"] * 1e-3 # MWh
-    turndown_per_person = turndown_per_household / avg_people_per_household
+    total_turndown = smartmeter_households * config["flexibility"]["household_turndown"]
 
     weekly_allowance = 5 if mode == "winter" else 2
 
-    start_hour = snakemake.config["flexibility"]["event_start_hour"]
-    end_hour = snakemake.config["flexibility"]["event_end_hour"]
+    start_hour = config["flexibility"]["event_start_hour"]
+    end_hour = config["flexibility"]["event_end_hour"]
 
     single_event_capacity = (
-        (pop_layout / total_pop * gb_population) 
-        * turndown_per_person 
-        * sm_rollout
-        * opt_in_rate
+        pop_layout 
+        / pop_layout.sum()    
+        * total_turndown
     )
 
     # weekly recharge
@@ -987,7 +978,7 @@ def add_flexibility(n, mode):
     recharge_profile.loc[mask] = 1.
 
     # events define time when demand flex can be used
-    event_space = pd.DataFrame(0., index=n.snapshots, columns=gb_buses.index)
+    event_space = pd.DataFrame(0., n.snapshots, gb_buses.index)
 
     mask = (n.snapshots.hour >= start_hour) & (n.snapshots.hour <= end_hour)
 
@@ -1028,7 +1019,7 @@ def add_flexibility(n, mode):
         carrier=name,
         p_nom=single_event_capacity,
         p_max_pu=event_space,
-        marginal_cost=0.,
+        marginal_cost=0.5, # ensure event flex is more expensive than renewables
     )
 
     # ensure no double flexibility in winter months
@@ -1424,10 +1415,10 @@ if __name__ == "__main__":
     logger.info(f"Using Flexibility Options: {flexopts}")
 
     if "reg" in flexopts:
-        add_flexibility(n, "regular")
+        add_event_flex(n, "regular")
     
     if "ss" in flexopts:
-        add_flexibility(n, "winter")
+        add_event_flex(n, "winter")
     
     if snakemake.config["flexibility"]["balance_import_export"]:
         logger.info("Adding interconnector import/export balance.")
