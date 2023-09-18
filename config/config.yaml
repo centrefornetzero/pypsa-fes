@@ -36,8 +36,6 @@ scenario:
   # - 2030
   # - 2035
   # - 2040
-  # - 2045
-  # - 2050
   flexopts:
   - reg-ss-bev-heat
   - ''
@@ -64,7 +62,7 @@ scenario:
 flexibility:
 
   # flexibility options
-  winter_months: [12, 1, 2]
+  winter_months: [10, 11, 12, 1, 2, 3]
   event_start_hour: 17
   event_end_hour: 19
   smart_heat_rollout_completion: 2030 # year where all heat pumps contribute to smart heat
