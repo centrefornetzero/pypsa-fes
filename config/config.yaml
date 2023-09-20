@@ -81,7 +81,6 @@ flexibility:
   smartmeter_rollout_2022: 55 # %
   regular_opt_in_rate: 33 # %
   winter_opt_in_rate: 33 # %
-  turndown_potential_per_household: 0.4 # kWh (see octopus energy report: 'consumer flexibility: ready to replace coal')
   battery_ignore_threshold: 1 # GW (ignore battery with less than this GB capacity)
 
   # whole system parameters 
