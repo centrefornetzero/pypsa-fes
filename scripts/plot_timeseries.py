@@ -47,7 +47,7 @@ flex_grouping = {
     "demand reduction": ["turndown events", "vehicle to grid"],
 }
 
-demands = ["electricity demand", "heat demand", "transport demand"][::-1]
+demands = ["other electricity demand", "heat demand", "transport demand"][::-1]
 generators = [
     "wind",
     "solar",
@@ -68,7 +68,7 @@ dropcols = ["direct air capture", "DAC"]
 def plot_emission_timeseries(n):
 
     year = str(snakemake.wildcards["year"])
-    
+
     _, axs = plt.subplots(2, 1, figsize=(16, 10))
 
     regions = ["England", "Scotland", "GB"]
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     tech_colors["AC"] = tech_colors["AC-AC"]
     tech_colors["GAS CCS"] = tech_colors["power-to-H2"]
     tech_colors["grid battery"] = tech_colors["battery"]
-    tech_colors["electricity demand"] = tech_colors["Electric load"]
+    tech_colors["other electricity demand"] = tech_colors["Electric load"]
     tech_colors["heat demand"] = tech_colors["CHP heat"]
     tech_colors["transport demand"] = tech_colors["BEV charger"]
     tech_colors["thermal inertia"] = tech_colors["nuclear"]
@@ -383,6 +383,15 @@ if __name__ == "__main__":
         )
 
     if not outflow.empty:
+        print(outflow.columns)
+        if "electricity demand" in outflow:
+            outflow.rename(
+                columns={
+                    "electricity demand": "other electricity demand"
+                    }, inplace=True
+                )
+        print(outflow.columns)
+
         outflow_sorting = (
             outflow[demands]
             .mean()
@@ -390,6 +399,7 @@ if __name__ == "__main__":
             .index
             .tolist()
         )
+       
         stackplot_to_ax(
             - outflow[outflow_sorting],
             ax=axs[1],
@@ -482,7 +492,14 @@ if __name__ == "__main__":
         f" {scenario_mapper[snakemake.wildcards.fes]};"
         f" {snakemake.wildcards.year}"
     )
-    axs[0].set_title(title)
+    # axs[0].set_title(title)
+    axs[0].set_xticklabels([])
+
+    # change x tick labels
+    # labels = [item.get_text() for item in axs[1].get_xticklabels()]
+    print(labels) 
+    labels = ["Jan 1", "Jan 3", "Jan 5", "Jan 7", "Jan 9", "Jan 11", "Jan 13"]
+    axs[1].set_xticklabels(labels)
 
     """
     handles, labels = plt.gca().get_legend_handles_labels()
