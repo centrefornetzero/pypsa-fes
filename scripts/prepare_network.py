@@ -802,8 +802,9 @@ def add_bev(n, transport_config):
                 e_nom=e_nom,
                 e_max_pu=1,
                 e_min_pu=dsm_profile[gb_nodes],
-                # standing_loss=0.01, # prevent abuse of storage
             )
+
+            s = n.stores.loc[n.stores.carrier == "battery storage"]
 
 
 def add_gb_co2_tracking(n, net_change_co2):
