@@ -23,20 +23,20 @@ rule all:
 
 rule cluster_networks:
     input:
-        expand(RESOURCES + "networks/elec_s{simpl}_{gb_regions}.nc", **config["scenario"]),
+        expand(RESOURCES + "networks/elec_s{simpl}.nc", **config["scenario"]),
 
 
 rule extra_components_networks:
     input:
         expand(
-            RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc", **config["scenario"]
+            RESOURCES + "networks/elec_s{simpl}_ec.nc", **config["scenario"]
         ),
 
 
 rule prepare_elec_networks:
     input:
         expand(
-            RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.nc",
+            RESOURCES + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{fes}_{year}.nc",
             **config["scenario"]
         ),
 
@@ -45,7 +45,7 @@ rule prepare_sector_networks:
     input:
         expand(
             RESULTS
-            + "prenetworks/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_{year}.nc",
+            + "prenetworks/elec_s{simpl}_l{ll}_{opts}_{sector_opts}_{year}.nc",
             **config["scenario"]
         ),
 
@@ -53,7 +53,7 @@ rule prepare_sector_networks:
 rule solve_elec_networks:
     input:
         expand(
-            RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{fes}_{year}.nc",
+            RESULTS + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{fes}_{year}.nc",
 
             **config["scenario"]
         ),
@@ -63,7 +63,7 @@ rule solve_sector_networks:
     input:
         expand(
             RESULTS
-            + "postnetworks/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_{year}.nc",
+            + "postnetworks/elec_s{simpl}_l{ll}_{opts}_{sector_opts}_{year}.nc",
             **config["scenario"]
         ),
 
@@ -72,6 +72,6 @@ rule plot_networks:
     input:
         expand(
             RESULTS
-            + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}-costs-all_{fes}_{year}.pdf",
+            + "maps/elec_s{simpl}_l{ll}_{opts}_{sector_opts}-costs-all_{fes}_{year}.pdf",
             **config["scenario"]
         ),

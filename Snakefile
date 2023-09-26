@@ -44,8 +44,6 @@ wildcard_constraints:
     flexopts="[-+a-zA-Z0-9\.]*",
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
-    gb_regions="[a-zA-Z]*",
-    td_event="[0-9]*",
     fes="[A-Z]*",
     year="[0-9]*",
 
@@ -57,7 +55,6 @@ include: "rules/build_electricity.smk"
 include: "rules/build_sector.smk"
 include: "rules/solve_electricity.smk"
 include: "rules/postprocess.smk"
-include: "rules/flex.smk"
 
 
 if config["foresight"] == "overnight":

@@ -33,6 +33,193 @@ rule build_electricity_demand:
         "../scripts/build_electricity_demand.py"
 
 
+rule build_temperature_profiles:
+    input:
+        pop_layout=RESOURCES + "pop_layout_{scope}.nc",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
+    output:
+        temp_soil=RESOURCES + "temp_soil_{scope}_elec_s{simpl}.nc",
+        temp_air=RESOURCES + "temp_air_{scope}_elec_s{simpl}.nc",
+    resources:
+        mem_mb=20000,
+    threads: 8
+    log:
+        LOGS + "build_temperature_profiles_{scope}_{simpl}.log",
+    benchmark:
+        BENCHMARKS + "build_temperature_profiles/{scope}_s{simpl}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_temperature_profiles.py"
+
+
+rule build_population_layouts:
+    input:
+        nuts3_shapes=RESOURCES + "nuts3_shapes.geojson",
+        urban_percent="data/urban_percent.csv",
+        cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
+    output:
+        pop_layout_total=RESOURCES + "pop_layout_total.nc",
+        pop_layout_urban=RESOURCES + "pop_layout_urban.nc",
+        pop_layout_rural=RESOURCES + "pop_layout_rural.nc",
+    log:
+        LOGS + "build_population_layouts.log",
+    resources:
+        mem_mb=20000,
+    benchmark:
+        BENCHMARKS + "build_population_layouts"
+    threads: 8
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_population_layouts.py"
+
+
+rule build_clustered_population_layouts:
+    input:
+        pop_layout_total=RESOURCES + "pop_layout_total.nc",
+        pop_layout_urban=RESOURCES + "pop_layout_urban.nc",
+        pop_layout_rural=RESOURCES + "pop_layout_rural.nc",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
+    output:
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+    log:
+        LOGS + "build_clustered_population_layouts_{simpl}.log",
+    resources:
+        mem_mb=10000,
+    benchmark:
+        BENCHMARKS + "build_clustered_population_layouts/s{simpl}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_clustered_population_layouts.py"
+
+
+rule build_population_weighted_energy_totals:
+    input:
+        energy_totals=RESOURCES + "energy_totals.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+    output:
+        RESOURCES + "pop_weighted_energy_totals_s{simpl}.csv",
+    threads: 1
+    resources:
+        mem_mb=2000,
+    log:
+        LOGS + "build_population_weighted_energy_totals_s{simpl}.log",
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_population_weighted_energy_totals.py"
+
+
+rule build_transport_demand:
+    input:
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+        pop_weighted_energy_totals=RESOURCES
+        + "pop_weighted_energy_totals_s{simpl}.csv",
+        transport_data=RESOURCES + "transport_data.csv",
+        traffic_data_KFZ="data/emobility/KFZ__count",
+        traffic_data_Pkw="data/emobility/Pkw__count",
+        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}.nc",
+        fes_data="data/Data-workbook2022_V006.xlsx",
+    output:
+        transport_demand=RESOURCES + "transport_demand_s{simpl}.csv",
+        transport_data=RESOURCES + "transport_data_s{simpl}.csv",
+        avail_profile=RESOURCES + "avail_profile_s{simpl}.csv",
+        dsm_profile=RESOURCES + "dsm_profile_s{simpl}.csv",
+    threads: 1
+    resources:
+        mem_mb=2000,
+    log:
+        LOGS + "build_transport_demand_s{simpl}.log",
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_transport_demand.py"
+
+
+rule build_heat_demands:
+    input:
+        # pop_layout=RESOURCES + "pop_layout_{scope}.nc",
+        pop_layout=RESOURCES + "pop_layout_total.nc",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
+    output:
+        # heat_demand=RESOURCES + "heat_demand_{scope}_elec_s{simpl}_{gb_regions}.nc",
+        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}.nc",
+    resources:
+        mem_mb=20000,
+    threads: 8
+    log:
+        # LOGS + "build_heat_demands_{scope}_{simpl}_{gb_regions}.loc",
+        LOGS + "build_heat_demands_residential_{simpl}.loc",
+    benchmark:
+        # BENCHMARKS + "build_heat_demands/{scope}_s{simpl}_{gb_regions}"
+        BENCHMARKS + "build_heat_demands/residential_s{simpl}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_heat_demand.py"
+
+
+rule build_cop_profiles:
+    input:
+        temp_soil_total=RESOURCES + "temp_soil_total_elec_s{simpl}.nc",
+        temp_soil_rural=RESOURCES + "temp_soil_rural_elec_s{simpl}.nc",
+        temp_soil_urban=RESOURCES + "temp_soil_urban_elec_s{simpl}.nc",
+        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}.nc",
+        temp_air_rural=RESOURCES + "temp_air_rural_elec_s{simpl}.nc",
+        temp_air_urban=RESOURCES + "temp_air_urban_elec_s{simpl}.nc",
+    output:
+        cop_soil_total=RESOURCES + "cop_soil_total_elec_s{simpl}.nc",
+        cop_soil_rural=RESOURCES + "cop_soil_rural_elec_s{simpl}.nc",
+        cop_soil_urban=RESOURCES + "cop_soil_urban_elec_s{simpl}.nc",
+        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}.nc",
+        cop_air_rural=RESOURCES + "cop_air_rural_elec_s{simpl}.nc",
+        cop_air_urban=RESOURCES + "cop_air_urban_elec_s{simpl}.nc",
+    resources:
+        mem_mb=20000,
+    log:
+        LOGS + "build_cop_profiles_s{simpl}.log",
+    benchmark:
+        BENCHMARKS + "build_cop_profiles/s{simpl}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_cop_profiles.py"
+
+
+rule build_biomass_potentials:
+    input:
+        enspreso_biomass=HTTP.remote(
+            "https://cidportal.jrc.ec.europa.eu/ftp/jrc-opendata/ENSPRESO/ENSPRESO_BIOMASS.xlsx",
+            keep_local=True,
+        ),
+        nuts2="data/nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson",  # https://gisco-services.ec.europa.eu/distribution/v2/nuts/download/#nuts21
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        nuts3_population=ancient("data/bundle/nama_10r_3popgdp.tsv.gz"),
+        swiss_cantons=ancient("data/bundle/ch_cantons.csv"),
+        swiss_population=ancient("data/bundle/je-e-21.03.02.xls"),
+        country_shapes=RESOURCES + "country_shapes.geojson",
+    output:
+        biomass_potentials_all=RESOURCES
+        + "biomass_potentials_all_s{simpl}.csv",
+        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}.csv",
+    threads: 1
+    resources:
+        mem_mb=1000,
+    log:
+        LOGS + "build_biomass_potentials_s{simpl}.log",
+    benchmark:
+        BENCHMARKS + "build_biomass_potentials_s{simpl}"
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_biomass_potentials.py"
+
+
 rule build_2022_octopus_demand:
     input:
         default_load=RESOURCES + "default_load.csv",
