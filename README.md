@@ -6,17 +6,32 @@ SPDX-FileCopyrightText: 2017-2023 The PyPSA-Eur Authors
 SPDX-License-Identifier: CC-BY-4.0
 -->
 
-![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/pypsa/pypsa-eur?include_prereleases)
+<!--![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/pypsa/pypsa-eur?include_prereleases)
+-->
 [![Build Status](https://github.com/pypsa/pypsa-eur/actions/workflows/ci.yaml/badge.svg)](https://github.com/PyPSA/pypsa-eur/actions)
-[![Documentation](https://readthedocs.org/projects/pypsa-eur/badge/?version=latest)](https://pypsa-eur.readthedocs.io/en/latest/?badge=latest)
-![Size](https://img.shields.io/github/repo-size/pypsa/pypsa-eur)
+<!--[![Documentation](https://readthedocs.org/projects/pypsa-eur/badge/?version=latest)](https://pypsa-eur.readthedocs.io/en/latest/?badge=latest)-->
+![Size](https://img.shields.io/github/repo-size/centrefornetzero/PyPSA-eur)
 [![Zenodo PyPSA-Eur](https://zenodo.org/badge/DOI/10.5281/zenodo.3520874.svg)](https://doi.org/10.5281/zenodo.3520874)
-[![Zenodo PyPSA-Eur-Sec](https://zenodo.org/badge/DOI/10.5281/zenodo.3938042.svg)](https://doi.org/10.5281/zenodo.3938042)
+<!--[![Zenodo PyPSA-Eur-Sec](https://zenodo.org/badge/DOI/10.5281/zenodo.3938042.svg)](https://doi.org/10.5281/zenodo.3938042)-->
 [![Snakemake](https://img.shields.io/badge/snakemake-≥5.0.0-brightgreen.svg?style=flat)](https://snakemake.readthedocs.io)
-[![REUSE status](https://api.reuse.software/badge/github.com/pypsa/pypsa-eur)](https://api.reuse.software/info/github.com/pypsa/pypsa-eur)
-[![Stack Exchange questions](https://img.shields.io/stackexchange/stackoverflow/t/pypsa)](https://stackoverflow.com/questions/tagged/pypsa).
+<!--[![REUSE status](https://api.reuse.software/badge/github.com/pypsa/pypsa-eur)](https://api.reuse.software/info/github.com/pypsa/pypsa-eur)-->
+<!--[![Stack Exchange questions](https://img.shields.io/stackexchange/stackoverflow/t/pypsa)](https://stackoverflow.com/questions/tagged/pypsa).-->
 
-# Modelling Flexibility in a Whole-System Power Model:
+# PyPSA-FES: A linear optimisation model to simulate Great Britain's energy transition
+
+PyPSA-FES offers a complete data pipeline and optimisation backbone to model any year between 2023 and 2050 of Great Britain's energy transition both for an optimisic transition scenario _Leading the Way_, and a pessimistic version _Falling Short_. For the chosen scenario and year, the model dynamically retrieves constraints on generation, transmission and storage capacities, demand and emission targets from [_national grid ESO's Future Energy Scenarios_](https://www.nationalgrideso.com/future-energy/future-energy-scenarios), and runs a full year of hourly investment and operational optimisation for a 16-zonal network.
+
+![PyPSA-Eur Grid Model](doc/img/fes_capacity_expansion.png)
+
+Additionally, the model includes three types of domestic demand flexibility, that can be switched on or off
+- **Demand Flexibility Service** individual households can provide to the grid by shifting their demand in time
+- **Smart Heat Pumps** storing heat provided by heat pumps in homes' thermal inertia
+- **Smart Charging Electric Vehicles** and **Vehicle-to-Grid** according to centrally optimised schedules.
+
+![Energy Flows Modelled in PyPSA-FES](doc/img/pypsa_fes_flowchart.PNG)
+
+The model is an adaption of the [PyPSA-Eur](github.com/pypsa/pypsa-eur), a sector-coupled european energy model, developed at [TU Berlin](https://www.tu.berlin/en/ensys), and is built on the underlying Python modelling library [PyPSA](github.com/pypsa/pypsa).
+
 
 In this repo we explore whole-system implications of demand flexibility events as in [The Big Dirty Turn Down](https://www.centrefornetzero.org/work/energy-flexibility-domestic-research-octopus-energy/).
 
@@ -26,7 +41,6 @@ The present repo is a work in progress, but will feature interactive scenario pr
 
 For more details on the underlying PyPSA-Eur model, we refer to the [model documentation](https://pypsa-eur.readthedocs.io) or related research for instance [PyPSA-Eur: An Open Optimisation Model of the European Transmission System](https://arxiv.org/abs/1806.01613), 2018, [arXiv:1806.01613](https://arxiv.org/abs/1806.01613). The model building routines are defined through a snakemake workflow.  Please see the [documentation](https://pypsa-eur.readthedocs.io/) for installation instructions and other useful information about the snakemake workflow. The model is designed to be imported into the open toolbox [PyPSA](https://github.com/PyPSA/PyPSA).
 
-![PyPSA-Eur Grid Model](doc/img/fes_capacity_expansion.png)
 
 The network is built up on the transmission network nodes from [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur):
 
