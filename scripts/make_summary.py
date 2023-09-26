@@ -684,7 +684,7 @@ def make_summaries(networks_dict):
 
     columns = pd.MultiIndex.from_tuples(
         networks_dict.keys(),
-        names=["gb_regions", "ll", "opt", "flexopts", "fes", "year"]
+        names=["ll", "opt", "flexopts", "fes", "year"]
     )
 
     df = {}
@@ -721,11 +721,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     networks_dict = {
-        (gb_regions, ll, opts, flexopts, fes, year): "results/"
+        (ll, opts, flexopts, fes, year): "results/"
         + snakemake.params.RDIR
-        + f"networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc"
+        + f"networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc"
         for simpl in snakemake.config["scenario"]["simpl"]
-        for gb_regions in snakemake.config["scenario"]["gb_regions"]
         for ll in snakemake.config["scenario"]["ll"]
         for opts in snakemake.config["scenario"]["opts"]
         for flexopts in snakemake.config["scenario"]["flexopts"]

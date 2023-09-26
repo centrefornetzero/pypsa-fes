@@ -41,8 +41,6 @@ scenario:
   # reg  # regular weekly demand flexibility (2 days max), one hour
   # ss   # one hour events, any weekday in winter, Saving Sessions style
   # bev  # included by default, numbers are share of intelligent tariff and V2G
-  dt_event:
-  - '1' # selects file for turndown timing and magnitude in data/turndown_events/
   opts: # only relevant for PyPSA-Eur
   #- 'ATK'
   #- "100percent" # 100% renewable scenario, balancing through intercons, battery storage, no thermal gen
