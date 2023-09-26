@@ -11,12 +11,12 @@ localrules:
 rule plot_network:
     input:
         overrides="data/override_component_attrs",
-        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+        network=RESULTS + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
         # regions=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
         regions="data/eso_zones.geojson",
     output:
         map=RESULTS
-        + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}-costs-all_{fes}_{year}.pdf",
+        + "maps/elec_s{simpl}_l{ll}_{opts}_{flexopts}-costs-all_{fes}_{year}.pdf",
         # today=RESULTS
         # + "maps/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}_{fes}_{year}-today.pdf",
     threads: 2
@@ -25,7 +25,7 @@ rule plot_network:
     benchmark:
         (
             BENCHMARKS
-            + "plot_network/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{flexopts}_{fes}_{year}"
+            + "plot_network/elec_s{simpl}_l{ll}_{opts}_{flexopts}_{fes}_{year}"
         )
     conda:
         "../envs/environment.yaml"
@@ -72,7 +72,7 @@ rule make_summary:
         overrides="data/override_component_attrs",
         networks=expand(
             RESULTS
-            + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+            + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
             **config["scenario"]
         ),
         costs="data/costs_{}.csv".format(config["costs"]["year"])
@@ -144,18 +144,18 @@ rule make_timeseries:
     params:
         RDIR=RDIR,
     input:
-        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+        network=RESULTS + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
         overrides="data/override_component_attrs",
     output:
-        inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
-        outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
     threads: 1
     resources:
         mem_mb=10000,
     log:
-        LOGS + "make_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
+        LOGS + "make_timeseries_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
     benchmark:
-        BENCHMARKS + "make_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
+        BENCHMARKS + "make_timeseries_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
     conda:
         "../envs/environment.yaml"
     script:
@@ -166,17 +166,17 @@ rule plot_emissions:
     params:
         RDIR=RDIR,
     input:
-        network=RESULTS + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+        network=RESULTS + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
         overrides="data/override_component_attrs",
     output:
-        co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
+        co2_barplot=RESULTS + "graphs/barplot-co2_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.pdf",
     threads: 1
     resources:
         mem_mb=10000,
     log:
-        LOGS + "plot_emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
+        LOGS + "plot_emissions_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
     benchmark:
-        BENCHMARKS + "plot_emissions_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
+        BENCHMARKS + "plot_emissions_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}"
     conda:
         "../envs/environment.yaml"
     script:
@@ -187,17 +187,17 @@ rule plot_timeseries:
     params:
         RDIR=RDIR,
     input:
-        inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
-        outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        inflow=RESULTS + "timeseries/timeseries-inflow_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+        outflow=RESULTS + "timeseries/timeseries-outflow_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
     output:
-        timeseries=RESULTS + "graphs/timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}.pdf",
+        timeseries=RESULTS + "graphs/timeseries_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}.pdf",
     threads: 1
     resources:
         mem_mb=10000,
     log:
-        LOGS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}.log",
+        LOGS + "plot_timeseries_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}.log",
     benchmark:
-        BENCHMARKS + "plot_timeseries_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}"
+        BENCHMARKS + "plot_timeseries_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}_{timeseries_mode}"
     conda:
         "../envs/environment.yaml"
     script:
@@ -211,7 +211,7 @@ rule summarize_gb:
         overrides="data/override_component_attrs",
         networks=expand(
             RESULTS
-            + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+            + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
             **config["scenario"]
         ),
         costs="data/costs_{}.csv".format(config["costs"]["year"])
@@ -245,12 +245,12 @@ rule make_barplots:
         overrides="data/override_component_attrs",
         inflows=expand(
             RESULTS
-            + "timeseries/timeseries-inflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+            + "timeseries/timeseries-inflow_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
             **config["scenario"]
         ),
         outflows=expand(
             RESULTS
-            + "timeseries/timeseries-outflow_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
+            + "timeseries/timeseries-outflow_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.csv",
             **config["scenario"]
         ),
     output:

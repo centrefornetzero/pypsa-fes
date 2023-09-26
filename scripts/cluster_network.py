@@ -490,7 +490,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("cluster_network", simpl="", gb_regions="eso")
+        snakemake = mock_snakemake("cluster_network", simpl="")
     configure_logging(snakemake)
 
     n = pypsa.Network(snakemake.input.network)

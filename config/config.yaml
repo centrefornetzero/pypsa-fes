@@ -23,8 +23,6 @@ scenario:
   - ''
   ll:  # allowed transmission line volume expansion, can be any float >= 1.0 with a prefix v|c (today) or "copt"
   - v1.5
-  gb_regions:
-  - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes: # Future energy scenario considered, can be 
   # - 'CT' # Consumer Transformation
   # - 'FS' # Falling Short

@@ -267,26 +267,6 @@ rule build_fes_constraints:
         "../scripts/build_fes_constraints.py"
 
 
-rule build_monthly_prices:
-    input:
-        eu_fuel_price_raw="data/energy-price-trends-xlsx-5619002.xlsx",
-        eu_co2_price_raw="data/emission-spot-primary-market-auction-report-2022-data.xlsx",
-        # fuel_price_gb="data/GB_fuel_prices.xlsx",
-        exchange_rate="data/euro-british-pound-exchange-rate-historical-chart.csv",
-    output:
-        co2_price=RESOURCES + "CO2_price_2022.csv",
-        fuel_price=RESOURCES + "monthly_fuel_price.csv",
-    log:
-        LOGS + "build_monthly_prices.log",
-    threads: 1
-    resources:
-        mem_mb=5000,
-    conda:
-        "../envs/environment.yaml"
-    script:
-        "../scripts/build_monthly_prices.py"
-
-
 rule build_hydro_profile:
     input:
         country_shapes=RESOURCES + "country_shapes.geojson",
@@ -322,7 +302,6 @@ rule add_electricity:
         powerplants=RESOURCES + "powerplants.csv",
         hydro_capacities=ancient("data/bundle/hydro_capacities.csv"),
         geth_hydro_capacities="data/geth2015_hydro_capacities.csv",
-        fuel_price=RESOURCES + "monthly_fuel_price.csv",
         load=RESOURCES + "load.csv",
         nuts3_shapes=RESOURCES + "nuts3_shapes.geojson",
     output:
@@ -375,18 +354,18 @@ rule cluster_network:
         # network=RESOURCES + "networks/elec.nc",
         regions_onshore=RESOURCES + "regions_onshore.geojson",
         regions_offshore=RESOURCES + "regions_offshore.geojson",
-        target_regions_onshore="data/regions_onshore_{gb_regions}.geojson",
+        target_regions_onshore="data/regions_onshore.geojson",
         tech_costs=COSTS,
     output:
-        network=RESOURCES + "networks/elec_s{simpl}_{gb_regions}.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
-        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}_{gb_regions}.geojson",
-        busmap=RESOURCES + "busmap_elec_s{simpl}_{gb_regions}.csv",
-        linemap=RESOURCES + "linemap_elec_s{simpl}_{gb_regions}.csv",
+        network=RESOURCES + "networks/elec_s{simpl}.nc",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
+        busmap=RESOURCES + "busmap_elec_s{simpl}.csv",
+        linemap=RESOURCES + "linemap_elec_s{simpl}.csv",
     log:
-        LOGS + "cluster_network/elec_s{simpl}_{gb_regions}.log",
+        LOGS + "cluster_network/elec_s{simpl}.log",
     benchmark:
-        BENCHMARKS + "cluster_network/elec_s{simpl}_{gb_regions}"
+        BENCHMARKS + "cluster_network/elec_s{simpl}"
     threads: 1
     resources:
         mem_mb=6000,
@@ -398,14 +377,14 @@ rule cluster_network:
 
 rule add_extra_components:
     input:
-        network=RESOURCES + "networks/elec_s{simpl}_{gb_regions}.nc",
+        network=RESOURCES + "networks/elec_s{simpl}.nc",
         tech_costs=COSTS,
     output:
-        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
+        RESOURCES + "networks/elec_s{simpl}_ec.nc",
     log:
-        LOGS + "add_extra_components/elec_s{simpl}_{gb_regions}.log",
+        LOGS + "add_extra_components/elec_s{simpl}.log",
     benchmark:
-        BENCHMARKS + "add_extra_components/elec_s{simpl}_{gb_regions}_ec"
+        BENCHMARKS + "add_extra_components/elec_s{simpl}_ec"
     threads: 1
     resources:
         mem_mb=3000,
@@ -417,29 +396,28 @@ rule add_extra_components:
 
 rule prepare_network:
     input:
-        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec.nc",
+        RESOURCES + "networks/elec_s{simpl}_ec.nc",
         overrides="data/override_component_attrs",
         tech_costs=COSTS,
-        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_{gb_regions}.csv",
+        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}.csv",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_{gb_regions}.csv",
-        co2_price=RESOURCES + "CO2_price_2022.csv",
-        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_{gb_regions}.nc",
-        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_{gb_regions}.nc",
-        energy_totals=RESOURCES + "pop_weighted_energy_totals_s{simpl}_{gb_regions}.csv",
-        transport_demand=RESOURCES + "transport_demand_s{simpl}_{gb_regions}.csv",
-        transport_data=RESOURCES + "transport_data_s{simpl}_{gb_regions}.csv",
-        avail_profile=RESOURCES + "avail_profile_s{simpl}_{gb_regions}.csv",
-        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_{gb_regions}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}.nc",
+        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}.nc",
+        energy_totals=RESOURCES + "pop_weighted_energy_totals_s{simpl}.csv",
+        transport_demand=RESOURCES + "transport_demand_s{simpl}.csv",
+        transport_data=RESOURCES + "transport_data_s{simpl}.csv",
+        avail_profile=RESOURCES + "avail_profile_s{simpl}.csv",
+        dsm_profile=RESOURCES + "dsm_profile_s{simpl}.csv",
         fes_table="data/Data-workbook2022_V006.xlsx",
         fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
     output:
-        RESOURCES + "networks/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
+        RESOURCES + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
     log:
-        LOGS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
+        LOGS + "prepare_network/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.log",
     benchmark:
-        (BENCHMARKS + "prepare_network/elec_s{simpl}_{gb_regions}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}")
+        (BENCHMARKS + "prepare_network/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}")
     threads: 1
     resources:
         mem_mb=4000,
