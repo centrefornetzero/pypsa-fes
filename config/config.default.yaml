@@ -22,49 +22,139 @@ scenario:
   simpl:
   - ''
   ll:  # allowed transmission line volume expansion, can be any float >= 1.0 with a prefix v|c (today) or "copt"
-  - v1.0
   - v1.5
-  clusters:  # number of nodes in Europe, any integer between 37 (1 node per country-zone) and several hundred
-  - 37
-  - 128
-  - 256
-  - 512
-  - 1024
-  opts: # only relevant for PyPSA-Eur
+  gb_regions:
+  - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
+  fes: # Future energy scenario considered (see https://www.nationalgrideso.com/future-energy/future-energy-scenarios)
+  # - 'FS' # Falling Short
+  - 'LW' # Leading the Way 
+  year: # year of Future Energy Scenario modelled
+  - 2040
+  # - 2025
+  # - 2030
+  # - 2035
+  # - 2040
+  flexopts:
+  - reg-ss-bev-heat
   - ''
+  # - heat
+  # reg  # regular weekly demand flexibility (2 days max), one hour
+  # ss   # one hour events, any weekday in winter, Saving Sessions style
+  # bev  # included by default, numbers are share of intelligent tariff and V2G
+  opts: # only relevant for PyPSA-Eur
+  #- 'ATK'
+  #- "100percent" # 100% renewable scenario, balancing through intercons, battery storage, no thermal gen
+  - "cphase" # evaluates the effect on a coal phaseout, Sets the price of coal higher than of gas to prevent base load usage 
+  # - ""
   sector_opts: # this is where the main scenario settings are
   - Co2L0-3H-T-H-B-I-A-solar+p3-dist1
-  # to really understand the options here, look in scripts/prepare_sector_network.py
-  # Co2Lx specifies the CO2 target in x% of the 1990 values; default will give default (5%);
-  # Co2L0p25 will give 25% CO2 emissions; Co2Lm0p05 will give 5% negative emissions
-  # xH is the temporal resolution; 3H is 3-hourly, i.e. one snapshot every 3 hours
-  # single letters are sectors: T for land transport, H for building heating,
-  # B for biomass supply, I for industry, shipping and aviation,
-  # A for agriculture, forestry and fishing
-  # solar+c0.5 reduces the capital cost of solar to 50\% of reference value
-  # solar+p3 multiplies the available installable potential by factor 3
-  # seq400 sets the potential of CO2 sequestration to 400 Mt CO2 per year
-  # dist{n} includes distribution grids with investment cost of n times cost in data/costs.csv
-  # for myopic/perfect foresight cb states the carbon budget in GtCO2 (cumulative
-  # emissions throughout the transition path in the timeframe determined by the
-  # planning_horizons), be:beta decay; ex:exponential decay
-  # cb40ex0 distributes a carbon budget of 40 GtCO2 following an exponential
-  # decay with initial growth rate 0
-  planning_horizons: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
-  - 2050
-  # for example, set to
-  # - 2020
-  # - 2030
-  # - 2040
-  # - 2050
-  # for myopic foresight
+  timeseries_mode:
+  # - month # plots the month defined in timeseries_params below
+  # - year # plots a full year, with adjusted freq
+  - shortweek # plots a week in which generation was low, but demand was high
+  # - longweek # plots a week in which generation was high, but demand was low
 
-countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
+flexibility:
+
+  # flexibility options
+  winter_months: [10, 11, 12, 1, 2, 3]
+  event_start_hour: 17
+  event_end_hour: 19
+  smart_heat_rollout_completion: 2030 # year where all heat pumps contribute to smart heat
+  heat_shift_size: 3 # hours
+  heat_flex_windows:
+    morning:
+      start: 7
+      end: 9
+    evening: 
+      start: 17
+      end: 19
+  hourly_heat_loss: 0. # as share between 0 and 1
+  completion_smartmeter_rollout: 2030
+  smartmeter_rollout_2023: 17300000 # households
+  household_turndown: 0.00012 # MW; avg reduction per household during saving sessions 
+  smartmeter_rollout_2022: 55 # %
+  regular_opt_in_rate: 33 # %
+  winter_opt_in_rate: 33 # %
+  battery_ignore_threshold: 1 # GW (ignore battery with less than this GB capacity)
+
+  # whole system parameters 
+  coal_phaseout_year_uk: 2026  # assuming no coal capacity in the system after this year
+  balance_import_export: true # enforce balance of GB electricity imports and exports
+  balance_link_max_hours: 6 # Storage capacity imbalance storage = max_hours * p_nom_expimp
+
+  # gas shortage parameters
+  gas_reduction_factor: 0. # reduces gas availability gas generator capacity by this factor
+  gas_for_power_share: 0.18
+  
+  # plotting
+  select_generation_snapshots_by_flex: true # only count generation snapshots with winter/regular flex
+  flexible_carriers:
+    - 'regular flex'
+    - 'winter flex'
+    - 'V2G'
+    - 'PHS'
+    - 'hydro'
+    - 'grid battery'
+    - 'allam'
+    - 'CCGT'
+    - 'CCGT'
+    - 'coal'
+    - 'lignite'
+    - 'DC'
+    - 'AC'
+    - 'biomass'
+    - 'thermal inertia'
+  intermittent_carriers:
+    - 'solar'
+    - 'onwind'
+    - 'offwind-ac'
+    - 'offwind-dc'
+    - 'nuclear'
+
+  timeseries_region: 'gb' # can also be scotland or england (see below)
+  regions:
+    scotland: ["GB0 Z1_1", "GB0 Z1_2", "GB0 Z1_3", "GB0 Z1_4", "GB0 Z2", "GB0 Z3", "GB0 Z5"]
+    england: ["GB0 Z6", "GB0 Z7", "GB0 Z8", "GB0 Z9", "GB0 Z10", "GB0 Z11", "GB0 Z12", "GB0 Z13", "GB0 Z14", "GB0 Z15", "GB0 Z16", "GB0 Z17"]
+
+  timeseries_params: 
+    month: # only plots first two weeks of month right now
+      freq: h
+      month: 1
+    year:
+      freq: d
+    shortweek:
+      start_month: 1
+      start_day: 21
+      end_month: 1
+      end_day: 27
+    longweek:
+      start_month: 10
+      start_day: 28
+      end_month: 11
+      end_day: 4
+    do_group: true
+    do_group_flex: false 
+    add_kirchhoff: false
+  
+  map_grouping:
+    onshore wind: ["onshore wind"]
+    offshore wind: ["offshore wind"]
+    solar: ["solar PV"]
+    hydroelectricity: ["hydroelectricity"]
+    nuclear: ["nuclear"]
+    thermal generation unabated: ["CCGT", "OCGT", "biomass", "biogas", "coal", "lignite"]
+    thermal generation CC: ["allam"]
+    grid battery: ["battery storage"]
+
+countries: ['BE', 'DE', 'DK', 'FR', 'GB', 'IE', 'LU', 'NL', 'NO', 'SE']
 
 snapshots:
   start: "2013-01-01"
   end: "2014-01-01"
   inclusive: 'left' # include start, not end
+
+entsoe_key_file: 'entsoe_api_key.txt' # holds an api token to download from ENTSO-E
 
 enable:
   prepare_links_p_nom: false
@@ -75,7 +165,7 @@ enable:
   retrieve_cutout: true
   build_natura_raster: false
   retrieve_natura_raster: true
-  custom_busmap: false
+  # custom_busmap: false
 
 # CO2 budget as a fraction of 1990 emissions
 # this is over-ridden if CO2Lx is set in sector_opts
@@ -107,7 +197,7 @@ electricity:
     H2: 168
 
   extendable_carriers:
-    Generator: [solar, onwind, offwind-ac, offwind-dc, OCGT]
+    Generator: [solar, onwind, offwind-ac, offwind-dc, OCGT, CCGT, nuclear, biomass]
     StorageUnit: [] # battery, H2
     Store: [battery, H2]
     Link: [] # H2 pipeline
@@ -292,14 +382,23 @@ load:
 pypsa_eur:
   Bus:
   - AC
+  - gas
+  - coal
+  - lignite
   Link:
   - DC
+  - coal
+  - OCGT
+  - CCGT
+  - lignite
+  - biomass
   Generator:
   - onwind
   - offwind-ac
   - offwind-dc
   - solar
   - ror
+  - nuclear
   StorageUnit:
   - PHS
   - hydro
@@ -609,6 +708,7 @@ clustering:
     algorithm: kmeans
     feature: solar+onwind-time
     exclude_carriers: []
+    exclude_countries: ["GB"] # exclude carriers only holds in exclude_countries
   aggregation_strategies:
     generators:
       p_nom_max: sum # use "min" for more conservative assumptions
@@ -698,13 +798,14 @@ plotting:
   map:
     boundaries: [-11, 30, 34, 71]
     color_geomap:
-      ocean: white
+      ocean: lightskyblue 
       land: white
   eu_node_location:
     x: -5.5
     y: 46.
-  costs_max: 1000
-  costs_threshold: 1
+  costs_max: 50
+  costs_threshold: 0
+  capacities_threshold: 0
   energy_max: 20000
   energy_min: -20000
   energy_threshold: 50.
@@ -847,6 +948,9 @@ plotting:
     electricity distribution grid: '#97ad8c'
     # electricity demand
     Electric load: '#110d63'
+    load: '#110d63'
+    regular flex: "#C0392B"
+    winter flex: "#FF3200"
     electric demand: '#110d63'
     electricity: '#110d63'
     industry electricity: '#2d2a66'
