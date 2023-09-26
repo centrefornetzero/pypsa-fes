@@ -223,16 +223,22 @@ def get_data_point(datapoint, scenario, year):
             logger.warning("Getting BEV data from old FES")
             file = old_file
         
-        df = (
-            pd.read_excel(file,
-                sheet_name=sheet,
-                header=row-2,
-                index_col=0,
-                nrows=5,
-                usecols=[col+i for i in range(32)],
+        for max_col in range(32, 27, -1):
+            try:
+                df = (
+                    pd.read_excel(file,
+                        sheet_name=sheet,
+                        header=row-2,
+                        index_col=0,
+                        nrows=5,
+                        usecols=[col+i for i in range(max_col)],
+                        )
                 )
-        )
-    
+                break
+
+            except pd.errors.ParserError:
+                continue
+        
 
     if format == "gen":
         if not (isinstance(df.columns[0], int) or isinstance(df.columns[0], np.int64)):
@@ -432,7 +438,7 @@ def get_interconnector_capacity(scenario, year):
         header=row,
         index_col=0,
         nrows=5,
-        usecols=[col+i for i in range(32)],
+        usecols=[col+i for i in range(31)],
         ).iloc[:4]
     df.columns = [pd.Timestamp(dt).year for dt in df.columns]
 
