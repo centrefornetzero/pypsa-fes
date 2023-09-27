@@ -173,26 +173,15 @@ if __name__ == "__main__":
     
     configure_logging(snakemake)
 
-    logger.info("Transferring demand data from 2013 to 2022 for mainland Europe.")
-    logger.warning("Not yet implemented dynamic ENTSO-E download pipeline for mainland EU")
-
     load = pd.read_csv(snakemake.input["default_load"], parse_dates=True, index_col=0)
-    load.index = pd.date_range("2022", "2022-12-31 23:00", freq="h")
 
-    # [1]
-    esoload = pd.read_csv(snakemake.input["gb_demand"], parse_dates=True)
+    # esoload = pd.read_csv(snakemake.input["gb_demand"], parse_dates=True)
+    # esoload["dt"] = esoload.apply(lambda row: pd.Timestamp(row.SETTLEMENT_DATE) + 
+    #     pd.Timedelta(30*(row.SETTLEMENT_PERIOD-1), unit="min"),
+    #     axis=1
+    #     )
 
-    esoload["dt"] = esoload.apply(lambda row: pd.Timestamp(row.SETTLEMENT_DATE) + 
-                            pd.Timedelta(30*(row.SETTLEMENT_PERIOD-1), unit="min"),
-                            axis=1)
-
-    esoload.index = esoload["dt"]
-    # esoload.index = esoload.index.tz_localize("UTC")
-    esoload = esoload.resample("h").mean()
-    esoload = esoload["ND"]
-
-    load["GB"] = esoload.values
-    load["GB"] = load["GB"].interpolate(method="linear") # we know there is a single nan in this dataset
+    # load["GB"] = <Potentially botom-up data>
 
     assert not load.isna().any().any(), (
         "Load data contains nans. Adjust the data."

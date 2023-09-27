@@ -21,16 +21,7 @@ def memory(w):
     #     return int(factor * (18000 + 180 * 4000))
     # else:
     #     return int(factor * (10000 + 195 * int(w.clusters)))
-    if w.gb_regions.endswith("m"):
-        return int(factor * (18000 + 180 * int(w.gb_regions[:-1])))
-    elif w.gb_regions == "all":
-        return int(factor * (18000 + 180 * 4000))
-    elif w.gb_regions == "eso":
-        return int(factor * (10000 + 195 * 31))
-    elif w.gb_regions == "dno":
-        return int(factor * (10000 + 195 * 25))
-    else:
-        return int(factor * (10000 + 195 * 50))
+    return int(factor * (10000 + 195 * 31))
 
 
 
