@@ -172,6 +172,7 @@ if __name__ == "__main__":
         country_ppl = ppl.query("Country == @c")
         country_sub = substations.query("country == @c")
 
+        # This drops ~biomass plants in Germany, issue in github created
         drops = country_ppl.loc[country_ppl["lon"].isna()].index
 
         if len(drops):

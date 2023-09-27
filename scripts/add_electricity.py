@@ -368,7 +368,6 @@ def attach_wind_and_solar(
 def attach_conventional_generators(
     n,
     costs,
-    fuel_price,
     ppl,
     conventional_carriers,
     extendable_carriers,
@@ -385,17 +384,14 @@ def attach_conventional_generators(
     )
     ppl["efficiency"] = ppl.efficiency.fillna(ppl.efficiency_r)
     
-    logger.warning("Shouldnt it be m_fuel_price -> fuel_price")
-    fuel_price = (fuel_price.assign(
-            OCGT=fuel_price['gas'],
-            CCGT=fuel_price['gas']
-        ).drop("gas", axis=1))
+    """
     fuel_price = fuel_price.reindex(ppl.carrier, axis=1)
     fuel_price.fillna(costs.fuel, inplace=True)
     fuel_price.columns = ppl.index
     marginal_cost = (
         (fuel_price.div(ppl.efficiency)).add(ppl.carrier.map(costs.VOM))
     )
+    """
 
     logger.warning("Mixing of different currencies through fuel price and VOM!")
 
@@ -404,6 +400,20 @@ def attach_conventional_generators(
             len(ppl), ppl.groupby("carrier").p_nom.sum().div(1e3).round(2)
         )
     )
+
+    if fuel_price is not None:
+        fuel_price = fuel_price.assign(
+            OCGT=fuel_price["gas"], CCGT=fuel_price["gas"]
+        ).drop("gas", axis=1)
+        missing_carriers = list(set(carriers) - set(fuel_price))
+        fuel_price = fuel_price.assign(**costs.fuel[missing_carriers])
+        fuel_price = fuel_price.reindex(ppl.carrier, axis=1)
+        fuel_price.columns = ppl.index
+        marginal_cost = fuel_price.div(ppl.efficiency).add(ppl.carrier.map(costs.VOM))
+    else:
+        marginal_cost = (
+            ppl.carrier.map(costs.VOM) + ppl.carrier.map(costs.fuel) / ppl.efficiency
+        )
 
     n.madd(
         "Generator",
@@ -785,17 +795,9 @@ if __name__ == "__main__":
         k: v for k, v in snakemake.input.items() if k.startswith("conventional_")
     }
 
-    logger.warning("Fuel prices in add_electricity hard coded to 2022.")
-    m_fuel_price = pd.read_csv(snakemake.input.fuel_price,
-                               index_col=[0], header=[0])
-    m_fuel_price.index = pd.date_range(start='2022-01-01', end='2022-12-01',
-                                       freq='MS')
-    fuel_price = m_fuel_price.reindex(n.snapshots).fillna(method="ffill")
-
     attach_conventional_generators(
         n,
         costs,
-        fuel_price,
         ppl,
         conventional_carriers,
         extendable_carriers,

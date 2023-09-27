@@ -436,13 +436,12 @@ rule build_renewable_profiles:
     script:
         "../scripts/build_renewable_profiles.py"
 
+
 rule build_fes_constraints:
     input:
         fes_table="data/Data-workbook2022_V006.xlsx",
     output:
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
-        # load_constraints=RESOURCES + "fes_load_constraints_{fes}_{year}.csv",
-        # battery_constraints=RESOURCES + "fes_battery_constraints_{fes}_{year}.csv",
     log:
         LOGS + "build_fes_constraints_{fes}_{year}.log"
     threads: 1

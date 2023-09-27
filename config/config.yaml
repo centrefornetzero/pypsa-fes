@@ -149,8 +149,8 @@ flexibility:
 countries: ['BE', 'DE', 'DK', 'FR', 'GB', 'IE', 'LU', 'NL', 'NO', 'SE']
 
 snapshots:
-  start: "2022-01-01"
-  end: "2023-01-01"
+  start: "2013-01-01"
+  end: "2014-01-01"
   inclusive: 'left' # include start, not end
 
 entsoe_key_file: 'entsoe_api_key.txt' # holds an api token to download from ENTSO-E
