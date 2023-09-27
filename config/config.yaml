@@ -29,13 +29,12 @@ scenario:
   - 'LW' # Leading the Way 
   # - 'ST' # System Transformation
   year: # investment years for myopic and perfect; for overnight, year of cost assumptions can be different and is defined under 'costs'
-  - 2040
+  - 2050
   # - 2025
   # - 2030
   # - 2035
   # - 2040
   flexopts:
-  - reg-ss-bev-heat
   - ''
   # - heat
   # reg  # regular weekly demand flexibility (2 days max), one hour
@@ -44,8 +43,7 @@ scenario:
   opts: # only relevant for PyPSA-Eur
   #- 'ATK'
   #- "100percent" # 100% renewable scenario, balancing through intercons, battery storage, no thermal gen
-  - "cphase" # evaluates the effect on a coal phaseout, Sets the price of coal higher than of gas to prevent base load usage 
-  # - ""
+  - ""
   sector_opts: # this is where the main scenario settings are
   - Co2L0-3H-T-H-B-I-A-solar+p3-dist1
   timeseries_mode:

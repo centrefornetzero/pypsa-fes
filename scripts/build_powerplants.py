@@ -81,7 +81,8 @@ import pandas as pd
 import powerplantmatching as pm
 import pypsa
 from _helpers import configure_logging
-from powerplantmatching.export import map_country_bus
+from powerplantmatching.core import get_obj_if_Acc
+from powerplantmatching.export import map_bus
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +104,13 @@ def replace_natural_gas_technology(df):
     return df.Technology.where(df.Fueltype != "Natural Gas", tech)
 
 
+# def replace_natural_gas_fueltype(df):
+#     return df.Fueltype.where(df.Fueltype != "Natural Gas", df.Technology)
+
 def replace_natural_gas_fueltype(df):
-    return df.Fueltype.where(df.Fueltype != "Natural Gas", df.Technology)
+    return df.Fueltype.mask(
+        (df.Technology == "OCGT") | (df.Technology == "CCGT"), "Natural Gas"
+    )
 
 
 if __name__ == "__main__":
@@ -149,7 +155,37 @@ if __name__ == "__main__":
         logging.warning(f"No powerplants known in: {', '.join(countries_wo_ppl)}")
 
     substations = n.buses.query("substation_lv")
-    ppl = map_country_bus(ppl, substations)
+
+    ppl = get_obj_if_Acc(ppl)
+
+    diff = set(ppl.Country.unique()) - set(substations.country)
+
+    if len(diff):
+        logger.warning(
+            f'Power plants in {", ".join(diff)} cannot be mapped '
+            "because the countries do not appear in `buses`."
+        )
+    
+    res = list()
+    for c in ppl.Country.unique():
+
+        country_ppl = ppl.query("Country == @c")
+        country_sub = substations.query("country == @c")
+
+        drops = country_ppl.loc[country_ppl["lon"].isna()].index
+
+        if len(drops):
+            message = "{}".format(country_ppl.loc[drops, "Name"].values)
+            logger.warning(
+                "dropping powerplants with no location information: \n " + message
+            )
+            country_ppl = country_ppl.drop(drops)
+        
+        country_ppl = get_obj_if_Acc(country_ppl)
+
+        res.append(map_bus(country_ppl, country_sub))
+
+    ppl = pd.concat(res)
 
     bus_null_b = ppl["bus"].isnull()
     if bus_null_b.any():
