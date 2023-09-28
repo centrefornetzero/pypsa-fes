@@ -24,11 +24,11 @@ from collections import namedtuple
 from pypsa import io
 from pypsa import Network
 from pypsa.geo import haversine_pts
-from pypsa.networkclustering import (
+from pypsa.clustering.spatial import (
     Clustering,
     aggregateoneport,
-    _flatten_multiindex,
-    _normed,
+    flatten_multiindex,
+    normed_or_uniform,
     )
 
 
@@ -109,7 +109,7 @@ def aggregategenerators(
         for attr in columns.difference(strategies)
     )
     new_df = generators.groupby(grouper, axis=0).agg(strategies)
-    new_df.index = _flatten_multiindex(new_df.index).rename("name")
+    new_df.index = flatten_multiindex(new_df.index).rename("name")
 
     new_df = pd.concat(
         [
@@ -134,7 +134,7 @@ def aggregategenerators(
                 if attr == "p_max_pu":
                     df_agg = df_agg.multiply(weighting.loc[df_agg.columns], axis=1)
                 pnl_df = df_agg.groupby(grouper, axis=1).sum()
-                pnl_df.columns = _flatten_multiindex(pnl_df.columns).rename("name")
+                pnl_df.columns = flatten_multiindex(pnl_df.columns).rename("name")
                 new_pnl[attr] = pd.concat(
                     [df.loc[:, ~pnl_gens_agg_b], pnl_df], axis=1, sort=False
                 )
@@ -273,7 +273,7 @@ def aggregatelines(network, buses, interlines, line_length_factor=1.0, with_time
                     weighting = network.lines.groupby(linemap).s_nom.apply(_normed)
                     df_agg = df_agg.multiply(weighting.loc[df_agg.columns], axis=1)
                 pnl_df = df_agg.groupby(linemap, axis=1).sum()
-                pnl_df.columns = _flatten_multiindex(pnl_df.columns).rename("name")
+                pnl_df.columns = flatten_multiindex(pnl_df.columns).rename("name")
                 lines_t[attr] = pnl_df
 
     return lines, linemap_p, linemap_n, linemap, lines_t

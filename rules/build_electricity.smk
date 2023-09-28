@@ -471,6 +471,14 @@ rule build_hydro_profile:
 
 
 rule add_electricity:
+    params:
+        length_factor=config["lines"]["length_factor"],
+        scaling_factor=config["load"]["scaling_factor"],
+        countries=config["countries"],
+        renewable=config["renewable"],
+        electricity=config["electricity"],
+        conventional=config["conventional"],
+        costs=config["costs"],
     input:
         **{
             f"profile_{tech}": RESOURCES + f"profile_{tech}.nc"
@@ -506,6 +514,15 @@ rule add_electricity:
 
 
 rule simplify_network:
+    params:
+        simplify_network=config["clustering"]["simplify_network"],
+        aggregation_strategies=config["clustering"].get("aggregation_strategies", {}),
+        focus_weights=config.get("focus_weights", None),
+        renewable_carriers=config["electricity"]["renewable_carriers"],
+        max_hours=config["electricity"]["max_hours"],
+        length_factor=config["lines"]["length_factor"],
+        p_max_pu=config["links"].get("p_max_pu", 1.0),
+        costs=config["costs"],   
     input:
         network=RESOURCES + "networks/elec.nc",
         tech_costs=COSTS,

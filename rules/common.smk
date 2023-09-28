@@ -37,7 +37,7 @@ def solved_previous_horizon(wildcards):
     planning_horizon_p = str(planning_horizons[i - 1])
     return (
         RESULTS
-        + "postnetworks/elec_s{simpl}_{gb_regions}_l{ll}_{opts}_{sector_opts}_"
+        + "postnetworks/elec_s{simpl}_l{ll}_{opts}_{sector_opts}_"
         + planning_horizon_p
         + ".nc"
     )

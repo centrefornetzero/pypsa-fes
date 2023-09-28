@@ -135,12 +135,12 @@ import pyomo.environ as po
 import pypsa
 import seaborn as sns
 from _helpers import configure_logging, get_aggregation_strategies, update_p_nom_max
-from _clustering_helpers import get_clustering_from_busmap
-from pypsa.networkclustering import (
+# from _clustering_helpers import get_clustering_from_busmap
+from pypsa.clustering.spatial import (
     busmap_by_greedy_modularity,
     busmap_by_hac,
     busmap_by_kmeans,
-    # get_clustering_from_busmap,
+    get_clustering_from_busmap,
 )
 
 warnings.filterwarnings(action="ignore", category=UserWarning)

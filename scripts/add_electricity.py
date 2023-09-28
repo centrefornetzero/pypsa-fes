@@ -373,6 +373,7 @@ def attach_conventional_generators(
     extendable_carriers,
     conventional_config,
     conventional_inputs,
+    fuel_price=None,
 ):
     carriers = set(conventional_carriers) | set(extendable_carriers["Generator"])
     _add_missing_carriers_from_costs(n, costs, carriers)
@@ -689,9 +690,8 @@ def estimate_renewable_capacities(n, config):
         return
 
     capacities = pm.data.IRENASTAT().powerplant.convert_country_to_alpha2()
-    logger.warning("Currently Using IRENA renewable potential from 2020!")
     capacities = capacities.query(
-        "Year == 2020 and Technology in @tech_map and Country in @countries"
+        "Year == @year and Technology in @tech_map and Country in @countries"
     )
     capacities = capacities.groupby(["Technology", "Country"]).Capacity.sum()
 

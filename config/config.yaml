@@ -212,9 +212,9 @@ electricity:
   estimate_renewable_capacities:
     enable: true
     # Add capacities from OPSD data
-    from_opsd: true
+    from_opsd: false
     # Renewable capacities are based on existing capacities reported by IRENA
-    year: 2022
+    year: 2020
     # Artificially limit maximum capacities to factor * (IRENA capacities),
     # i.e. 110% of <years>'s capacities => expansion_limit: 1.1
     # false: Use estimated renewable potentials determine by the workflow
