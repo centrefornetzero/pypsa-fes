@@ -32,6 +32,9 @@ if __name__ == "__main__":
     energy_totals.loc["NI"] = (pop_ni / (pop_ie + pop_ni)) * energy_totals.loc["IE"]
     energy_totals.loc["IE"] = (pop_ie / (pop_ie + pop_ni)) * energy_totals.loc["IE"]
 
+    print("pop_layout", pop_layout)
+    print("energy_totals", energy_totals)
+
     nodal_energy_totals = energy_totals.loc[pop_layout.ct].fillna(0.0)
     nodal_energy_totals.index = pop_layout.index
     nodal_energy_totals = nodal_energy_totals.multiply(pop_layout.fraction, axis=0)

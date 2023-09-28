@@ -81,10 +81,10 @@ rule build_clustered_population_layouts:
         pop_layout_total=RESOURCES + "pop_layout_total.nc",
         pop_layout_urban=RESOURCES + "pop_layout_urban.nc",
         pop_layout_rural=RESOURCES + "pop_layout_rural.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_eso.csv",
     log:
         LOGS + "build_clustered_population_layouts_{simpl}.log",
     resources:
@@ -100,9 +100,9 @@ rule build_clustered_population_layouts:
 rule build_population_weighted_energy_totals:
     input:
         energy_totals=RESOURCES + "energy_totals.csv",
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_eso.csv",
     output:
-        RESOURCES + "pop_weighted_energy_totals_s{simpl}.csv",
+        RESOURCES + "pop_weighted_energy_totals_s{simpl}_eso.csv",
     threads: 1
     resources:
         mem_mb=2000,
@@ -116,9 +116,9 @@ rule build_population_weighted_energy_totals:
 
 rule build_transport_demand:
     input:
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_c.csv",
         pop_weighted_energy_totals=RESOURCES
-        + "pop_weighted_energy_totals_s{simpl}.csv",
+        + "pop_weighted_energy_totals_s{simpl}_eso.csv",
         transport_data=RESOURCES + "transport_data.csv",
         traffic_data_KFZ="data/emobility/KFZ__count",
         traffic_data_Pkw="data/emobility/Pkw__count",
@@ -496,6 +496,7 @@ rule add_electricity:
         powerplants=RESOURCES + "powerplants.csv",
         hydro_capacities=ancient("data/bundle/hydro_capacities.csv"),
         geth_hydro_capacities="data/geth2015_hydro_capacities.csv",
+        unit_commitment="data/unit_commitment.csv",
         load=RESOURCES + "load.csv",
         nuts3_shapes=RESOURCES + "nuts3_shapes.geojson",
     output:
@@ -553,18 +554,18 @@ rule cluster_network:
         # network=RESOURCES + "networks/elec.nc",
         # regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
         # regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
-        # busmap = "data/custom_busmap_elec_s{simpl}_{gb_regions}.csv",
+        busmap = "data/custom_busmap_elec_s{simpl}_eso.csv",
         # network=RESOURCES + "networks/elec.nc",
-        regions_onshore=RESOURCES + "regions_onshore.geojson",
-        regions_offshore=RESOURCES + "regions_offshore.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_s{simpl}.geojson",
+        regions_offshore=RESOURCES + "regions_offshore_s{simpl}.geojson",
         target_regions_onshore="data/regions_onshore.geojson",
         tech_costs=COSTS,
     output:
-        network=RESOURCES + "networks/elec_s{simpl}.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
-        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
-        busmap=RESOURCES + "busmap_elec_s{simpl}.csv",
-        linemap=RESOURCES + "linemap_elec_s{simpl}.csv",
+        network=RESOURCES + "networks/elec_s{simpl}_eso.nc",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
+        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}_eso.geojson",
+        busmap=RESOURCES + "busmap_elec_s{simpl}_eso.csv",
+        linemap=RESOURCES + "linemap_elec_s{simpl}_eso.csv",
     log:
         LOGS + "cluster_network/elec_s{simpl}.log",
     benchmark:
@@ -580,10 +581,10 @@ rule cluster_network:
 
 rule add_extra_components:
     input:
-        network=RESOURCES + "networks/elec_s{simpl}.nc",
+        network=RESOURCES + "networks/elec_s{simpl}_eso.nc",
         tech_costs=COSTS,
     output:
-        RESOURCES + "networks/elec_s{simpl}_ec.nc",
+        RESOURCES + "networks/elec_s{simpl}_eso_ec.nc",
     log:
         LOGS + "add_extra_components/elec_s{simpl}.log",
     benchmark:
@@ -599,16 +600,16 @@ rule add_extra_components:
 
 rule prepare_network:
     input:
-        RESOURCES + "networks/elec_s{simpl}_ec.nc",
+        RESOURCES + "networks/elec_s{simpl}_ec_eso.nc",
         overrides="data/override_component_attrs",
         tech_costs=COSTS,
         biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}.csv",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_c.csv",
         heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}.nc",
         cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}.nc",
-        energy_totals=RESOURCES + "pop_weighted_energy_totals_s{simpl}.csv",
+        energy_totals=RESOURCES + "pop_weighted_energy_totals_s{simpl}_eso.csv",
         transport_demand=RESOURCES + "transport_demand_s{simpl}.csv",
         transport_data=RESOURCES + "transport_data_s{simpl}.csv",
         avail_profile=RESOURCES + "avail_profile_s{simpl}.csv",
