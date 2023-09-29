@@ -565,7 +565,7 @@ rule cluster_network:
         network=RESOURCES + "networks/elec_s{simpl}_eso.nc",
         regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}_eso.geojson",
-        busmap=RESOURCES + "busmap_elec_s{simpl}_eso.csv",
+        # busmap=RESOURCES + "busmap_elec_s{simpl}_eso.csv",
         linemap=RESOURCES + "linemap_elec_s{simpl}_eso.csv",
     log:
         LOGS + "cluster_network/elec_s{simpl}.log",
