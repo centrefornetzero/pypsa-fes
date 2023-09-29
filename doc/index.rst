@@ -35,10 +35,14 @@ PyPSA-Eur: A Sector-Coupled Open Optimisation Model of the European Energy Syste
    :target: https://stackoverflow.com/questions/tagged/pypsa
    :alt: Stackoverflow
 
-PyPSA-Eur is an open model dataset of the European energy system at the
-transmission network level that covers the full ENTSO-E area. It covers demand
-and supply for all energy sectors. From version v0.8.0, PyPSA-Eur includes all
-the features from PyPSA-Eur-Sec, which is now deprecated.
+PyPSA-FES is an open model of the Great Britain Power System to
+simulate *Future Energy Scenarios* (FES) from National Grid ESO.
+The model includes options to include different domestic demand
+flexibility options, in particular *Demand Flexibility Service*-style events,
+electric vehicles with or without vehicle-to-grid, and and heat pumps.
+
+The model is an adaption of PyPSA-Eur, a highly popular open-source
+European energy system model, developed at TU Berlin.
 
 Electricity System
 ==================

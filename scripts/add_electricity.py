@@ -227,7 +227,6 @@ def load_costs(tech_costs, config, max_hours, Nyears=1.0):
             dict(capital_cost=capital_cost, marginal_cost=0.0, co2_emissions=0.0)
         )
 
-    print(max_hours)
     costs.loc["battery"] = costs_for_storage(
         costs.loc["battery storage"],
         costs.loc["battery inverter"],
