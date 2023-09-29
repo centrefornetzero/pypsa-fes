@@ -36,11 +36,11 @@ rule build_electricity_demand:
 rule build_temperature_profiles:
     input:
         pop_layout=RESOURCES + "pop_layout_{scope}.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
-        temp_soil=RESOURCES + "temp_soil_{scope}_elec_s{simpl}.nc",
-        temp_air=RESOURCES + "temp_air_{scope}_elec_s{simpl}.nc",
+        temp_soil=RESOURCES + "temp_soil_{scope}_elec_s{simpl}_eso.nc",
+        temp_air=RESOURCES + "temp_air_{scope}_elec_s{simpl}_eso.nc",
     resources:
         mem_mb=20000,
     threads: 8
@@ -116,19 +116,19 @@ rule build_population_weighted_energy_totals:
 
 rule build_transport_demand:
     input:
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_c.csv",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_eso.csv",
         pop_weighted_energy_totals=RESOURCES
         + "pop_weighted_energy_totals_s{simpl}_eso.csv",
         transport_data=RESOURCES + "transport_data.csv",
         traffic_data_KFZ="data/emobility/KFZ__count",
         traffic_data_Pkw="data/emobility/Pkw__count",
-        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}.nc",
+        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}_eso.nc",
         fes_data="data/Data-workbook2022_V006.xlsx",
     output:
-        transport_demand=RESOURCES + "transport_demand_s{simpl}.csv",
-        transport_data=RESOURCES + "transport_data_s{simpl}.csv",
-        avail_profile=RESOURCES + "avail_profile_s{simpl}.csv",
-        dsm_profile=RESOURCES + "dsm_profile_s{simpl}.csv",
+        transport_demand=RESOURCES + "transport_demand_s{simpl}_eso.csv",
+        transport_data=RESOURCES + "transport_data_s{simpl}_eso.csv",
+        avail_profile=RESOURCES + "avail_profile_s{simpl}_eso.csv",
+        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_eso.csv",
     threads: 1
     resources:
         mem_mb=2000,
@@ -144,11 +144,11 @@ rule build_heat_demands:
     input:
         # pop_layout=RESOURCES + "pop_layout_{scope}.nc",
         pop_layout=RESOURCES + "pop_layout_total.nc",
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
         # heat_demand=RESOURCES + "heat_demand_{scope}_elec_s{simpl}_{gb_regions}.nc",
-        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}.nc",
+        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_eso.nc",
     resources:
         mem_mb=20000,
     threads: 8
@@ -166,19 +166,19 @@ rule build_heat_demands:
 
 rule build_cop_profiles:
     input:
-        temp_soil_total=RESOURCES + "temp_soil_total_elec_s{simpl}.nc",
-        temp_soil_rural=RESOURCES + "temp_soil_rural_elec_s{simpl}.nc",
-        temp_soil_urban=RESOURCES + "temp_soil_urban_elec_s{simpl}.nc",
-        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}.nc",
-        temp_air_rural=RESOURCES + "temp_air_rural_elec_s{simpl}.nc",
-        temp_air_urban=RESOURCES + "temp_air_urban_elec_s{simpl}.nc",
+        temp_soil_total=RESOURCES + "temp_soil_total_elec_s{simpl}_eso.nc",
+        temp_soil_rural=RESOURCES + "temp_soil_rural_elec_s{simpl}_eso.nc",
+        temp_soil_urban=RESOURCES + "temp_soil_urban_elec_s{simpl}_eso.nc",
+        temp_air_total=RESOURCES + "temp_air_total_elec_s{simpl}_eso.nc",
+        temp_air_rural=RESOURCES + "temp_air_rural_elec_s{simpl}_eso.nc",
+        temp_air_urban=RESOURCES + "temp_air_urban_elec_s{simpl}_eso.nc",
     output:
-        cop_soil_total=RESOURCES + "cop_soil_total_elec_s{simpl}.nc",
-        cop_soil_rural=RESOURCES + "cop_soil_rural_elec_s{simpl}.nc",
-        cop_soil_urban=RESOURCES + "cop_soil_urban_elec_s{simpl}.nc",
-        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}.nc",
-        cop_air_rural=RESOURCES + "cop_air_rural_elec_s{simpl}.nc",
-        cop_air_urban=RESOURCES + "cop_air_urban_elec_s{simpl}.nc",
+        cop_soil_total=RESOURCES + "cop_soil_total_elec_s{simpl}_eso.nc",
+        cop_soil_rural=RESOURCES + "cop_soil_rural_elec_s{simpl}_eso.nc",
+        cop_soil_urban=RESOURCES + "cop_soil_urban_elec_s{simpl}_eso.nc",
+        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_eso.nc",
+        cop_air_rural=RESOURCES + "cop_air_rural_elec_s{simpl}_eso.nc",
+        cop_air_urban=RESOURCES + "cop_air_urban_elec_s{simpl}_eso.nc",
     resources:
         mem_mb=20000,
     log:
@@ -554,11 +554,12 @@ rule cluster_network:
         # network=RESOURCES + "networks/elec.nc",
         # regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
         # regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
-        busmap = "data/custom_busmap_elec_s{simpl}_eso.csv",
+        busmap=RESOURCES + "busmap_elec_s{simpl}_eso.csv",
         # network=RESOURCES + "networks/elec.nc",
         regions_onshore=RESOURCES + "regions_onshore_s{simpl}.geojson",
         regions_offshore=RESOURCES + "regions_offshore_s{simpl}.geojson",
-        target_regions_onshore="data/regions_onshore.geojson",
+        # target_regions_onshore="data/regions_onshore.geojson",
+        target_regions_onshore=RESOURCES + "regions_onshore.geojson",
         tech_costs=COSTS,
     output:
         network=RESOURCES + "networks/elec_s{simpl}_eso.nc",
@@ -606,14 +607,14 @@ rule prepare_network:
         biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}.csv",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",
-        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_c.csv",
-        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}.nc",
-        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}.nc",
+        clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_eso.csv",
+        heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_eso.nc",
+        cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_eso.nc",
         energy_totals=RESOURCES + "pop_weighted_energy_totals_s{simpl}_eso.csv",
-        transport_demand=RESOURCES + "transport_demand_s{simpl}.csv",
-        transport_data=RESOURCES + "transport_data_s{simpl}.csv",
-        avail_profile=RESOURCES + "avail_profile_s{simpl}.csv",
-        dsm_profile=RESOURCES + "dsm_profile_s{simpl}.csv",
+        transport_demand=RESOURCES + "transport_demand_s{simpl}_eso.csv",
+        transport_data=RESOURCES + "transport_data_s{simpl}_eso.csv",
+        avail_profile=RESOURCES + "avail_profile_s{simpl}_eso.csv",
+        dsm_profile=RESOURCES + "dsm_profile_s{simpl}_eso.csv",
         fes_table="data/Data-workbook2022_V006.xlsx",
         fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
     output:
