@@ -596,7 +596,7 @@ rule add_extra_components:
 
 rule prepare_network:
     input:
-        RESOURCES + "networks/elec_s{simpl}_ec_eso.nc",
+        RESOURCES + "networks/elec_s{simpl}_eso_ec.nc",
         overrides="data/override_component_attrs",
         tech_costs=COSTS,
         biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}.csv",

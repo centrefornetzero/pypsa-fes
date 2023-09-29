@@ -83,7 +83,7 @@ from _fes_helpers import (
     get_battery_capacity,
     get_industrial_demand,
     get_commercial_demand,
-    ) 
+    )
 
 from pypsa.descriptors import expand_series
 
