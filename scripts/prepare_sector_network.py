@@ -19,7 +19,7 @@ import pypsa
 import xarray as xr
 from _helpers import (
     generate_periodic_profiles,
-    override_component_attrs,
+    # override_component_attrs,
     update_config_with_sector_opts,
 )
 from add_electricity import calculate_annuity

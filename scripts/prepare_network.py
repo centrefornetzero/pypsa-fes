@@ -69,7 +69,7 @@ from itertools import product
 from _helpers import (
     configure_logging,
     generate_periodic_profiles,
-    override_component_attrs,
+    # override_component_attrs,
 )
 from add_electricity import load_costs, update_transmission_costs, calculate_annuity
 from prepare_sector_network import cycling_shift, prepare_costs
@@ -315,8 +315,12 @@ def scale_generation_capacity(n, capacity_file, opts):
     )
 
     gb_gen = n.generators.loc[n.generators.bus.str.contains("GB")]
+    print("gb_gen", gb_gen)
 
     for fes_gen, target in generation_mapper.items():
+
+        print("=========================")
+        print(fes_gen, target)
 
         if fes_gen not in constraints.index:
             logger.info(f"Carrier {target} not in constraints; Skipping...")
@@ -1316,8 +1320,10 @@ if __name__ == "__main__":
     if "100percent" in opts:
         logger.warning("Running 100 percent renewable system.")
 
-    overrides = override_component_attrs(snakemake.input.overrides)
-    n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
+    # overrides = override_component_attrs(snakemake.input.overrides)
+    # n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
+    # n = pypsa.Network(snakemake.input[0], override_component_attrs=snakemake.input.overrides)
+    n = pypsa.Network(snakemake.input[0])
 
     fes = snakemake.wildcards.fes
     year = snakemake.wildcards.year

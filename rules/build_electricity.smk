@@ -487,16 +487,23 @@ rule add_electricity:
         **{
             f"conventional_{carrier}_{attr}": fn
             for carrier, d in config.get("conventional", {None: {}}).items()
+            if carrier in config["electricity"]["conventional_carriers"]
             for attr, fn in d.items()
             if str(fn).startswith("data/")
         },
         base_network=RESOURCES + "networks/base.nc",
+        line_rating=RESOURCES + "networks/line_rating.nc"
+        if config["lines"]["dynamic_line_rating"]["activate"]
+        else RESOURCES + "networks/base.nc",
         tech_costs=COSTS,
         regions=RESOURCES + "regions_onshore.geojson",
         powerplants=RESOURCES + "powerplants.csv",
         hydro_capacities=ancient("data/bundle/hydro_capacities.csv"),
         geth_hydro_capacities="data/geth2015_hydro_capacities.csv",
         unit_commitment="data/unit_commitment.csv",
+        fuel_price=RESOURCES + "monthly_fuel_price.csv"
+        if config["conventional"]["dynamic_fuel_price"]
+        else [],
         load=RESOURCES + "load.csv",
         nuts3_shapes=RESOURCES + "nuts3_shapes.geojson",
     output:
@@ -507,7 +514,7 @@ rule add_electricity:
         BENCHMARKS + "add_electricity"
     threads: 1
     resources:
-        mem_mb=5000,
+        mem_mb=10000,
     conda:
         "../envs/environment.yaml"
     script:

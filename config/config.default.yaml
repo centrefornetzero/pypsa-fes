@@ -344,6 +344,8 @@ renewable:
     clip_min_inflow: 1.0
 
 conventional:
+  unit_commitment: false
+  dynamic_fuel_price: false
   nuclear:
     p_max_pu: "data/nuclear_p_max_pu.csv" # float of file name
 
@@ -356,6 +358,12 @@ lines:
   s_nom_max: .inf
   length_factor: 1.25
   under_construction: 'zero' # 'zero': set capacity to zero, 'remove': remove, 'keep': with full capacity
+  dynamic_line_rating:
+    activate: false
+    cutout: europe-2013-era5
+    correction_factor: 0.95
+    max_voltage_difference: false
+    max_line_rating: false
 
 links:
   p_max_pu: 1.0
