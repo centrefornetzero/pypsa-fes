@@ -551,21 +551,16 @@ rule simplify_network:
 rule cluster_network:
     input:
         network=RESOURCES + "networks/elec_s{simpl}.nc",
-        # network=RESOURCES + "networks/elec.nc",
-        # regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
-        # regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
-        busmap=RESOURCES + "busmap_elec_s{simpl}_eso.csv",
-        # network=RESOURCES + "networks/elec.nc",
-        regions_onshore=RESOURCES + "regions_onshore_s{simpl}.geojson",
-        regions_offshore=RESOURCES + "regions_offshore_s{simpl}.geojson",
-        # target_regions_onshore="data/regions_onshore.geojson",
-        target_regions_onshore=RESOURCES + "regions_onshore.geojson",
+        busmap="data/custom_busmap_elec_eso.csv",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
+        target_regions_onshore="data/regions_onshore_eso.geojson",
         tech_costs=COSTS,
     output:
         network=RESOURCES + "networks/elec_s{simpl}_eso.nc",
         regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}_eso.geojson",
-        # busmap=RESOURCES + "busmap_elec_s{simpl}_eso.csv",
+        busmap=RESOURCES + "busmap_elec_s{simpl}_eso.csv",
         linemap=RESOURCES + "linemap_elec_s{simpl}_eso.csv",
     log:
         LOGS + "cluster_network/elec_s{simpl}.log",
