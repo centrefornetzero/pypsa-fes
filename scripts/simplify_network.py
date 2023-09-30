@@ -521,7 +521,6 @@ def cluster(
         feature=feature,
         focus_weights=focus_weights,
     )
-
     return clustering.network, clustering.busmap
 
 
