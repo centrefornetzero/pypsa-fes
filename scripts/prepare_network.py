@@ -315,12 +315,8 @@ def scale_generation_capacity(n, capacity_file, opts):
     )
 
     gb_gen = n.generators.loc[n.generators.bus.str.contains("GB")]
-    print("gb_gen", gb_gen)
 
     for fes_gen, target in generation_mapper.items():
-
-        print("=========================")
-        print(fes_gen, target)
 
         if fes_gen not in constraints.index:
             logger.info(f"Carrier {target} not in constraints; Skipping...")
@@ -476,20 +472,12 @@ def add_heat_pump_load(
         .reindex(index=n.snapshots, method="ffill")
     )
 
-    # gb_regions = [col for col in daily_space_heat_demand if "GB" in col]
     gb_regions = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
     gb_regions = n.buses.loc[gb_regions].loc[n.buses.loc[gb_regions].carrier == "AC"].index
-
-    print("\ngb_regions", gb_regions)
-    print("\ndaily_space_heat_demand", daily_space_heat_demand)
 
     daily_space_heat_demand = daily_space_heat_demand[gb_regions]
 
     pop_weighted_energy_totals = pd.read_csv(energy_totals_file, index_col=0)
-
-    print("\npop_weighted_energy_totals", pop_weighted_energy_totals)
-
-    print("\nn loads", n.loads.index)
 
     sectors = ["residential"]
     uses = ["water", "space"]
@@ -1330,9 +1318,6 @@ if __name__ == "__main__":
     if "100percent" in opts:
         logger.warning("Running 100 percent renewable system.")
 
-    # overrides = override_component_attrs(snakemake.input.overrides)
-    # n = pypsa.Network(snakemake.input[0], override_component_attrs=overrides)
-    # n = pypsa.Network(snakemake.input[0], override_component_attrs=snakemake.input.overrides)
     n = pypsa.Network(snakemake.input[0])
 
     fes = snakemake.wildcards.fes
