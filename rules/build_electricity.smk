@@ -198,7 +198,7 @@ rule build_biomass_potentials:
             keep_local=True,
         ),
         nuts2="data/nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson",  # https://gisco-services.ec.europa.eu/distribution/v2/nuts/download/#nuts21
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         nuts3_population=ancient("data/bundle/nama_10r_3popgdp.tsv.gz"),
         swiss_cantons=ancient("data/bundle/ch_cantons.csv"),
         swiss_population=ancient("data/bundle/je-e-21.03.02.xls"),
@@ -206,7 +206,7 @@ rule build_biomass_potentials:
     output:
         biomass_potentials_all=RESOURCES
         + "biomass_potentials_all_s{simpl}.csv",
-        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}.csv",
+        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_eso.csv",
     threads: 1
     resources:
         mem_mb=1000,
@@ -558,7 +558,7 @@ rule simplify_network:
 rule cluster_network:
     input:
         network=RESOURCES + "networks/elec_s{simpl}.nc",
-        busmap="data/custom_busmap_elec_eso.csv",
+        busmap="data/custom_busmap_elec_s_eso.csv",
         regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}.geojson",
         regions_offshore=RESOURCES + "regions_offshore_elec_s{simpl}.geojson",
         target_regions_onshore="data/regions_onshore_eso.geojson",
@@ -606,7 +606,7 @@ rule prepare_network:
         RESOURCES + "networks/elec_s{simpl}_eso_ec.nc",
         overrides="data/override_component_attrs",
         tech_costs=COSTS,
-        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}.csv",
+        biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_eso.csv",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",
         clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_eso.csv",

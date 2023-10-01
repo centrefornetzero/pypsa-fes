@@ -476,10 +476,20 @@ def add_heat_pump_load(
         .reindex(index=n.snapshots, method="ffill")
     )
 
-    gb_regions = [col for col in daily_space_heat_demand if "GB" in col]
+    # gb_regions = [col for col in daily_space_heat_demand if "GB" in col]
+    gb_regions = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
+    gb_regions = n.buses.loc[gb_regions].loc[n.buses.loc[gb_regions].carrier == "AC"].index
+
+    print("\ngb_regions", gb_regions)
+    print("\ndaily_space_heat_demand", daily_space_heat_demand)
+
     daily_space_heat_demand = daily_space_heat_demand[gb_regions]
 
     pop_weighted_energy_totals = pd.read_csv(energy_totals_file, index_col=0)
+
+    print("\npop_weighted_energy_totals", pop_weighted_energy_totals)
+
+    print("\nn loads", n.loads.index)
 
     sectors = ["residential"]
     uses = ["water", "space"]
@@ -534,7 +544,7 @@ def add_heat_pump_load(
     )
 
     gb_nodes = heat_demand.columns
-    
+
     hp_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
 
     n.madd(
@@ -1334,7 +1344,7 @@ if __name__ == "__main__":
     elec_costs = load_costs(
         snakemake.input.tech_costs,
         snakemake.config["costs"],
-        snakemake.config["electricity"],
+        snakemake.config["electricity"]["max_hours"],
         Nyears,
     )
 
@@ -1476,23 +1486,6 @@ if __name__ == "__main__":
                 add_gaslimit(n, snakemake.config["electricity"].get("gaslimit"), Nyears)
                 logger.info("Setting gas usage limit according to config value.")
             break
-
-    for o in opts:
-        oo = o.split("+")
-        suptechs = map(lambda c: c.split("-", 2)[0], n.carriers.index)
-        if oo[0].startswith(tuple(suptechs)):
-            carrier = oo[0]
-            # handles only p_nom_max as stores and lines have no potentials
-            attr_lookup = {"p": "p_nom_max", "c": "capital_cost", "m": "marginal_cost"}
-            attr = attr_lookup[oo[1][0]]
-            factor = float(oo[1][1:])
-            if carrier == "AC":  # lines do not have carrier
-                n.lines[attr] *= factor
-            else:
-                comps = {"Generator", "Link", "StorageUnit", "Store"}
-                for c in n.iterate_components(comps):
-                    sel = c.df.carrier.str.contains(carrier)
-                    c.df.loc[sel, attr] *= factor
 
     for o in opts:
         if "Ep" in o:
