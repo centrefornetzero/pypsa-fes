@@ -542,8 +542,7 @@ if __name__ == "__main__":
     technology_costs = load_costs(
         snakemake.input.tech_costs,
         params.costs,
-        params.max_hours,
-        # params,
+        snakemake.config["electricity"]["max_hours"],
         Nyears,
     )
 

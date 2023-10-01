@@ -536,7 +536,7 @@ if __name__ == "__main__":
         hvac_overhead_cost = load_costs(
             snakemake.input.tech_costs,
             snakemake.config["costs"],
-            snakemake.config["electricity"],
+            snakemake.config["electricity"]["max_hours"],
             Nyears,
         ).at["HVAC overhead", "capital_cost"]
 
