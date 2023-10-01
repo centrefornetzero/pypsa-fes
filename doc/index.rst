@@ -1,23 +1,18 @@
 ..
-  SPDX-FileCopyrightText: 2019-2023 The PyPSA-Eur Authors
+  SPDX-FileCopyrightText: 2019-2023 The PyPSA-Eur Authors, Lukas Franken
 
   SPDX-License-Identifier: CC-BY-4.0
 
-##################################################################################
-PyPSA-Eur: A Sector-Coupled Open Optimisation Model of the European Energy System
-##################################################################################
+####################################################################################
+PyPSA-FES: A Linear Optimisation Model to Simulate Great Britain's Energy Transition
+####################################################################################
 
-.. image:: https://img.shields.io/github/v/release/pypsa/pypsa-eur?include_prereleases
-    :alt: GitHub release (latest by date including pre-releases)
-
-.. image:: https://github.com/pypsa/pypsa-eur/actions/workflows/ci.yaml/badge.svg
-    :target: https://github.com/PyPSA/pypsa-eur/actions
-
-.. image:: https://readthedocs.org/projects/pypsa-eur/badge/?version=latest
-    :target: https://pypsa-eur.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/pypsa-fes/badge/?version=latest
+    :target: https://pypsa-fes.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation
 
-.. image:: https://img.shields.io/github/repo-size/pypsa/pypsa-eur
+
+.. image:: https://img.shields.io/github/repo-size/LukasFrankenQ/pypsa-fes
     :alt: GitHub repo size
 
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3520874.svg
@@ -27,13 +22,9 @@ PyPSA-Eur: A Sector-Coupled Open Optimisation Model of the European Energy Syste
     :target: https://snakemake.readthedocs.io
     :alt: Snakemake
 
-.. image:: https://api.reuse.software/badge/github.com/pypsa/pypsa-eur
-    :target: https://api.reuse.software/info/github.com/pypsa/pypsa-eur
+.. image:: https://api.reuse.software/badge/github.com/LukasFrankenQ/pypsa-fes
+    :target: https://api.reuse.software/info/github.com/LukasFrankenQ/pypsa-fes
     :alt: REUSE
-
-.. image:: https://img.shields.io/stackexchange/stackoverflow/t/pypsa
-   :target: https://stackoverflow.com/questions/tagged/pypsa
-   :alt: Stackoverflow
 
 PyPSA-FES is an open model of the Great Britain Power System to
 simulate *Future Energy Scenarios* (FES) from National Grid ESO.
@@ -41,97 +32,82 @@ The model includes options to include different domestic demand
 flexibility options, in particular *Demand Flexibility Service*-style events,
 electric vehicles with or without vehicle-to-grid, and and heat pumps.
 
-The model is an adaption of PyPSA-Eur, a highly popular open-source
-European energy system model, developed at TU Berlin.
+The model is an adaption of `PyPSA-Eur <https://github.com/pypsa/pypsa-eur>`_, 
+a highly popular open-source European energy system model, developed
+at Technical University of Berlin.
 
-Electricity System
-==================
+Modelling the GB Electricity System
+===================================
 
-The electricity system representation contains alternating current lines at
+Our modelling of the power system directly uses the data pipeline of the underlying
+PyPSA-Eur model. It contains alternating current lines at
 and above 220 kV voltage level and all high voltage direct current lines,
 substations, an open database of conventional power plants, time series for
 electrical demand and variable renewable generator availability, geographic
 potentials for the expansion of wind and solar power.
 
-The model is suitable both for operational studies and generation and
-transmission expansion planning studies. The continental scope and highly
-resolved spatial scale enables a proper description of the long-range smoothing
-effects for renewable power generation and their varying resource availability.
+We model Great Britain in *16 zones* targeted at capturing bottlenecks in the
+transmission network. For demand, we take yearly profiles from ENTSO-E, 
+scaled to estimated yearly total demands.
 
-.. image:: img/elec.png
+The model formulation lends itself both to operational studies and generation and
+transmission expansion planning studies.
+
+.. image:: img/fes_capacity_expansion.png
     :width: 70%
     :align: center
 
 |
 
-Sector-Coupled Energy System
-============================
+Future Energy Scenarios
+=======================
 
-A sector-coupled extension (previously known as **PyPSA-Eur-Sec**, which is now
-deprecated) adds demand and supply for the following sectors: transport, space
-and water heating, biomass, energy consumption in the agriculture, industry and
-industrial feedstocks, carbon management, carbon capture and
-usage/sequestration. This completes the energy system and includes all
-greenhouse gas emitters except waste management, agriculture, forestry and land
-use. The diagram below gives an overview of the sectors and the links between
-them:
+To model future years, we draw on the predicted energy transition scenarios
+created by national grid ESO, *Future Energy Scenarios* (FES). These model
+different sector-coupled pathways to net-zero emissions by 2050, lining out 
+(among two others) one optimistic, *Leading the Way*, and one more conservative,
+*Falling Short* scenario.
 
-.. image:: ../graphics/multisector_figure.png
+To accomodate both the cost-optimisation backbone of our model, also the fixed
+quantities that define the scenarios, *we fix all capacities in the model that
+can be loosely defined as targets*, and leave it to the model to optimize the
+quantities that are required to balance the system.
+
+For instance, we fix the total installed capacity of wind and solar power
+(just the overall capacity, the model decides how to distribute it), the total
+total yearly emission targets, and rollout for flexibility providing 
+infrastructure, like electric vehicles and heat pumps.
+
+The Future Energy Scenarios consider a sector coupled version of the energy
+system, and aims at achieving net-zero emissions within the next decades.
+Due to the electrification of the transport and heating sector, negative
+emissions targeted in this easy-to-abate sector, and fuel competition 
+with other sectors, for instance with biomass, the constraints imposed by
+integration in the larger system are included in the model.
+
+This flowchart shows all energy flows considered.
+
+.. image:: img/pypsa_fes_flowchart.png
     :width: 70%
     :align: center
 
-.. note::
-    You can find showcases of the model's capabilities in the Supplementary Materials of the
-    preprint `Benefits of a Hydrogen Network in Europe
-    <https://arxiv.org/abs/2207.05816>`_, the Supplementary Materials of the `paper in Joule with a
-    description of the industry sector
-    <https://arxiv.org/abs/2109.09563>`_, or in `a 2021 presentation
-    at EMP-E <https://nworbmot.org/energy/brown-empe.pdf>`_.
-    The sector-coupled extension of PyPSA-Eur was
-    initially described in the paper `Synergies of sector coupling and transmission
-    reinforcement in a cost-optimised, highly renewable European energy system
-    <https://arxiv.org/abs/1801.05290>`_ (2018) but it differs by being based on the
-    higher resolution electricity transmission model `PyPSA-Eur
-    <https://github.com/PyPSA/pypsa-eur>`_ rather than a one-node-per-country model,
-    and by including biomass, industry, industrial feedstocks, aviation, shipping,
-    better carbon management, carbon capture and usage/sequestration, and gas
-    networks.
 
-About
-=====
+The Origin Model PyPSA-Eur
+==========================
 
-PyPSA-Eur is designed to be imported into the open energy system modelling
-framework `PyPSA <https://www.pypsa.org>`_ for which `documentation
-<https://pypsa.readthedocs.io>`_ is available as well. However, since the
-workflow is modular, it should be easy to adapt the data workflow to other
-modelling frameworks.
-
-The restriction to freely available and open data encourages the open exchange
-of model data developments and eases the comparison of model results. It
-provides a full, automated software pipeline to assemble the load-flow-ready
-model from the original datasets, which enables easy replacement and improvement
-of the individual parts.
+PyPSA-Eur a sector-coupled energy system covering the whole of Europe.
+For a great overview of the respective capabilities we refer to the
+model's `documentation <https://pypsa.readthedocs.io>`_ or the 
+Github `repository <https://github.com/pypsa/pypsa-eur>`_.
 
 .. warning::
-    PyPSA-Eur is under active development and has several
+    PyPSA-FES is under active development and has several
     :doc:`limitations` which
-    you should understand before using the model. The Github repository
-    `issues <https://github.com/PyPSA/pypsa-eur/issues>`_ collect known
-    topics we are working on. Please feel free to help or make suggestions.
+    you should understand before using the model. In case questions arise,
+    please reach out to **lukas.franken@ed.ac.uk**.
 
-This project is currently maintained by the `Department of Digital
-Transformation in Energy Systems <https:/www.ensys.tu-berlin.de>`_ at the
-`Technische Universität Berlin <https://www.tu.berlin>`_. Previous versions were
-developed within the `IAI <http://www.iai.kit.edu>`_ at the `Karlsruhe Institute
-of Technology (KIT) <http://www.kit.edu/english/index.php>`_ which was funded by
-the `Helmholtz Association <https://www.helmholtz.de/en/>`_, and by the
-`Renewable Energy Group
-<https://fias.uni-frankfurt.de/physics/schramm/renewable-energy-system-and-network-analysis/>`_
-at `FIAS <https://fias.uni-frankfurt.de/>`_ to carry out simulations for the
-`CoNDyNet project <http://condynet.de/>`_, financed by the `German Federal
-Ministry for Education and Research (BMBF) <https://www.bmbf.de/en/index.html>`_
-as part of the `Stromnetze Research Initiative
-<http://forschung-stromnetze.info/projekte/grundlagen-und-konzepte-fuer-effiziente-dezentrale-stromnetze/>`_.
+This project is currently maintained by  `Centre for Net Zero of Octopus 
+Energy  <https://www.centrefornetzero.org>`_ in London.
 
 
 Workflow
@@ -161,75 +137,6 @@ to reading this documentation.
   given at Technical University of Berlin by `Dr. Fabian Neumann <https://neumann.fyi>`_.
 
 
-Citing PyPSA-Eur
-================
-
-If you use PyPSA-Eur for your research, we would appreciate it if you would cite one of the following papers:
-
-For electricity-only studies: ::
-
-    @article{PyPSAEur,
-        author = "Jonas Hoersch and Fabian Hofmann and David Schlachtberger and Tom Brown",
-        title = "PyPSA-Eur: An open optimisation model of the European transmission system",
-        journal = "Energy Strategy Reviews",
-        volume = "22",
-        pages = "207--215",
-        year = "2018",
-        doi = "10.1016/j.esr.2018.08.012",
-        eprint = "1806.01613"
-    }
-
-For sector-coupling studies: ::
-
-    @misc{PyPSAEurSec,
-        author = "Fabian Neumann and Elisabeth Zeyen and Marta Victoria and Tom Brown",
-        title = "The Potential Role of a Hydrogen Network in Europe",
-        year = "2022",
-        eprint = "2207.05816",
-        url = "https://arxiv.org/abs/2207.05816",
-    }
-
-For sector-coupling studies with pathway optimisation: ::
-
-    @article{SpeedTechnological2022,
-        title = "Speed of technological transformations required in {Europe} to achieve different climate goals",
-        author = "Marta Victoria and Elisabeth Zeyen and Tom Brown",
-        journal = "Joule",
-        volume = "6",
-        number = "5",
-        pages = "1066--1086",
-        year = "2022",
-        doi = "10.1016/j.joule.2022.04.016",
-        eprint = "2109.09563",
-    }
-
-
-If you want to cite a specific PyPSA-Eur version, each release of PyPSA-Eur is stored on Zenodo with a release-specific DOI:
-
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3520874.svg
-   :target: https://doi.org/10.5281/zenodo.3520874
-
-
-Pre-Built Networks as a Dataset
-===============================
-
-There are pre-built networks available as a dataset on Zenodo as well for every release of PyPSA-Eur.
-
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3601881.svg
-   :target: https://doi.org/10.5281/zenodo.3601881
-
-The included ``.nc`` files are PyPSA network files which can be imported with PyPSA via:
-
-.. code:: python
-
-    import pypsa
-
-    filename = "elec_s_1024_ec.nc"  # example
-    n = pypsa.Network(filename)
-
-
-
-
 
 .. toctree::
    :hidden:
@@ -239,46 +146,22 @@ The included ``.nc`` files are PyPSA network files which can be imported with Py
    introduction
    installation
    tutorial
-   tutorial_sector
 
-.. toctree::
-   :hidden:
-   :maxdepth: 1
-   :caption: Configuration
+..
+    .. toctree::
+    :hidden:
+    :maxdepth: 1
+    :caption: Configuration
 
-   wildcards
-   configuration
-   foresight
-   costs
-
-.. toctree::
-   :hidden:
-   :maxdepth: 1
-   :caption: Rules Overview
-
-   retrieve
-   preparation
-   simplification
-   sector
-   solving
-   plotting
-
-.. toctree::
-   :hidden:
-   :maxdepth: 1
-   :caption: Implementation details for sector-coupled systems
-
-   spatial_resolution
-   supply_demand
+    wildcards
+    configuration
+    foresight
+    costs
 
 .. toctree::
    :hidden:
    :maxdepth: 1
    :caption: References
 
-   release_notes
    licenses
-   limitations
    contributing
-   support
-   publications
