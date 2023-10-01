@@ -57,8 +57,8 @@ import pandas as pd
 import pypsa
 from _helpers import configure_logging
 from add_electricity import (
-    _add_missing_carriers_from_costs,
-    add_nice_carrier_names,
+    # _add_missing_carriers_from_costs,
+    sanitize_carriers,
     load_costs,
 )
 
@@ -70,8 +70,6 @@ logger = logging.getLogger(__name__)
 def attach_storageunits(n, costs, elec_opts):
     carriers = elec_opts["extendable_carriers"]["StorageUnit"]
     max_hours = elec_opts["max_hours"]
-
-    _add_missing_carriers_from_costs(n, costs, carriers)
 
     buses_i = n.buses.index
 
@@ -101,8 +99,6 @@ def attach_storageunits(n, costs, elec_opts):
 
 def attach_stores(n, costs, elec_opts):
     carriers = elec_opts["extendable_carriers"]["Store"]
-
-    _add_missing_carriers_from_costs(n, costs, carriers)
 
     buses_i = n.buses.index
     bus_sub_dict = {k: n.buses[k].values for k in ["x", "y", "country"]}
@@ -239,14 +235,17 @@ if __name__ == "__main__":
 
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
     costs = load_costs(
-        snakemake.input.tech_costs, snakemake.config["costs"], elec_config, Nyears
+        snakemake.input.tech_costs,
+        snakemake.config["costs"],
+        elec_config["max_hours"],
+        Nyears
     )
 
     attach_storageunits(n, costs, elec_config)
     attach_stores(n, costs, elec_config)
     attach_hydrogen_pipelines(n, costs, elec_config)
 
-    add_nice_carrier_names(n, snakemake.config)
+    sanitize_carriers(n, snakemake.config)
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])
