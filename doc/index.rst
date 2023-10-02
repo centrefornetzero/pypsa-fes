@@ -84,7 +84,7 @@ emissions targeted in the easy-to-abate electricity sector, and fuel competition
 with other sectors, for instance with biomass, the constraints imposed by
 integration in the larger system are included in the model.
 
-.. image:: imgs/pypsa_fes_flowchart.png
+.. image:: img/pypsa_fes_flowchart.png
     :class: full-width
     :align: center
 
@@ -92,7 +92,8 @@ integration in the larger system are included in the model.
 The Origin Model PyPSA-Eur
 ==========================
 
-PyPSA-Eur a sector-coupled energy system covering the whole of Europe.
+PyPSA-Eur a sector-coupled energy system covering the whole of Europe
+which was adapted to build the present model.
 For a great overview of the respective capabilities we refer to the
 model's `documentation <https://pypsa-eur.readthedocs.io>`_ or the 
 Github `repository <https://github.com/pypsa/pypsa-eur>`_.
