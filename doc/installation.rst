@@ -25,7 +25,7 @@ using the version control system ``git`` in the command line.
 
 .. _deps:
 
-Install Python Dependencies
+Install Dependencies
 ===============================
 
 The installation of dependencies is equivalent to the one used for PyPSA-Eur, see 
