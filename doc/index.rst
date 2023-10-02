@@ -84,7 +84,7 @@ emissions targeted in the easy-to-abate electricity sector, and fuel competition
 with other sectors, for instance with biomass, the constraints imposed by
 integration in the larger system are included in the model.
 
-.. image:: img/pypsa_fes_flowchart.png
+.. image:: img/pypsa_fes_flowchart.PNG
     :class: full-width
     :align: center
 
