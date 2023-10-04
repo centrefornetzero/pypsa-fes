@@ -10,7 +10,7 @@ logging:
   format: '%(levelname)s:%(name)s:%(message)s'
 
 run:
-  name: "" # use this to keep track of runs with different settings
+  name: "pypsa-fes" # use this to keep track of runs with different settings
   disable_progressbar: false # set to true to disable the progressbar
   shared_resources: false # set to true to share the default resources across runs
   shared_cutouts: true # set to true to share the default cutout(s) across runs
@@ -23,8 +23,6 @@ scenario:
   - ''
   ll:  # allowed transmission line volume expansion, can be any float >= 1.0 with a prefix v|c (today) or "copt"
   - v1.5
-  gb_regions:
-  - 'eso' # regions can be 'eso' zones (emphasizing grid conjestion), or 'dno'
   fes: # Future energy scenario considered (see https://www.nationalgrideso.com/future-energy/future-energy-scenarios)
   # - 'FS' # Falling Short
   - 'LW' # Leading the Way 
@@ -36,16 +34,14 @@ scenario:
   # - 2040
   flexopts:
   - reg-ss-bev-heat
-  - ''
   # - heat
-  # reg  # regular weekly demand flexibility (2 days max), one hour
-  # ss   # one hour events, any weekday in winter, Saving Sessions style
-  # bev  # included by default, numbers are share of intelligent tariff and V2G
+  # - ss   # one hour events, any weekday in winter, Saving Sessions style
+  # - bev  # included by default, numbers are share of intelligent tariff and V2G
   opts: # only relevant for PyPSA-Eur
   #- 'ATK'
   #- "100percent" # 100% renewable scenario, balancing through intercons, battery storage, no thermal gen
-  - "cphase" # evaluates the effect on a coal phaseout, Sets the price of coal higher than of gas to prevent base load usage 
-  # - ""
+  # - "cphase" # evaluates the effect on a coal phaseout, Sets the price of coal higher than of gas to prevent base load usage 
+  - ""
   sector_opts: # this is where the main scenario settings are
   - Co2L0-3H-T-H-B-I-A-solar+p3-dist1
   timeseries_mode:
@@ -53,6 +49,7 @@ scenario:
   # - year # plots a full year, with adjusted freq
   - shortweek # plots a week in which generation was low, but demand was high
   # - longweek # plots a week in which generation was high, but demand was low
+
 
 flexibility:
 
@@ -213,7 +210,7 @@ electricity:
   estimate_renewable_capacities:
     enable: true
     # Add capacities from OPSD data
-    from_opsd: true
+    from_opsd: false
     # Renewable capacities are based on existing capacities reported by IRENA
     year: 2020
     # Artificially limit maximum capacities to factor * (IRENA capacities),
@@ -237,15 +234,19 @@ atlite:
       # module: era5
     europe-2013-era5:
       module: era5 # in priority order
-      x: [-12., 35.]
-      y: [33., 72]
+      # x: [-12., 35.]
+      # y: [33., 72.]
+      x: [-16.5, 35.]
+      y: [33., 75.]
       dx: 0.3
       dy: 0.3
       time: ['2013', '2013']
     europe-2013-sarah:
       module: [sarah, era5] # in priority order
-      x: [-12., 45.]
-      y: [33., 65]
+      # x: [-12., 45.]
+      # y: [33., 65.]
+      x: [-16.5, 35.]
+      y: [33., 75.]
       dx: 0.2
       dy: 0.2
       time: ['2013', '2013']
@@ -315,7 +316,7 @@ renewable:
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
   solar:
-    cutout: europe-2013-sarah
+    cutout: europe-2013-era5
     resource:
       method: pv
       panel: CSi
@@ -364,6 +365,7 @@ lines:
     correction_factor: 0.95
     max_voltage_difference: false
     max_line_rating: false
+
 
 links:
   p_max_pu: 1.0
@@ -452,6 +454,7 @@ solar_thermal:
 
 # only relevant for foresight = myopic or perfect
 existing_capacities:
+  unit_commitment: false # if unit commitment (UC) for conventional power plants is used
   grouping_years_power: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030]
   grouping_years_heat: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2019] # these should not extend 2020
   threshold_capacity: 10
@@ -804,7 +807,7 @@ solving:
 
 plotting:
   map:
-    boundaries: [-11, 30, 34, 71]
+    boundaries: [-7, 3.5, 49, 60]
     color_geomap:
       ocean: lightskyblue 
       land: white
@@ -812,6 +815,7 @@ plotting:
     x: -5.5
     y: 46.
   costs_max: 50
+  capacities_max: 1000
   costs_threshold: 0
   capacities_threshold: 0
   energy_max: 20000
@@ -1016,8 +1020,10 @@ plotting:
     H2 pipeline: '#f081dc'
     H2 pipeline retrofitted: '#ba99b5'
     H2 Fuel Cell: '#c251ae'
+    H2 fuel cell: '#c251ae'
     H2 turbine: '#991f83'
     H2 Electrolysis: '#ff29d9'
+    H2 electrolysis: '#ff29d9'
     # ammonia
     NH3: '#46caf0'
     ammonia: '#46caf0'
