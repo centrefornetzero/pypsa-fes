@@ -28,8 +28,6 @@ the model directory ``pypsa-fes``.
 
 .. code:: bash
 
-    /some/other/path % cd /some/path
-
     /some/path % git clone https://github.com/pypsa/technology-data.git
 
 
@@ -75,11 +73,11 @@ The environment can be installed and activated using
 Install a Solver
 ================
 
-PyPSA passes the PyPSA-Eur network model to an external solver for performing the optimisation.
+PyPSA passes the PyPSA-FES network model to an external solver to perform the optimisation.
 
 Generally, `Gurobi <https://www.gurobi.com/documentation/quickstart.html>`_ 
 is recommended, however only academic licences are free.
-Otherwise, the model supports the almost equally strong open-source solver - `HiGHS <https://highs.dev/>`_.
+Otherwise, the model supports the almost equally strong open-source solver `HiGHS <https://highs.dev/>`_.
 
 To install the solvers, please refer to the respective installation guides and/or run
 
@@ -106,7 +104,7 @@ To install the solvers, please refer to the respective installation guides and/o
 Handling Configuration Files
 ============================
 
-PyPSA-Eur has several configuration options that must be specified in a
+PyPSA-FES has several configuration options that must be specified in a
 ``config/config.yaml`` file located in the root directory. An example configuration
 ``config/config.default.yaml`` is maintained in the repository, which will be used to
 automatically create your customisable ``config/config.yaml`` on first use. More
