@@ -20,7 +20,7 @@ PyPSA-FES offers a complete data pipeline and optimisation backbone to model any
 
 Our model builds on the highly popular [PyPSA-Eur model](github.com/pypsa/pypsa-eur), which has been adapted to focus on the electricity sector in the United Kingdom.
 
-For details on installation, tutorial, and a deeper overview of model assumptions we refer to the [documentation](https://pypsa-eur.readthedocs.io/en/latest/).
+For details on installation, tutorial, and a deeper overview of model assumptions we refer to the [documentation](https://pypsa-fes.readthedocs.io/en/latest/).
 
 ![PyPSA-Eur Grid Model](doc/img/fes_capacity_expansion.png)
 
