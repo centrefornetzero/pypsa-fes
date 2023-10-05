@@ -745,8 +745,8 @@ solving:
     seed: 123
 
   solver:
-    name: gurobi
-    options: gurobi-default
+    name: highs # switch to 'gurobi' if Gurobi is used
+    options: highs-default # switch to 'gurobi-default' if Gurobi is used
 
   solver_options:
     highs-default:

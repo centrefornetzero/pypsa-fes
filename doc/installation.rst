@@ -98,6 +98,10 @@ To install the solvers, please refer to the respective installation guides and/o
 
     Additionally, you need to setup your `Gurobi license <https://www.gurobi.com/solutions/licensing/>`_.
 
+.. note::
+    If you are using ``Gurobi`` the ``config`` needs ajustments.
+    How to do this is explained in :ref:`config` in the ``solver`` section.
+
 
 .. _defaultconfig:
 
