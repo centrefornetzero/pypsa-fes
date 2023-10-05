@@ -83,6 +83,7 @@ from _fes_helpers import (
     get_battery_capacity,
     get_industrial_demand,
     get_commercial_demand,
+    get_import_export_balance,
     )
 
 from pypsa.descriptors import expand_series
@@ -1159,7 +1160,18 @@ def add_batteries(n, costs=None, opts=[]):
     )
 
 
-def add_import_export_balance(n):
+def add_import_export_balance(n, fes, year):
+
+    cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
+    total_p_nom = cc.at["DC", "value"]
+    max_hours = snakemake.config["flexibility"]["balance_link_max_hours"]
+
+    balance = get_import_export_balance(fes, year)
+    e_nom = abs(balance)
+
+    e_max_pu = pd.Series(1., n.snapshots) 
+    e_max_pu.iloc[0] = 0.
+    e_max_pu.iloc[-1] = balance / max(max_hours * total_p_nom, e_nom)
 
     n.add(
         "Bus",
@@ -1167,20 +1179,12 @@ def add_import_export_balance(n):
         carrier="import export tracker",
     )
 
-    cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
-    total_p_nom = cc.at["DC", "value"]
-    max_hours = snakemake.config["flexibility"]["balance_link_max_hours"]
-
-    e_max_pu = pd.Series(1., n.snapshots) 
-    e_max_pu.iloc[0] = 0.
-    e_max_pu.iloc[-1] = 0.
-
     n.add(
         "Store",
         "import export tracker",
         bus="import export tracker",
         carrier="import export tracker",
-        e_nom=max_hours * total_p_nom,
+        e_nom=max(max_hours * total_p_nom, e_nom),
         e_max_pu=e_max_pu,
         e_min_pu=-e_max_pu,
         )

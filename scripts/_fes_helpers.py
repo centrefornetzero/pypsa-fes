@@ -484,3 +484,22 @@ def get_commercial_demand(scenario, year):
     reference = df.loc[scenario_mapper[scenario], 2022] * 1e-3
 
     return reference, value
+
+
+def get_import_export_balance(scenario, year):
+    """Get GB trade balance with mainland Europe, Norway, Ireland through interconnectors"""
+
+    col = string.ascii_uppercase.index("O")
+
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="FL.15",
+            header=4,
+            index_col=0,
+            usecols=[col+i for i in range(31)],
+            )
+        ).iloc[1:5]
+
+    df.columns = range(2022, 2052)
+
+    return df.loc[scenario_mapper[scenario], year] * 1e6
