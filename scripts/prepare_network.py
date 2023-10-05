@@ -1162,6 +1162,7 @@ def add_batteries(n, costs=None, opts=[]):
 
 def add_import_export_balance(n, fes, year):
 
+    logger.warning("New import export balance implementation not yet tested")
     cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
     total_p_nom = cc.at["DC", "value"]
     max_hours = snakemake.config["flexibility"]["balance_link_max_hours"]
