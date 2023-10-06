@@ -1263,7 +1263,6 @@ def attach_stores(n, costs):
         bus0=gb_buses,
         bus1=gb_buses + " battery store",
         carrier="battery charger",
-        # the efficiencies are "round trip efficiencies"
         efficiency=costs.at["battery inverter", "efficiency"] ** 0.5,
         capital_cost=costs.at["battery inverter", "capital_cost"],
         p_nom_extendable=True,
@@ -1338,6 +1337,7 @@ if __name__ == "__main__":
         Nyears,
     )
 
+    logger.warning("Current cost assumptions hard coded to 2030.")
     other_costs = prepare_costs(
         # snakemake.input.tech_costs,
         "../technology-data/outputs/costs_2030.csv",
