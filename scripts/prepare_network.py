@@ -494,25 +494,23 @@ def convert_generators_to_links(n, costs):
 
 def add_gas_ccs(n, costs):
 
-    gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
-    gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
+    nodes = spatial.nodes
 
     logger.warning("Adding Allam cycle...")
     # logger.warning("Allam set to high cost right now")
 
     n.madd(
         "Link",
-        gb_buses,
+        nodes,
         suffix=" allam",
-        bus0=f"GB_gas_bus",
-        bus1=gb_buses,
-        bus2="gb co2 stored",
-        # bus3="gb co2 atmosphere",
+        bus0=spatial.gas.nodes,
+        bus1=nodes,
+        bus2=spatial.carbon_storage.nodes,
         carrier="allam",
         p_nom_extendable=True,
         # TODO: add costs to technology-data
         capital_cost=0.6 * 1.5e6 * 0.1,  # efficiency * EUR/MW * annuity
-        marginal_cost=2,
+        marginal_cost=2.,
         efficiency=0.6,
         efficiency2=costs.at["gas", "CO2 intensity"],
         # efficiency3=-costs.at["gas", "CO2 intensity"],
@@ -886,7 +884,12 @@ def add_bev(n, transport_config):
             s = n.stores.loc[n.stores.carrier == "battery storage"]
 
 
-def add_gb_co2_tracking(n, net_change_co2):
+def add_carbon_tracking(n, net_change_co2):
+    """
+    Adds buses and stores to represent co2 in the atmosphere
+    through emissions and stored in the ground through CCS.
+    """    
+
     # can also be negative
     n.madd(
         "Bus",
@@ -910,13 +913,25 @@ def add_gb_co2_tracking(n, net_change_co2):
         e_max_pu=e_max_pu,
     )
 
+    n.madd(
+        "Bus",
+        spatial.carbon_storage.nodes,
+        carrier="co2",
+        unit="t_co2",
+    )
+
+    n.madd(
+        "Store",
+        spatial.carbon_storage.nodes,
+        bus=spatial.carbon_storage.nodes,
+        carrier="co2",
+        e_nom_extendable=True,
+    )
+
 
 def add_dac(n, costs):
 
-    # daccs_removal_target = abs(daccs_removal_target)
-
-    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
-    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
+    nodes = spatial.nodes
 
     logger.warning("Neglecting heat demand of direct air capture")
 
@@ -941,30 +956,13 @@ def add_dac(n, costs):
     logger.info(f"Estimating cost of heat for DAC to be {np.around(mcost_heat, decimals=2)} EUR/MWh_th")
     logger.info(f"Assuming required LHV heat net input {np.around(heat_demand, decimals=2)} MWh_th/tCO2")
 
-    # this tracks GB CO2 stored, e.g. underground
-    n.add(
-        "Bus",
-        "gb co2 stored", 
-        carrier="co2 stored",
-        unit="t_co2",
-    )
-
-    n.add(
-        "Store",
-        "gb co2 stored",
-        e_nom_extendable=True,
-        e_min_pu=-1.,
-        carrier="co2",
-        bus="gb co2 stored",
-    )
-
     n.madd(
         "Link",
-        gb_buses.index,
+        nodes,
         suffix=" DAC",
-        bus0="gb co2 atmosphere",
-        bus1="gb co2 stored",
-        bus2=gb_buses.index,
+        bus0=spatial.emissions.nodes,
+        bus1=spatial.carbon_storage.nodes,
+        bus2=nodes,
         carrier="DAC",
         capital_cost=costs.at["direct air capture", "fixed"],
         marginal_cost=heat_demand * mcost_heat,
@@ -1458,15 +1456,16 @@ if __name__ == "__main__":
 
     if not "100percent" in opts:
         logger.info("Adding GB CO2 tracking.")
-        add_gb_co2_tracking(n, net_change_atmospheric_co2)
+        add_carbon_tracking(n, net_change_atmospheric_co2)
 
-        # import sys
-        # sys.exit()
         logger.info("Adding direct air capture.")
         add_dac(n, other_costs)
 
         logger.info("Adding gas CCS generation.")
         add_gas_ccs(n, other_costs)
+
+    # import sys
+    # sys.exit()
 
     logger.info("Adding biogas to the system")
     add_biogas(n, other_costs)
