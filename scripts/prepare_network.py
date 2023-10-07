@@ -1460,9 +1460,8 @@ if __name__ == "__main__":
         logger.info("Adding GB CO2 tracking.")
         add_gb_co2_tracking(n, net_change_atmospheric_co2)
 
-        import sys
-        sys.exit()
-        
+        # import sys
+        # sys.exit()
         logger.info("Adding direct air capture.")
         add_dac(n, other_costs)
 
