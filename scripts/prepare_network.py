@@ -69,7 +69,6 @@ from itertools import product
 from _helpers import (
     configure_logging,
     generate_periodic_profiles,
-    # override_component_attrs,
 )
 from add_electricity import load_costs, update_transmission_costs, calculate_annuity
 from prepare_sector_network import cycling_shift, prepare_costs
@@ -91,6 +90,81 @@ from pypsa.descriptors import expand_series
 idx = pd.IndexSlice
 
 logger = logging.getLogger(__name__)
+
+from types import SimpleNamespace
+
+spatial = SimpleNamespace()
+
+def define_spatial(nodes: pd.Index, options):
+    """
+    Namespace for GB nodes
+
+    Parameters
+    ----------
+    nodes: pd.Index
+    options: dict-like
+    """
+
+    global spatial 
+
+    spatial.nodes = nodes
+
+    # Electric vehicles
+    spatial.electric_vehicles = SimpleNamespace()
+    spatial.electric_vehicles.nodes = nodes + " electric vehicles"
+    spatial.electric_vehicles.locations = nodes
+
+    # Residential Heat demand
+    spatial.heat_pumps = SimpleNamespace()
+    spatial.heat_pumps.nodes = nodes + " heat pump"
+    spatial.heat_pumps.locations = nodes
+
+    # gas
+    spatial.gas = SimpleNamespace()
+    spatial.gas.nodes = ["GB gas"]
+    spatial.gas.locations = ["GB"]
+
+    # biomass
+    spatial.biomass = SimpleNamespace()
+    spatial.biomass.nodes = ["GB biomass"]
+    spatial.biomass.locations = ["GB"]
+
+    # coal
+    spatial.coal = SimpleNamespace()
+    spatial.coal.nodes = ["GB coal"]
+    spatial.coal.locations = ["GB"]
+
+    # lignite
+    spatial.lignite = SimpleNamespace()
+    spatial.lignite.nodes = ["GB lignite"]
+    spatial.lignite.locations = ["GB"]
+
+    # uranium
+    spatial.nuclear = SimpleNamespace()
+    spatial.nuclear.nodes = ["GB uranium"]
+    spatial.nuclear.locations = ["GB"]
+
+    # co2
+    spatial.carbon_storage = SimpleNamespace()
+    spatial.carbon_storage.nodes = ["GB co2"]
+    spatial.carbon_storage.locations = ["GB"]
+
+    # emissions
+    spatial.emissions = SimpleNamespace()
+    spatial.emissions.nodes = ["GB emissions"]
+    spatial.emissions.locations = ["GB"]
+
+    # grid storage
+    spatial.grid_storage = SimpleNamespace()
+    spatial.grid_storage.nodes = nodes + " grid storage"
+    spatial.grid_storage.locations = nodes
+
+    # hydrogen (not used yet, aspirational)
+    spatial.hydrogen = SimpleNamespace()
+    spatial.hydrogen.nodes = ["GB hydrogen"]
+    spatial.hydrogen.locations = ["GB"]
+
+    return spatial
 
 
 def add_co2limit(n, co2limit, Nyears=1.0):
@@ -308,7 +382,7 @@ def scale_generation_capacity(n, capacity_file, opts):
 
     if "100percent" in opts:
         constraints = pd.Series(0., constraints.index)
-        logger.info("Due to 100 percent scenario, setting all generation to 0:")
+        logger.info(f"Due to 100 percent scenario, removing {', '.join(list(generation_mapper))}")
         logger.info(constraints)
 
     assert snakemake.wildcards["fes"] in capacity_file and snakemake.wildcards["year"] in capacity_file, (
@@ -363,7 +437,7 @@ def convert_generators_to_links(n, costs):
 
         gens = gb_generation.loc[gb_generation.carrier == generator]
 
-        if not f"GB_{carrier}_bus" in n.buses.index:
+        if not getattr(spatial, carrier).nodes[0] in n.buses.index:
             buses_to_add.append(carrier)
 
         if gens.empty:
@@ -375,7 +449,7 @@ def convert_generators_to_links(n, costs):
         n.madd(
             "Link",
             gens.index,
-            bus0=f"GB_{carrier}_bus",
+            bus0=getattr(spatial, carrier).nodes,
             bus1=gens.bus,
             bus2="gb co2 atmosphere",
             marginal_cost=costs.at[generator, "efficiency"]
@@ -397,20 +471,22 @@ def convert_generators_to_links(n, costs):
     remove_elec_base_techs(n)
 
     for carrier in set(buses_to_add):
-        
+
         if carrier == "biomass": continue
 
-        logger.info(f"Adding bus GB_{carrier}_bus, and generator GB_{carrier}")
+        logger.info((f"Adding bus {getattr(spatial, carrier).nodes[0]},"
+                    f" and generator GB {carrier}"))
 
-        n.add("Bus",
-            f"GB_{carrier}_bus",
-            carrier=carrier)
+        n.madd("Bus",
+            getattr(spatial, carrier).nodes,
+            carrier=carrier,
+            location=getattr(spatial, carrier).locations,
+            )
 
-        n.add("Generator",
-                f"GB_{carrier}",
-                bus=f"GB_{carrier}_bus",
+        n.madd("Generator",
+                getattr(spatial, carrier).nodes,
+                bus=getattr(spatial, carrier).nodes,
                 carrier=carrier,
-                # p_nom_extandable=True,
                 p_nom=1e6,
                 marginal_cost=costs.at[carrier, "fuel"],
                 )
@@ -812,28 +888,26 @@ def add_bev(n, transport_config):
 
 def add_gb_co2_tracking(n, net_change_co2):
     # can also be negative
-    n.add(
+    n.madd(
         "Bus",
-        "gb co2 atmosphere",
+        spatial.emissions.nodes,
         carrier="co2",
         unit="t_co2",
     )
 
-    e_max_pu = pd.Series(1., n.snapshots)
+    nodes = spatial.emissions.nodes
 
-    # logger.warning("Carbon tracking currently switched off!")
+    e_max_pu = pd.DataFrame(1., n.snapshots, nodes)
     e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
 
-    n.add(
+    n.madd(
         "Store",
-        "gb co2 atmosphere",
+        spatial.emissions.nodes,
+        bus=spatial.emissions.nodes,
         carrier="co2",
-        bus="gb co2 atmosphere",
         e_nom=abs(net_change_co2*1e6),
-        # e_nom_extendable=True,
         e_min_pu=-1.,
         e_max_pu=e_max_pu,
-        e_initial=0.,
     )
 
 
@@ -1207,11 +1281,11 @@ def scale_load(n, fes, year):
 
     fes_year = int(year)
 
-    index = n.loads.loc[n.loads.bus.str.contains("GB")].index
-    logger.warning("Loads that are scaled according to future industr., comm. load")
-    logger.warning(index)
+    nodes = spatial.nodes
 
-    total = n.loads_t.p_set[index].sum().sum()
+    logger.warning("Loads that are scaled according to future industr., comm. load")
+
+    total = n.loads_t.p_set[nodes].sum().sum()
     
     industrial_base, industrial_demand = get_industrial_demand(fes, fes_year)
     commercial_base, commercial_demand = get_commercial_demand(fes, fes_year)
@@ -1225,7 +1299,7 @@ def scale_load(n, fes, year):
     )
 
     logger.info(f"Scaling Total Demand to {(new_demand*1e-6):.2f} TWh.")
-    n.loads_t.p_set[index] *= new_demand / total
+    n.loads_t.p_set[nodes] *= new_demand / total
 
 
 def attach_stores(n, costs):
@@ -1324,6 +1398,11 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input[0])
 
+    gb_nodes = n.buses.index[(n.buses.index.str.contains("GB")) & (n.buses.carrier == "AC")]
+    logger.info(f"Preparing GB network with nodes \n {', '.join(gb_nodes.tolist())}.")
+
+    spatial = define_spatial(gb_nodes, snakemake.config)
+
     fes = snakemake.wildcards.fes
     year = snakemake.wildcards.year
     logger.info(f"Preparing network for {fes} in {year}.")
@@ -1380,6 +1459,9 @@ if __name__ == "__main__":
     if not "100percent" in opts:
         logger.info("Adding GB CO2 tracking.")
         add_gb_co2_tracking(n, net_change_atmospheric_co2)
+
+        import sys
+        sys.exit()
         
         logger.info("Adding direct air capture.")
         add_dac(n, other_costs)

@@ -502,4 +502,4 @@ def get_import_export_balance(scenario, year):
 
     df.columns = range(2022, 2052)
 
-    return df.loc[scenario_mapper[scenario], year] * 1e6
+    return df.loc[scenario_mapper[scenario], int(year)] * 1e6
