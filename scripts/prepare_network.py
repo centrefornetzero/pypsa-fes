@@ -1429,7 +1429,7 @@ if __name__ == "__main__":
     
     if snakemake.config["flexibility"]["balance_import_export"]:
         logger.info("Adding interconnector import/export balance.")
-        add_import_export_balance(n)
+        add_import_export_balance(n, fes, year)
     
     if "cphase" in opts:
         logger.info("Adjusting coal price phase out.")
