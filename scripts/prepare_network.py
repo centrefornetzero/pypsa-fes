@@ -109,15 +109,45 @@ def define_spatial(nodes: pd.Index, options):
 
     spatial.nodes = nodes
 
-    # Electric vehicles
+    # electric vehicles
     spatial.electric_vehicles = SimpleNamespace()
     spatial.electric_vehicles.nodes = nodes + " electric vehicles"
     spatial.electric_vehicles.locations = nodes
 
-    # Residential Heat demand
+    # electric vehicles batteries
+    spatial.electric_vehicles_batteries = SimpleNamespace()
+    spatial.electric_vehicles_batteries.nodes = nodes + " electric vehicles batteries"
+    spatial.electric_vehicles_batteries.locations = nodes
+
+    # winter event flexibility
+    spatial.event_flexibility_winter = SimpleNamespace()
+    spatial.event_flexibility_winter.nodes = ["winter event flexibility"]
+    spatial.event_flexibility_winter.locations = ["GB"]
+
+    # year-round event flexibility
+    spatial.event_flexibility_regular= SimpleNamespace()
+    spatial.event_flexibility_regular.nodes = ["regular event flexibility"]
+    spatial.event_flexibility_regular.locations = ["GB"]
+
+    # residential heat pumps
+    spatial.heat_demand = SimpleNamespace()
+    spatial.heat_demand.nodes = nodes + " heat demand"
+    spatial.heat_demand.locations = nodes
+
+    # residential heat pumps
     spatial.heat_pumps = SimpleNamespace()
     spatial.heat_pumps.nodes = nodes + " heat pump"
     spatial.heat_pumps.locations = nodes
+    
+    # residential thermal inertia
+    spatial.thermal_inertia = SimpleNamespace()
+    spatial.thermal_inertia.nodes = nodes + " thermal inertia"
+    spatial.thermal_inertia.locations = nodes
+
+    # import export tracking
+    spatial.import_export_tracker = SimpleNamespace()
+    spatial.import_export_tracker.nodes = ["GB import export"]
+    spatial.import_export_tracker.locations = ["GB"]
 
     # gas
     spatial.gas = SimpleNamespace()
@@ -451,7 +481,7 @@ def convert_generators_to_links(n, costs):
             gens.index,
             bus0=getattr(spatial, carrier).nodes,
             bus1=gens.bus,
-            bus2="gb co2 atmosphere",
+            bus2=spatial.emissions.nodes,
             marginal_cost=costs.at[generator, "efficiency"]
             * costs.at[generator, "VOM"],  # NB: VOM is per MWel
             capital_cost=costs.at[generator, "efficiency"]
@@ -547,10 +577,12 @@ def add_heat_pump_load(
         .reindex(index=n.snapshots, method="ffill")
     )
 
-    gb_regions = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
-    gb_regions = n.buses.loc[gb_regions].loc[n.buses.loc[gb_regions].carrier == "AC"].index
+    nodes = spatial.nodes
+    heat_demand_spatial = spatial.heat_demand
+    heat_pumps_spatial = spatial.heat_pumps
+    thermal_inertia_spatial = spatial.thermal_inertia
 
-    daily_space_heat_demand = daily_space_heat_demand[gb_regions]
+    daily_space_heat_demand = daily_space_heat_demand[nodes]
 
     pop_weighted_energy_totals = pd.read_csv(energy_totals_file, index_col=0)
 
@@ -585,7 +617,7 @@ def add_heat_pump_load(
     })
 
     cop = xr.open_dataarray(ashp_cop_file).to_dataframe().iloc[:,0].unstack()
-    cop = cop[gb_regions]
+    cop = cop[nodes]
 
     cop = cop.rename(
         columns={old: [col for col in heat_demand.columns if col in old][0]
@@ -605,42 +637,36 @@ def add_heat_pump_load(
         / heat_demand.sum().sum() 
         * (hp_load_future - hp_load_base) 
     )
-
-    gb_nodes = heat_demand.columns
+    heat_demand.columns = heat_demand_spatial.nodes
 
     hp_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
 
     n.madd(
         "Bus",
-        gb_nodes,
-        location=gb_nodes,
-        suffix=" elec heat demand",
-        carrier="elec heat demand",
+        heat_demand_spatial.nodes,
+        location=nodes,
+        carrier="heat demand",
         unit="MWh_el",
     )
 
     n.madd(
         "Load",
-        gb_nodes, 
-        suffix = " elec heat demand",
-        bus=gb_nodes + " elec heat demand",
-        carrier="elec heat demand",
+        heat_demand_spatial.nodes,
+        bus=heat_demand_spatial.nodes,
+        carrier="heat demand",
         p_set=hp_heat_demand,
     )
 
     n.madd(
         "Link",
-        gb_nodes, 
-        suffix = " heat pump",
-        bus0=gb_nodes,
-        bus1=gb_nodes + " elec heat demand",
+        heat_pumps_spatial.nodes,
+        bus0=nodes,
+        bus1=heat_demand_spatial.nodes,
         carrier="heat pump",
         p_nom_extendable=True,
-        capital_cost=0.,
-        marginal_cost=0.,
     )
 
-    n.loads_t.p_set[gb_regions] -= heat_demand / heat_demand.sum().sum() * hp_load_base
+    n.loads_t.p_set[heat_demand_spatial.nodes] -= heat_demand / heat_demand.sum().sum() * hp_load_base
 
     complete_rollout_year = snakemake.config["flexibility"]["smart_heat_rollout_completion"]
     share_smart_tariff = np.interp(
@@ -695,7 +721,7 @@ def add_heat_pump_load(
             .reindex(s, method="ffill")
         )
 
-        daily_p_max.columns = gb_nodes
+        daily_p_max.columns = thermal_inertia_spatial.nodes
 
         p_nom = daily_p_max.max() * share_smart_tariff
         p_max_pu = (daily_p_max / p_nom).mul(charging_window, axis=0)
@@ -709,25 +735,25 @@ def add_heat_pump_load(
             .fillna(0.)
         )
 
-        daily_e_max.columns = gb_nodes
-
         e_nom = daily_e_max.max() * share_smart_tariff
+
+        e_nom.index = thermal_inertia_spatial.nodes
+        daily_e_max.columns = thermal_inertia_spatial.nodes
+
         e_max_pu = (daily_e_max / e_nom).mul(store_use_window, axis=0)
 
         n.madd(
             "Bus",
-            gb_nodes,
-            location=gb_nodes,
-            suffix=" thermal inertia",
+            thermal_inertia_spatial.nodes,
+            location=nodes,
             carrier="thermal inertia",
             unit="MWh_el",
         )
 
         n.madd(
             "Store",
-            gb_nodes,
-            suffix=" thermal inertia",
-            bus=gb_nodes + " thermal inertia",
+            thermal_inertia_spatial.nodes,
+            bus=thermal_inertia_spatial.nodes,
             e_nom=e_nom,
             e_max_pu=e_max_pu,
             standing_loss=standing_loss,
@@ -735,11 +761,10 @@ def add_heat_pump_load(
 
         n.madd(
             "Link",
-            gb_nodes,
-            suffix=" thermal inertia",
+            thermal_inertia_spatial.nodes,
+            bus0=heat_demand_spatial.nodes,
+            bus1=thermal_inertia_spatial.nodes,
             carrier="thermal inertia",
-            bus0=gb_nodes + " elec heat demand",
-            bus1=gb_nodes + " thermal inertia",
             p_nom=p_nom,
             p_max_pu=p_max_pu,
             p_min_pu=p_min_pu,
@@ -747,19 +772,24 @@ def add_heat_pump_load(
 
 
 def add_bev(n, transport_config):
-    """Adds BEV load and respective stores units;
-    adapted from `add_land_transport` method in `scripts/prepare_sector_network.py`"""
-
-    logger.info("Adding BEV load and respective storage units")
+    """
+    Adds BEV load and respective stores units;
+    adapted from `add_land_transport` method in `scripts/prepare_sector_network.py`
+    """
 
     year = int(snakemake.wildcards.year)
+
+    nodes = spatial.nodes
 
     bev_flexibility = "bev" in snakemake.wildcards.flexopts.split("-")
 
     transport = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
     )
-    number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)["number cars"]
+    number_cars = (
+        pd.read_csv(snakemake.input.transport_data, index_col=0)
+        .loc[nodes, "number cars"]
+    )
 
     avail_profile = pd.read_csv(
         snakemake.input.avail_profile, index_col=0, parse_dates=True
@@ -781,34 +811,33 @@ def add_bev(n, transport_config):
     electric_share = bev_cars / gb_cars_2050
     logger.info(f"EV share: {np.around(electric_share*100, decimals=2)}%")
 
-    gb_nodes = pd.Index([col for col in transport.columns if "GB" in col])
-
     if electric_share > 0.0:
+
+        logger.info("Adding BEV load and respective storage units.")
 
         p_set = (
             electric_share
             * (
-                transport[gb_nodes]
-                + cycling_shift(transport[gb_nodes], 1)
-                + cycling_shift(transport[gb_nodes], 2)
+                transport[nodes]
+                + cycling_shift(transport[nodes], 1)
+                + cycling_shift(transport[nodes], 2)
             )
             / 3
         )
 
+        p_set.columns = spatial.electric_vehicles.nodes
         n.madd(
             "Bus",
-            gb_nodes,
-            location=gb_nodes,
-            suffix=" EV battery",
+            spatial.electric_vehicles.nodes,
+            location=nodes,
             carrier="Li ion",
             unit="MWh_el",
         )
 
         n.madd(
             "Load",
-            gb_nodes, 
-            suffix = " land transport EV",
-            bus=gb_nodes + " EV battery",
+            spatial.electric_vehicles.nodes,
+            bus=spatial.electric_vehicles.nodes,
             carrier="land transport EV",
             p_set=p_set,
         )
@@ -823,13 +852,13 @@ def add_bev(n, transport_config):
         logger.info("Assuming BEV charge efficiency of 0.9")
         n.madd(
             "Link",
-            gb_nodes,
+            nodes,
             suffix=" BEV charger",
-            bus0=gb_nodes,
-            bus1=gb_nodes + " EV battery",
+            bus0=nodes,
+            bus1=spatial.electric_vehicles.nodes,
             p_nom=p_nom,
             carrier="BEV charger",
-            p_max_pu=avail_profile[gb_nodes],
+            p_max_pu=avail_profile[nodes],
             efficiency=0.9,
             # efficiency=1.,
             # These were set non-zero to find LU infeasibility when availability = 0.25
@@ -844,17 +873,18 @@ def add_bev(n, transport_config):
             year)
 
         if v2g_share > 0. and bev_flexibility:
+
             logger.info("Assuming V2G efficiency of 0.9")
             v2g_efficiency = 0.9
             n.madd(
                 "Link",
-                gb_nodes,
+                nodes,
                 suffix=" V2G",
-                bus0=gb_nodes + " EV battery",
-                bus1=gb_nodes,
+                bus0=spatial.electric_vehicles.nodes,
+                bus1=nodes,
                 p_nom=p_nom * v2g_share,
                 carrier="V2G",
-                p_max_pu=avail_profile[gb_nodes],
+                p_max_pu=avail_profile[nodes],
                 efficiency=v2g_efficiency,
             )
 
@@ -868,20 +898,21 @@ def add_bev(n, transport_config):
                 * electric_share
             )
 
+            e_min_pu = dsm_profile[nodes]
+            e_min_pu.columns = spatial.electric_vehicles.nodes
             n.madd(
                 "Store",
-                gb_nodes,
-                suffix=" battery storage",
-                bus=gb_nodes + " EV battery",
-                carrier="battery storage",
-                location=gb_nodes,
+                spatial.electric_vehicles.nodes,
+                bus=spatial.electric_vehicles.nodes,
+                carrier="bev batteries",
+                location=nodes,
                 e_cyclic=True,
-                e_nom=e_nom,
-                e_max_pu=1,
-                e_min_pu=dsm_profile[gb_nodes],
+                e_nom=e_nom.reindex(spatial.electric_vehicles.nodes),
+                e_max_pu=1.,
+                e_min_pu=e_min_pu,
             )
 
-            s = n.stores.loc[n.stores.carrier == "battery storage"]
+            # s = n.stores.loc[n.stores.carrier == "battery storage"]
 
 
 def add_carbon_tracking(n, net_change_co2):
@@ -933,7 +964,7 @@ def add_dac(n, costs):
 
     nodes = spatial.nodes
 
-    logger.warning("Neglecting heat demand of direct air capture")
+    logger.warning("Neglecting heat demand of direct air capture.")
 
     # logger.warning("Changed sign of DAC efficiency to be positive")
     efficiency2 = - (
@@ -953,8 +984,8 @@ def add_dac(n, costs):
         costs.at["CCGT", "VOM"]
     ) / costs.at["central air-sourced heat pump", "efficiency"] + costs.at["central air-sourced heat pump", "VOM"]
 
-    logger.info(f"Estimating cost of heat for DAC to be {np.around(mcost_heat, decimals=2)} EUR/MWh_th")
-    logger.info(f"Assuming required LHV heat net input {np.around(heat_demand, decimals=2)} MWh_th/tCO2")
+    logger.info(f"Estimating cost of heat for DAC to be {np.around(mcost_heat, decimals=2)} EUR/MWh_th.")
+    logger.info(f"Assuming required LHV heat net input {np.around(heat_demand, decimals=2)} MWh_th/tCO2.")
 
     n.madd(
         "Link",
@@ -975,36 +1006,38 @@ def add_dac(n, costs):
 
 def add_biogas(n, costs):
 
-    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
-    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
+    nodes = spatial.nodes
 
     biogas_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
-    biogas_potentials = biogas_potentials.loc[gb_buses.index, "biogas"].sum()
+    
+    # biogas currently not spatially resolved
+    biogas_potentials = biogas_potentials.loc[nodes, "biogas"].sum()
 
-    logger.info("Adding biogas with potentials")
-    logger.info(f"Biogas potentials: {int(biogas_potentials*1e-6)} TWh_th")
+    logger.info("Adding biogas with potentials.")
+    logger.info(f"Biogas potentials: {int(biogas_potentials*1e-6)} TWh_th.")
 
-    n.add("Bus",
-        "GB_biomass_bus",
+    n.madd("Bus",
+        spatial.biomass.nodes,
         carrier="biomass")
     
-    n.add(
+    n.madd(
         "Store",
-        "gb biomass",
-        bus="GB_biomass_bus",
+        spatial.biomass.nodes,
+        bus=spatial.biomass.nodes,
         carrier="biomass",
         e_nom=biogas_potentials,
         marginal_cost=costs.at["biogas", "fuel"],
         e_initial=biogas_potentials,
     )
 
-    n.add(
+    n.madd(
         "Link",
-        "biogas upgrading",
-        bus0="GB_biomass_bus",
-        bus1="GB_gas_bus",
-        bus2="gb co2 atmosphere",
-        carrier="biogas to gas",
+        nodes,
+        suffix=" biogas upgrading",
+        bus0=spatial.biomass.nodes,
+        bus1=spatial.gas.nodes,
+        bus2=spatial.emissions.nodes,
+        carrier="biogas upgrading",
         capital_cost=costs.loc["biogas upgrading", "fixed"],
         marginal_cost=costs.loc["biogas upgrading", "VOM"],
         efficiency=1.,
@@ -1021,11 +1054,11 @@ def add_event_flex(n, mode):
     year = int(snakemake.wildcards.year)
     config = snakemake.config
 
-    gb_buses = n.buses.loc[n.buses.index.str.contains("GB")]
-    gb_buses = gb_buses.loc[gb_buses.carrier == "AC"]
+    nodes = spatial.nodes
+    flex_spatial = getattr(spatial, "event_flexibility_" + mode)
     
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)     
-    pop_layout = pop_layout.loc[pop_layout.index.str.contains("GB")]["total"]
+    pop_layout = pop_layout.loc[nodes]["total"]
 
     gb_pop = 67_330_000          # GB population
     household_occ = 2.36         # avg household occupancy Statista 2022
@@ -1049,12 +1082,12 @@ def add_event_flex(n, mode):
     )
 
     # weekly recharge
-    recharge_profile = pd.Series(0., index=n.snapshots)
+    recharge_profile = pd.DataFrame(0., n.snapshots, flex_spatial.nodes)
     mask = (n.snapshots.hour == 0) & (n.snapshots.weekday == 1)
     recharge_profile.loc[mask] = 1.
 
     # events define time when demand flex can be used
-    event_space = pd.DataFrame(0., n.snapshots, gb_buses.index)
+    event_space = pd.DataFrame(0., n.snapshots, nodes)
 
     mask = (n.snapshots.hour >= start_hour) & (n.snapshots.hour <= end_hour)
 
@@ -1066,32 +1099,31 @@ def add_event_flex(n, mode):
 
     event_space.loc[mask] = 1.
 
-    n.add("Bus",
-        name,
+    n.madd("Bus",
+        flex_spatial.nodes,
         carrier=name,
         )
 
-    n.add("Generator",
-        name,
-        bus=name,
+    n.madd("Generator",
+        flex_spatial.nodes,
+        bus=flex_spatial.nodes,
         carrier=name,
         p_nom=single_event_capacity.sum() * weekly_allowance,
         p_max_pu=recharge_profile,
-        marginal_cost=0.,
     )
 
-    n.add("Store",
-        name,
-        bus=name,
+    n.madd("Store",
+        flex_spatial.nodes,
+        bus=flex_spatial.nodes,
         carrier=name,
         e_nom=single_event_capacity.sum() * weekly_allowance,
     )
 
     n.madd("Link",
-        gb_buses.index,
+        nodes,
         suffix=f" {name}", 
-        bus0=name,
-        bus1=gb_buses.index,
+        bus0=flex_spatial.nodes,
+        bus1=nodes,
         carrier=name,
         p_nom=single_event_capacity,
         p_max_pu=event_space,
@@ -1100,15 +1132,7 @@ def add_event_flex(n, mode):
 
     # ensure no double flexibility in winter months
     if "winter flex" in n.buses.carrier and "regular flex" in n.buses.carrier:
-
-        win = n.links.loc[n.links.carrier == "winter flex"].index
-        reg = n.links.loc[n.links.carrier == "regular flex"].index
-
-        if (n.links_t.p_max_pu[[win[0], reg[0]]].sum(axis=1) > 1.).any():
-
-            # remove regular flex for winter months
-            mask = n.links_t.p_max_pu[win[0]].astype(bool)
-            n.links_t.p_max_pu.loc[mask, reg] = 0.
+        logger.warning("Both winter and regular flex in the network.")
 
 
 def add_batteries(n, costs=None, opts=[]):
@@ -1135,9 +1159,8 @@ def add_batteries(n, costs=None, opts=[]):
 
     year = snakemake.wildcards.year
     
-    gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
-    gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
-    logger.warning(f"Batteries installed at \n {', '.join(gb_buses)}")
+    nodes = spatial.nodes
+    logger.warning(f"Batteries installed at \n {', '.join(nodes)}.")
 
     year = int(snakemake.wildcards.year)
     scenario = snakemake.wildcards.fes
@@ -1149,21 +1172,21 @@ def add_batteries(n, costs=None, opts=[]):
     p_noms = p_noms.loc[p_noms > threshold]
     e_noms = e_noms.loc[p_noms.index]
 
-    logger.info(f"Adding battery storage techs {list(p_noms.index)}") 
+    logger.info(f"Adding battery storage techs {list(p_noms.index)}.") 
 
     tech = "PHS"
-    logger.info(f"Adding battery storage tech {tech} with total capacity {p_noms.loc[tech]:.2f} GW")
+    logger.info(f"Adding battery storage tech {tech} with total capacity {p_noms.loc[tech]:.2f} GW.")
         
-    gb_ror = n.generators.loc[
+    ror = n.generators.loc[
         (n.generators.carrier == "ror") & 
-        (n.generators.bus.isin(gb_buses))
+        (n.generators.bus.isin(nodes))
         ]
 
-    if not gb_ror.empty:
+    if not ror.empty:
 
-        buses = pd.Index(gb_ror.bus)
+        buses = pd.Index(ror.bus)
 
-        weights = gb_ror.p_nom
+        weights = ror.p_nom
         p_nom = weights / weights.sum() * p_noms.loc[tech]
         p_nom.index = buses + f" {tech}"
 
@@ -1179,7 +1202,7 @@ def add_batteries(n, costs=None, opts=[]):
         p_nom *= 1e3 # GW -> MW
 
         old_phs = n.storage_units.loc[
-            (n.storage_units.bus.isin(gb_buses)) & 
+            (n.storage_units.bus.isin(nodes)) & 
             (n.storage_units.carrier == tech)
             ].index
 
@@ -1188,7 +1211,8 @@ def add_batteries(n, costs=None, opts=[]):
 
         n.madd(
             "StorageUnit",
-            buses + " PHS",
+            buses,
+            suffix = " PHS",
             bus=buses,
             p_nom=p_nom,
             carrier=tech,
@@ -1207,9 +1231,7 @@ def add_batteries(n, costs=None, opts=[]):
     if tech.empty:
         return
 
-    buses = gb_buses
-    
-    weights = n.loads_t.p_set[gb_buses].sum()
+    weights = n.loads_t.p_set[nodes].sum()
     p_nom = weights / weights.sum() * p_noms.loc[tech].sum()
     e_nom = e_noms.loc[tech].sum() * 1e3 # GWh -> MWh
     
@@ -1219,9 +1241,9 @@ def add_batteries(n, costs=None, opts=[]):
 
     n.madd(
         "StorageUnit",
-        buses,
+        nodes,
         suffix=" grid battery",
-        bus=buses,
+        bus=nodes,
         p_nom=p_nom,
         carrier="grid battery",
         efficiency_store=efficiency,
@@ -1242,20 +1264,21 @@ def add_import_export_balance(n, fes, year):
     balance = get_import_export_balance(fes, year)
     e_nom = abs(balance)
 
-    e_max_pu = pd.Series(1., n.snapshots) 
+    e_max_pu = pd.DataFrame(1., n.snapshots, spatial.import_export_tracker.nodes) 
     e_max_pu.iloc[0] = 0.
     e_max_pu.iloc[-1] = balance / max(max_hours * total_p_nom, e_nom)
 
-    n.add(
+    n.madd(
         "Bus",
-        "import export tracker",
+        spatial.import_export_tracker.nodes,
         carrier="import export tracker",
+        location=spatial.import_export_tracker.locations,
     )
 
-    n.add(
+    n.madd(
         "Store",
-        "import export tracker",
-        bus="import export tracker",
+        spatial.import_export_tracker.nodes,
+        bus=spatial.import_export_tracker.nodes,
         carrier="import export tracker",
         e_nom=max(max_hours * total_p_nom, e_nom),
         e_max_pu=e_max_pu,
@@ -1265,7 +1288,7 @@ def add_import_export_balance(n, fes, year):
     dc = n.links.loc[n.links.carrier == "DC"]
     index = dc.loc[dc.bus0.str.contains("GB") ^ dc.bus1.str.contains("GB")].index
 
-    n.links.loc[index, "bus2"] = "import export tracker"
+    n.links.loc[index, "bus2"] = spatial.import_export_tracker.nodes[0]
     n.links.loc[index, "efficiency2"] = 1.
 
     # swap bus0 and bus1 where the GB bus is bus1
@@ -1281,7 +1304,7 @@ def scale_load(n, fes, year):
 
     nodes = spatial.nodes
 
-    logger.warning("Loads that are scaled according to future industr., comm. load")
+    logger.warning("Loads that are scaled according to future industr., comm. load.")
 
     total = n.loads_t.p_set[nodes].sum().sum()
     
@@ -1306,21 +1329,20 @@ def attach_stores(n, costs):
     (Slightly adapted from scripts.add_extra_components.attach_stores)
     """
 
-    gb_buses = pd.Index(n.generators.loc[n.generators.bus.str.contains("GB")].bus.unique())
-    gb_buses = n.buses.loc[gb_buses].loc[n.buses.loc[gb_buses].carrier == "AC"].index
+    nodes = spatial.nodes
 
     n.madd(
         "Bus",
-        gb_buses,
+        nodes,
         suffix=" battery store",
         carrier="battery store",
-        location=gb_buses,
+        location=nodes
     )
 
     n.madd(
         "Store",
-        gb_buses,
-        bus=gb_buses + " battery store",
+        nodes,
+        bus=nodes + " battery store",
         suffix=" battery store",
         carrier="battery store",
         e_cyclic=True,
@@ -1331,9 +1353,9 @@ def attach_stores(n, costs):
 
     n.madd(
         "Link",
-        gb_buses + " charger",
-        bus0=gb_buses,
-        bus1=gb_buses + " battery store",
+        nodes + " charger",
+        bus0=nodes,
+        bus1=nodes + " battery store",
         carrier="battery charger",
         efficiency=costs.at["battery inverter", "efficiency"] ** 0.5,
         capital_cost=costs.at["battery inverter", "capital_cost"],
@@ -1343,9 +1365,9 @@ def attach_stores(n, costs):
 
     n.madd(
         "Link",
-        gb_buses + " discharger",
-        bus0=gb_buses + " battery store",
-        bus1=gb_buses,
+        nodes + " discharger",
+        bus0=nodes + " battery store",
+        bus1=nodes,
         carrier="battery discharger",
         efficiency=costs.at["battery inverter", "efficiency"] ** 0.5,
         p_nom_extendable=True,
@@ -1365,7 +1387,7 @@ def add_gas_shortage(n):
 
     assert 0. <= reduction <= 1., f"reduction factor {reduction} must be in [0, 1]"
 
-    logger.info(f"Reducing gas availability by {100*(1 - reduction):.2f}%")
+    logger.info(f"Reducing gas availability by {100*(1 - reduction):.2f}%.")
 
     n.add(
         "StorageUnit",
@@ -1433,14 +1455,14 @@ if __name__ == "__main__":
         )
     )
 
-    logger.info(f"Emission from Electricity Generation: {np.around(generation_emission, decimals=2)} MtCO2")
-    logger.info(f"Direct Air Capture Removal: {np.around(daccs_removal, decimals=2)} MtCO2")
-    logger.info(f"Removal through Carbon Capture Biomass: {np.around(beccs_removal, decimals=2)} MtCO2")
+    logger.info(f"Emission from Electricity Generation: {np.around(generation_emission, decimals=2)} MtCO2.")
+    logger.info(f"Direct Air Capture Removal: {np.around(daccs_removal, decimals=2)} MtCO2.")
+    logger.info(f"Removal through Carbon Capture Biomass: {np.around(beccs_removal, decimals=2)} MtCO2.")
 
     net_change_atmospheric_co2 = generation_emission - daccs_removal - beccs_removal
 
     logger.info(("\n Net change in atmospheric CO2: ",
-        f"{np.around(net_change_atmospheric_co2, decimals=2)} MtCO2"))
+        f"{np.around(net_change_atmospheric_co2, decimals=2)} MtCO2."))
 
     logger.info("Scaling conventional generators to match FES.")
     scale_generation_capacity(n, snakemake.input.capacity_constraints, opts)
@@ -1463,9 +1485,6 @@ if __name__ == "__main__":
 
         logger.info("Adding gas CCS generation.")
         add_gas_ccs(n, other_costs)
-
-    # import sys
-    # sys.exit()
 
     logger.info("Adding biogas to the system")
     add_biogas(n, other_costs)
@@ -1509,8 +1528,8 @@ if __name__ == "__main__":
     
     if snakemake.config["flexibility"]["balance_import_export"]:
         logger.info("Adding interconnector import/export balance.")
-        add_import_export_balance(n, fes, year)
-    
+        # add_import_export_balance(n, fes, year)
+
     if "cphase" in opts:
         logger.info("Adjusting coal price phase out.")
         assert int(snakemake.wildcards.year) <= 2030, "No coal in the system after 2030."
