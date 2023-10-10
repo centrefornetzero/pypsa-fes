@@ -18,7 +18,7 @@ if config["enable"].get("prepare_links_p_nom", False):
             "../scripts/prepare_links_p_nom.py"
 
 
-rule build_electricity_demand:
+rule build_electricity_demand_europe:
     input:
         ancient("data/load_raw.csv"),
     output:
@@ -30,7 +30,7 @@ rule build_electricity_demand:
     conda:
         "../envs/environment.yaml"
     script:
-        "../scripts/build_electricity_demand.py"
+        "../scripts/build_electricity_demand_europe.py"
 
 
 rule build_temperature_profiles:
@@ -599,6 +599,27 @@ rule add_extra_components:
         "../envs/environment.yaml"
     script:
         "../scripts/add_extra_components.py"
+
+
+rule build_electricity_demand_gb:
+    params:
+        snapshots=config["snapshots"]
+    input:
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
+    output:
+        electricity_demand_gb=RESOURCES + "electricity_demand_gb_s{simpl}_eso.csv",
+    log:
+        LOGS + "build_electricity_demand_gb_s{simpl}.log",
+    benchmark:
+        BENCHMARKS + "build_electricity_demand_gb/s{simpl}"
+    threads: 1
+    resources:
+        mem_mb=2000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_electricity_demand_gb.py"
+    
 
 
 rule prepare_network:
