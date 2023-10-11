@@ -19,10 +19,15 @@ if config["enable"].get("prepare_links_p_nom", False):
 
 
 rule build_electricity_demand_europe:
+    params:
+        snapshots=config["snapshots"],
+        countries=config["countries"],
+        load=config["load"],
     input:
         ancient("data/load_raw.csv"),
     output:
-        RESOURCES + "default_load.csv",
+        # RESOURCES + "default_load.csv",
+        RESOURCES + "load.csv",
     log:
         LOGS + "build_electricity_demand.log",
     resources:
@@ -220,6 +225,7 @@ rule build_biomass_potentials:
         "../scripts/build_biomass_potentials.py"
 
 
+"""
 rule build_2022_octopus_demand:
     input:
         default_load=RESOURCES + "default_load.csv",
@@ -234,6 +240,7 @@ rule build_2022_octopus_demand:
         "../envs/environment.yaml"
     script:
         "../scripts/build_2022_octopus_demand.py"
+"""
 
 
 rule build_powerplants:
@@ -604,14 +611,12 @@ rule add_extra_components:
 rule build_electricity_demand_gb:
     params:
         snapshots=config["snapshots"]
-    input:
-        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
     output:
-        electricity_demand_gb=RESOURCES + "electricity_demand_gb_s{simpl}_eso.csv",
+        espeni_electricity_demand=RESOURCES + "ESPENI_demand_gb.csv",
     log:
-        LOGS + "build_electricity_demand_gb_s{simpl}.log",
+        LOGS + "build_electricity_demand_gb.log",
     benchmark:
-        BENCHMARKS + "build_electricity_demand_gb/s{simpl}"
+        BENCHMARKS + "build_electricity_demand_gb"
     threads: 1
     resources:
         mem_mb=2000,
@@ -626,6 +631,7 @@ rule prepare_network:
     input:
         RESOURCES + "networks/elec_s{simpl}_eso_ec.nc",
         overrides="data/override_component_attrs",
+        espeni_electricity_demand=RESOURCES + "ESPENI_demand_gb.csv",
         tech_costs=COSTS,
         biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_eso.csv",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",

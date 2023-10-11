@@ -83,6 +83,7 @@ from _fes_helpers import (
     get_industrial_demand,
     get_commercial_demand,
     get_import_export_balance,
+    get_electric_heat_demand,
     )
 
 from pypsa.descriptors import expand_series
@@ -629,17 +630,18 @@ def add_heat_pump_load(
 
     # scale according to scenario
     # get number of elec load through residential heating
-    hp_load_future = get_data_point("elec_demand_home_heating", scenario, year)
-    hp_load_base = get_data_point("elec_demand_home_heating", scenario, 2020)
 
-    heat_demand = (
-        heat_demand 
-        / heat_demand.sum().sum() 
-        * (hp_load_future - hp_load_base) 
+    hp_load_base, hp_load_future = (
+        get_electric_heat_demand(scenario, year, n.snapshots[0].year)
     )
-    heat_demand.columns = heat_demand_spatial.nodes
 
-    hp_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
+    future_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
+    future_heat_demand.columns = heat_demand_spatial.nodes
+
+    # estimate demand subsumed in the general electricity demand, and remove it
+    base_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_base
+    base_heat_demand.columns = nodes
+    n.loads_t.p_set[nodes] -= base_heat_demand.reindex(nodes, axis=1)
 
     n.madd(
         "Bus",
@@ -654,7 +656,7 @@ def add_heat_pump_load(
         heat_demand_spatial.nodes,
         bus=heat_demand_spatial.nodes,
         carrier="heat demand",
-        p_set=hp_heat_demand,
+        p_set=future_heat_demand,
     )
 
     n.madd(
@@ -665,8 +667,6 @@ def add_heat_pump_load(
         carrier="heat pump",
         p_nom_extendable=True,
     )
-
-    n.loads_t.p_set[heat_demand_spatial.nodes] -= heat_demand / heat_demand.sum().sum() * hp_load_base
 
     complete_rollout_year = snakemake.config["flexibility"]["smart_heat_rollout_completion"]
     share_smart_tariff = np.interp(
@@ -1403,6 +1403,28 @@ def add_gas_shortage(n):
     n.generators.at["GB_gas", "p_nom"] *= reduction
 
 
+def insert_espeni_demand(n):
+    """
+    Replaces default ENTSO-E demand data for GB with ESPENI data.
+    Spatial distribution of demand is kept the same.
+    See `build_electricity_demand_gb.py` for details on ESPENI
+    """
+
+    assert not "heat demand" in n.loads.carrier.unique(), "Insert ESPENI before adding heat demand!"
+
+    espeni = pd.read_csv(snakemake.input["espeni_electricity_demand"], index_col=0, parse_dates=True)
+
+    nodes = spatial.nodes
+
+    load = n.loads_t.p_set[nodes]
+    load = load.sum() / load.sum().sum()
+
+    n.loads_t.p_set[nodes] = pd.DataFrame(
+        np.outer(espeni.iloc[:,0].values, load),
+        index=espeni.index, columns=nodes,
+    )
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1443,6 +1465,10 @@ if __name__ == "__main__":
         snakemake.config["costs"],
         1.,
     )
+
+    if snakemake.config["flexibility"]["demand"]["use_espeni"]:
+        logger.info("Inserting ESPENI demand data for Great Britain nodes.")
+        insert_espeni_demand(n)
 
     logger.info("Scaling electricity load according to scenario and year.")
     scale_load(n, fes, year)

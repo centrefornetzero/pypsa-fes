@@ -3,11 +3,6 @@
 #
 # SPDX-License-Identifier: MIT
 """
-In the Octopus / Centre for Net Zero implementation, this scripts obtains the default 
-time series, that are used as backup when time series from 2022 are not available
-
-Please see `build_2022_octopus_demand.py` for more details.
-
 This rule downloads the load data from `Open Power System Data Time series.
 
 <https://data.open-power-system-data.org/time_series/>`_. For all countries in
@@ -85,11 +80,17 @@ def load_timeseries(fn, years, countries, powerstatistics=True):
     def rename(s):
         return s[: -len(pattern)]
 
-    def date_parser(x):
-        return dateutil.parser.parse(x, ignoretz=True)
+    df = pd.read_csv(fn, index_col=0, parse_dates=[0]).tz_localize(None)
+    print(pattern)
+    # df = df.filter(like=pattern)
+    df = df.filter(like=pattern)
+    print(df.head())
+
+    # assert False, "stopping here"
 
     return (
-        pd.read_csv(fn, index_col=0, parse_dates=[0], date_parser=date_parser)
+        pd.read_csv(fn, index_col=0, parse_dates=[0])
+        .tz_localize(None)
         .filter(like=pattern)
         .rename(columns=rename)
         .dropna(how="all", axis=0)
@@ -173,6 +174,7 @@ def manual_adjustment(load, fn_load, powerstatistics):
      by the corresponding ratio of total energy consumptions reported by
      IEA Data browser [0] for the year 2013.
 
+
      2. For the ENTSOE transparency load data (if powerstatistics is False)
 
      Albania (AL) and Macedonia (MK) do not exist in the data set. Both get the
@@ -181,6 +183,9 @@ def manual_adjustment(load, fn_load, powerstatistics):
 
      [0] https://www.iea.org/data-and-statistics?country=WORLD&fuel=Electricity%20and%20heat&indicator=TotElecCons
 
+    Bosnia and Herzegovina (BA) does not exist in the data set for 2019. It gets the
+    electricity consumption data from Croatia (HR) for the year 2019, scaled by the
+    factors derived from https://energy.at-site.be/eurostat-2021/
 
      Parameters
      ----------
@@ -269,8 +274,16 @@ def manual_adjustment(load, fn_load, powerstatistics):
                 load["AL"] = load.ME * (5.7 / 2.9)
             if "MK" not in load and "MK" in countries:
                 load["MK"] = load.ME * (6.7 / 2.9)
+            if "BA" not in load and "BA" in countries:
+                load["BA"] = load.HR * (11.0 / 16.2)
         copy_timeslice(
             load, "BG", "2018-10-27 21:00", "2018-10-28 22:00", Delta(weeks=1)
+        )
+        copy_timeslice(
+            load, "LU", "2019-01-02 11:00", "2019-01-05 05:00", Delta(weeks=-1)
+        )
+        copy_timeslice(
+            load, "LU", "2019-02-05 20:00", "2019-02-06 19:00", Delta(weeks=-1)
         )
 
     return load
@@ -284,22 +297,26 @@ if __name__ == "__main__":
 
     configure_logging(snakemake)
 
-    powerstatistics = snakemake.config["load"]["power_statistics"]
-    interpolate_limit = snakemake.config["load"]["interpolate_limit"]
-    countries = snakemake.config["countries"]
-
-    snapshot_cfg = snakemake.config["snapshots"]
-    del snapshot_cfg['start']
-    del snapshot_cfg['end']
-
-    snapshots = pd.date_range('2013', '2014', freq='h', **snapshot_cfg)
-
+    powerstatistics = snakemake.params.load["power_statistics"]
+    print("===============================")
+    print("powerstatistics")
+    print(powerstatistics)
+    print("===============================")
+    interpolate_limit = snakemake.params.load["interpolate_limit"]
+    countries = snakemake.params.countries
+    snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
     years = slice(snapshots[0], snapshots[-1])
-    time_shift = snakemake.config["load"]["time_shift_for_large_gaps"]
-    load = load_timeseries(snakemake.input[0], years, countries, powerstatistics)
+    time_shift = snakemake.params.load["time_shift_for_large_gaps"]
 
-    if snakemake.config["load"]["manual_adjustments"]:
+    load = load_timeseries(snakemake.input[0], years, countries, powerstatistics)
+    print("loaded timeseries")
+    print(load.head())
+
+    if snakemake.params.load["manual_adjustments"]:
         load = manual_adjustment(load, snakemake.input[0], powerstatistics)
+
+    if load.empty:
+        logger.warning("Build electricity demand time series is empty.")
 
     logger.info(f"Linearly interpolate gaps of size {interpolate_limit} and less.")
     load = load.interpolate(method="linear", limit=interpolate_limit)

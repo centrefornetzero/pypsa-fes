@@ -503,3 +503,27 @@ def get_import_export_balance(scenario, year):
     df.columns = range(2022, 2052)
 
     return df.loc[scenario_mapper[scenario], int(year)] * 1e6
+
+
+def get_electric_heat_demand(scenario, year, base_year=2019):
+    """Electricity load in GB meeting heat demand"""
+
+    col = string.ascii_uppercase.index("M")
+
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="EC.06",
+            header=7,
+            index_col=0,
+            usecols=[col+i for i in range(47)],
+            )
+        ).iloc[:5]
+
+    df.columns = pd.Series(df.columns).apply(lambda dt: dt.year)
+
+    # The share of demand subsumed by the general electricity demand
+    base_demand = df.loc["History", int(base_year)]
+    
+    # future demand
+    future_demand = df.loc[scenario_mapper[scenario], int(year)]
+    return base_demand * 1e6, future_demand * 1e6
