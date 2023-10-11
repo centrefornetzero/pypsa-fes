@@ -80,14 +80,6 @@ def load_timeseries(fn, years, countries, powerstatistics=True):
     def rename(s):
         return s[: -len(pattern)]
 
-    df = pd.read_csv(fn, index_col=0, parse_dates=[0]).tz_localize(None)
-    print(pattern)
-    # df = df.filter(like=pattern)
-    df = df.filter(like=pattern)
-    print(df.head())
-
-    # assert False, "stopping here"
-
     return (
         pd.read_csv(fn, index_col=0, parse_dates=[0])
         .tz_localize(None)
@@ -298,10 +290,6 @@ if __name__ == "__main__":
     configure_logging(snakemake)
 
     powerstatistics = snakemake.params.load["power_statistics"]
-    print("===============================")
-    print("powerstatistics")
-    print(powerstatistics)
-    print("===============================")
     interpolate_limit = snakemake.params.load["interpolate_limit"]
     countries = snakemake.params.countries
     snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
@@ -309,8 +297,6 @@ if __name__ == "__main__":
     time_shift = snakemake.params.load["time_shift_for_large_gaps"]
 
     load = load_timeseries(snakemake.input[0], years, countries, powerstatistics)
-    print("loaded timeseries")
-    print(load.head())
 
     if snakemake.params.load["manual_adjustments"]:
         load = manual_adjustment(load, snakemake.input[0], powerstatistics)
