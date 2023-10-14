@@ -200,4 +200,13 @@ if __name__ == "__main__":
     cumcount = ppl.groupby(["bus", "Fueltype"]).cumcount() + 1
     ppl.Name = ppl.Name.where(cumcount == 1, ppl.Name + " " + cumcount.astype(str))
 
+    # ELEXON data that seems to be used here has typos, overestimating GB hydro capacity by ~5GW.
+    # The following lines correct the major issues.
+    logger.warning("Hard coded correction to UK hydro powerplants.")
+    ppl.loc[ppl.EIC == "{'48WSTN10000DINOQ'}", "Capacity"] = 1728 # default value 2016, should be 1728, see https://en.wikipedia.org/wiki/Dinorwig_Power_Station
+    ppl.drop(ppl.loc[ppl.EIC == "{'48WSTN00000STVEO'}"].index, inplace=True) # according to ELEXON has 1.80 GW of capacity, based on coords, there is not ppl of this size, dropped more correct than keeping
+    ppl.loc[ppl.EIC == "{'48WSTN00000LOCGL'}", "Capacity"] = 6. # default value 999, should be 6, see https://openinframap.org/stats/area/United%20Kingdom/plants/956053729 
+    ppl.loc[ppl.EIC == "{'48WSTN00000GAURQ'}", "Capacity"] = 6.4 # default value 999, should be 6.5, see https://www.scottish-places.info/features/featurefirst3844.html
+    ppl.loc[ppl.EIC == "{'48WSTN00000SROM0'}", "Capacity"] = 40 # default value 999, should be 40, see https://en.wikipedia.org/wiki/Shira_Hydro-Electric_Scheme
+
     ppl.reset_index(drop=True).to_csv(snakemake.output[0])
