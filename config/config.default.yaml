@@ -79,6 +79,8 @@ flexibility:
   coal_phaseout_year_uk: 2026  # assuming no coal capacity in the system after this year
   balance_import_export: true # enforce balance of GB electricity imports and exports
   balance_link_max_hours: 6 # Storage capacity imbalance storage = max_hours * p_nom_expimp
+  electricity_distribution_grid: true
+  electricity_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
 
   # gas shortage parameters
   gas_reduction_factor: 0. # reduces gas availability gas generator capacity by this factor
@@ -596,8 +598,6 @@ sector:
   use_fischer_tropsch_waste_heat: true
   use_fuel_cell_waste_heat: true
   use_electrolysis_waste_heat: false
-  electricity_distribution_grid: true
-  electricity_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
   electricity_grid_connection: true  # only applies to onshore wind and utility PV
   H2_network: true
   gas_network: false

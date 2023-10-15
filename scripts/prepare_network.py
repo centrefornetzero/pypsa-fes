@@ -110,6 +110,11 @@ def define_spatial(nodes: pd.Index, options):
 
     spatial.nodes = nodes
 
+    # low voltage level, i.e. distribution grid
+    spatial.low_voltage = SimpleNamespace()
+    spatial.low_voltage.nodes = nodes + " low voltage"
+    spatial.low_voltage.locations = nodes
+
     # electric vehicles
     spatial.electric_vehicles = SimpleNamespace()
     spatial.electric_vehicles.nodes = nodes + " electric vehicles"
@@ -1425,6 +1430,58 @@ def insert_espeni_demand(n):
     )
 
 
+def add_electricity_distribution_grid(n, costs):
+    """
+    Adds distribution grid between transmission level network and loads
+    """
+
+    cost_factor = snakemake.config["flexibility"]["electricity_distribution_grid_cost_factor"]
+
+    nodes = spatial.nodes
+    lv = spatial.low_voltage
+
+    n.madd(
+        "Bus",
+        lv.nodes,
+        location=lv.locations,
+        carrier="low voltage",
+        unit="MWh_el",
+    )
+
+    n.madd(
+        "Link",
+        lv.nodes,
+        bus0=nodes,
+        bus1=lv.nodes,
+        p_nom_extendable=True,
+        p_min_pu=-1.,
+        carrier="electricity distribution grid",
+        efficiency=1.,
+        lifetime=costs.at["electricity distribution grid", "lifetime"],
+        capital_cost=costs.at["electricity distribution grid", "fixed"] * cost_factor,
+    )
+
+    # move regular electricity load to distribution grid
+    loads = (n.loads.carrier == "electricity") & (n.loads.bus.isin(nodes))
+    n.loads.loc[loads, "bus"] = lv.nodes
+
+    # move other household loads to distribution grid
+    bevs = n.links.carrier == "BEV charger"
+    n.links.loc[bevs, "bus0"] += " low voltage"
+
+    v2g = n.links.carrier == "V2G"
+    n.links.loc[v2g, "bus1"] += " low voltage"
+
+    heat_pumps = n.links.carrier == "heat pump"
+    n.links.loc[heat_pumps, "bus0"] += " low voltage"
+
+    winter_flex = n.links.carrier == "winter flex"
+    n.links.loc[winter_flex, "bus1"] += " low voltage"
+
+    regular_flex = n.links.carrier == "regular flex"
+    n.links.loc[regular_flex, "bus1"] += " low voltage"
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1472,6 +1529,9 @@ if __name__ == "__main__":
 
     logger.info("Scaling electricity load according to scenario and year.")
     scale_load(n, fes, year)
+
+    logger.info("Setting electricity load carrier to 'electricity'.")
+    n.loads.loc[n.loads.carrier == "", "carrier"] = "electricity"
 
     generation_emission, daccs_removal, beccs_removal = (
         get_power_generation_emission(
@@ -1539,9 +1599,6 @@ if __name__ == "__main__":
         logger.info("Adding extendable stores.")
         attach_stores(n, elec_costs)
 
-    logger.info("Adding transmission limit.")
-    set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
-
     flexopts = snakemake.wildcards.flexopts.split("-")
 
     logger.info(f"Using Flexibility Options: {flexopts}")
@@ -1551,6 +1608,13 @@ if __name__ == "__main__":
     
     if "ss" in flexopts:
         add_event_flex(n, "winter")
+
+    if snakemake.config["flexibility"]["electricity_distribution_grid"]:
+        logger.info("Adding distribution grid to GB.")
+        add_electricity_distribution_grid(n, other_costs)
+
+    logger.info("Adding transmission limit.")
+    set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
     
     if snakemake.config["flexibility"]["balance_import_export"]:
         logger.info("Adding interconnector import/export balance.")
