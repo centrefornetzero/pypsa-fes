@@ -115,10 +115,10 @@ def define_spatial(nodes: pd.Index, options):
     spatial.electric_vehicles.nodes = nodes + " electric vehicles"
     spatial.electric_vehicles.locations = nodes
 
-    # electric vehicles batteries
-    spatial.electric_vehicles_batteries = SimpleNamespace()
-    spatial.electric_vehicles_batteries.nodes = nodes + " electric vehicles batteries"
-    spatial.electric_vehicles_batteries.locations = nodes
+    # electric vehicle batteries
+    spatial.electric_vehicle_batteries = SimpleNamespace()
+    spatial.electric_vehicle_batteries.nodes = nodes + " electric vehicle batteries"
+    spatial.electric_vehicle_batteries.locations = nodes
 
     # winter event flexibility
     spatial.event_flexibility_winter = SimpleNamespace()
@@ -130,7 +130,7 @@ def define_spatial(nodes: pd.Index, options):
     spatial.event_flexibility_regular.nodes = ["regular event flexibility"]
     spatial.event_flexibility_regular.locations = ["GB"]
 
-    # residential heat pumps
+    # residential heat demand
     spatial.heat_demand = SimpleNamespace()
     spatial.heat_demand.nodes = nodes + " heat demand"
     spatial.heat_demand.locations = nodes
