@@ -1481,6 +1481,8 @@ def add_electricity_distribution_grid(n, costs):
     regular_flex = n.links.carrier == "regular flex"
     n.links.loc[regular_flex, "bus1"] += " low voltage"
 
+    logger.warning("Home batteries and rooftop solar still missing from distribution level")
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
