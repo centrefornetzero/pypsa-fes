@@ -225,24 +225,6 @@ rule build_biomass_potentials:
         "../scripts/build_biomass_potentials.py"
 
 
-"""
-rule build_2022_octopus_demand:
-    input:
-        default_load=RESOURCES + "default_load.csv",
-        gb_demand="data/demanddata.csv",
-    output:
-        load=RESOURCES + "load.csv",
-    log:
-        LOGS + "build_2022_octopus_demand.log",
-    resources:
-        mem_mb=5000,
-    conda:
-        "../envs/environment.yaml"
-    script:
-        "../scripts/build_2022_octopus_demand.py"
-"""
-
-
 rule build_powerplants:
     input:
         base_network=RESOURCES + "networks/base.nc",
@@ -626,13 +608,14 @@ rule build_electricity_demand_gb:
         "../scripts/build_electricity_demand_gb.py"
     
 
-
 rule prepare_network:
     input:
         RESOURCES + "networks/elec_s{simpl}_eso_ec.nc",
         overrides="data/override_component_attrs",
         espeni_electricity_demand=RESOURCES + "ESPENI_demand_gb.csv",
         tech_costs=COSTS,
+        interconnectors="data/interconnectors_pypsa_gb_future.csv",
+        regions_onshore=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         biomass_potentials=RESOURCES + "biomass_potentials_s{simpl}_eso.csv",
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         heat_profile="data/heat_load_profile_BDEW.csv",

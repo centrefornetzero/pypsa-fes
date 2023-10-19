@@ -65,7 +65,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from itertools import product
-from shapely.geometry import Point, Linestring
+from shapely.geometry import Point, LineString
 import geopandas as gpd
 
 from _helpers import (
@@ -1486,6 +1486,71 @@ def add_electricity_distribution_grid(n, costs):
     logger.warning("Home batteries and rooftop solar still missing from distribution level")
 
 
+def adjust_interconnectors(n, file, year):
+
+    links = pd.read_csv(file, index_col=0, encoding = "ISO-8859-1")
+    links["installed date"] = pd.to_datetime(links["installed date"])
+
+    shapes = gpd.read_file(snakemake.input.regions_onshore)
+    year = int(year)
+
+    existing_links = n.links.loc[
+        (n.links.carrier == "DC") &
+        ((n.links.bus0.str.contains("GB")) | 
+        (n.links.bus1.str.contains("GB")))
+        ]
+
+    n.links.drop(existing_links.index, inplace=True)
+
+    onhold_links = links.loc[links["on hold"].fillna(False)].index
+    links.drop(onhold_links, inplace=True)
+
+    if not onhold_links.empty:
+        logger.info(f"Not adding interconnectors as projects are on hold: {', '.join(onhold_links)}")
+
+    start_state = pd.Timestamp(year=year, month=1, day=1)
+
+    future_links = links.loc[links["installed date"] > start_state].index
+    links.drop(future_links, inplace=True)
+
+    if not future_links.empty:
+        logger.info(f"Not adding interconnectors of future years: {', '.join(future_links)}")
+
+    bus0 = gpd.GeoDataFrame(geometry=gpd.points_from_xy(links["bus0 lon"], links["bus0 lat"]), crs="EPSG:4326", index=links.index)
+    bus1 = gpd.GeoDataFrame(geometry=gpd.points_from_xy(links["bus1 lon"], links["bus1 lat"]), crs="EPSG:4326", index=links.index)
+
+    bus0 = gpd.sjoin(bus0, shapes, how="left")
+    bus1 = gpd.sjoin(bus1, shapes, how="left")
+
+    links = pd.concat((
+        links[["bus1 lon", "bus1 lat", "p_nom", "bus0 lon", "bus0 lat"]],
+        bus0["name"].rename("bus0"),
+        bus1["name"].rename("bus1"),
+    ), axis=1)
+
+    drop_links = links.loc[links["bus0"].isna() | links["bus1"].isna()].index
+    logger.info(f"Links {', '.join(drop_links)} have no bus0 or bus1 and are dropped.")
+
+    links.drop(drop_links, inplace=True)
+    logger.info(f"Adding DC links to network: {', '.join(links.index)}")
+
+    links["geometry"] = links.apply(
+        lambda row: LineString([Point(row["bus0 lon"], row["bus0 lat"]), Point(row["bus1 lon"], row["bus1 lat"])]),
+        axis=1
+    )
+
+    n.madd(
+        "Link",
+        links.index,
+        bus0=links["bus0"],
+        bus1=links["bus1"],
+        p_nom=links["p_nom"],
+        p_min_pu=-1,
+        geometry=links["geometry"].astype(str),
+        carrier="DC",
+    )
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1526,6 +1591,9 @@ if __name__ == "__main__":
         snakemake.config["costs"],
         1.,
     )
+
+    logger.info("Updating DC links for GB based on modelled year.")
+    adjust_interconnectors(n, snakemake.input.interconnectors, year)
 
     if snakemake.config["flexibility"]["demand"]["use_espeni"]:
         logger.info("Inserting ESPENI demand data for Great Britain nodes.")
