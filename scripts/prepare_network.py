@@ -65,6 +65,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from itertools import product
+from shapely.geometry import Point, Linestring
+import geopandas as gpd
 
 from _helpers import (
     configure_logging,
@@ -720,7 +722,7 @@ def add_heat_pump_load(
         store_use_window = charging_window
 
         daily_p_max = (
-            hp_heat_demand
+            future_heat_demand 
             .groupby(pd.Grouper(freq="h"))
             .max()
             .reindex(s, method="ffill")
@@ -733,7 +735,7 @@ def add_heat_pump_load(
         p_min_pu = - (daily_p_max / p_nom).mul(discharging_window, axis=0)
 
         daily_e_max = (
-            hp_heat_demand
+            future_heat_demand
             .rolling(shift_size)
             .sum()
             .shift(-shift_size)
@@ -1620,7 +1622,7 @@ if __name__ == "__main__":
     
     if snakemake.config["flexibility"]["balance_import_export"]:
         logger.info("Adding interconnector import/export balance.")
-        # add_import_export_balance(n, fes, year)
+        add_import_export_balance(n, fes, year)
 
     if "cphase" in opts:
         logger.info("Adjusting coal price phase out.")
