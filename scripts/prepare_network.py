@@ -1606,6 +1606,7 @@ def add_hydrogen_demand(n, scenario, year, costs):
     )
 
     h2_demand = get_industrial_hydrogen_demand(scenario, int(year))
+    logger.info(f"{h2_demand*1e-6:.2f} TWh of hydrogen to produce.")
 
     e_min_pu = pd.DataFrame(0., n.snapshots, h2.nodes)
     e_min_pu.iloc[-1] = 1.
