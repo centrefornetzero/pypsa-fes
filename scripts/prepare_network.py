@@ -1272,8 +1272,13 @@ def add_import_export_balance(n, fes, year):
     e_nom = abs(balance)
 
     e_max_pu = pd.DataFrame(1., n.snapshots, spatial.import_export_tracker.nodes) 
+    e_min_pu = pd.DataFrame(-1., n.snapshots, spatial.import_export_tracker.nodes) 
+
     e_max_pu.iloc[0] = 0.
+    e_min_pu.iloc[0] = 0.
+
     e_max_pu.iloc[-1] = balance / max(max_hours * total_p_nom, e_nom)
+    e_min_pu.iloc[-1] = balance / max(max_hours * total_p_nom, e_nom)
 
     n.madd(
         "Bus",
@@ -1289,7 +1294,7 @@ def add_import_export_balance(n, fes, year):
         carrier="import export tracker",
         e_nom=max(max_hours * total_p_nom, e_nom),
         e_max_pu=e_max_pu,
-        e_min_pu=-e_max_pu,
+        e_min_pu=e_min_pu,
         )
 
     dc = n.links.loc[n.links.carrier == "DC"]
@@ -1434,7 +1439,7 @@ def insert_espeni_demand(n):
 
 def add_electricity_distribution_grid(n, costs):
     """
-    Adds distribution grid between transmission level network and loads
+    Adds distribution grid bottleneck between transmission level network and loads
     """
 
     cost_factor = snakemake.config["flexibility"]["electricity_distribution_grid_cost_factor"]
@@ -1492,6 +1497,12 @@ def adjust_interconnectors(n, file, year):
     links["installed date"] = pd.to_datetime(links["installed date"])
 
     shapes = gpd.read_file(snakemake.input.regions_onshore)
+
+    shapes = shapes.loc[
+        (shapes.name.isin(spatial.nodes)) |
+        ~(shapes.name.str.contains("GB"))
+        ]
+
     year = int(year)
 
     existing_links = n.links.loc[
@@ -1545,7 +1556,7 @@ def adjust_interconnectors(n, file, year):
         bus0=links["bus0"],
         bus1=links["bus1"],
         p_nom=links["p_nom"],
-        p_min_pu=-1,
+        p_min_pu=-1.,
         geometry=links["geometry"].astype(str),
         carrier="DC",
     )
