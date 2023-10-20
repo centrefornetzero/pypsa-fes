@@ -530,7 +530,6 @@ def get_electric_heat_demand(scenario, year, base_year=2019):
 
 
 def get_distributed_generation(scenario, year):
-    """Get reference and future value for commercial elecitricity demand"""
 
     col = string.ascii_uppercase.index("N")
     df = (
@@ -545,3 +544,21 @@ def get_distributed_generation(scenario, year):
 
     df.columns = [pd.Timestamp(dt).year for dt in df.columns]
     return df.loc[scenario_mapper[scenario], year] * 1e3
+
+
+def get_industrial_hydrogen_demand(scenario, year):
+    """Total yearly generation of industrial hydrogen"""
+
+    col = string.ascii_uppercase.index("M")
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="EC.17",
+            header=6,
+            index_col=0,
+            nrows=4,
+            usecols=[col+i for i in range(32)],
+            )
+    )
+
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    return df.loc[scenario_mapper[scenario], year] * 1e6

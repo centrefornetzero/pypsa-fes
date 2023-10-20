@@ -86,6 +86,7 @@ from _fes_helpers import (
     get_commercial_demand,
     get_import_export_balance,
     get_electric_heat_demand,
+    get_industrial_hydrogen_demand,
     )
 
 from pypsa.descriptors import expand_series
@@ -197,7 +198,7 @@ def define_spatial(nodes: pd.Index, options):
     spatial.grid_storage.nodes = nodes + " grid storage"
     spatial.grid_storage.locations = nodes
 
-    # hydrogen (not used yet, aspirational)
+    # hydrogen
     spatial.hydrogen = SimpleNamespace()
     spatial.hydrogen.nodes = ["GB hydrogen"]
     spatial.hydrogen.locations = ["GB"]
@@ -1590,6 +1591,48 @@ def adjust_interconnectors(n, file, year):
     )
 
 
+def add_hydrogen_demand(n, scenario, year, costs):
+    """Adding hydrogen as a store that has to be filled by electrolysis to
+    a values according to FES"""
+
+    nodes = spatial.nodes
+    h2 = spatial.hydrogen
+
+    n.madd(
+        "Bus",
+        h2.nodes,
+        carrier="H2",
+        location=h2.locations,
+    )
+
+    h2_demand = get_industrial_hydrogen_demand(scenario, int(year))
+
+    e_min_pu = pd.DataFrame(0., n.snapshots, h2.nodes)
+    e_min_pu.iloc[-1] = 1.
+
+    n.madd(
+        "Store",
+        h2.nodes,
+        bus=h2.nodes,
+        carrier="H2",
+        e_nom=h2_demand,
+        e_min_pu=e_min_pu,
+    )
+
+    n.madd(
+        "Link",
+        nodes,
+        suffix=" electrolysis",
+        bus0=nodes,
+        bus1=h2.nodes,
+        carrier="electrolysis",
+        capital_cost=costs.at["electrolysis", "fixed"],
+        marginal_cost=costs.at["electrolysis", "VOM"],
+        efficiency=costs.at["electrolysis", "efficiency"],
+        p_nom_extendable=True,
+    )
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1723,6 +1766,9 @@ if __name__ == "__main__":
     if snakemake.config["flexibility"]["electricity_distribution_grid"]:
         logger.info("Adding distribution grid to GB.")
         add_electricity_distribution_grid(n, other_costs)
+
+    logger.info("Adding hydrogen demand, and electrolysis.")
+    add_hydrogen_demand(n, fes, year, other_costs)
 
     logger.info("Adding transmission limit.")
     set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
