@@ -1143,7 +1143,7 @@ def add_event_flex(n, mode):
 
 
 def add_batteries(n, costs=None, opts=[]):
-    """Adds battery storage (exluding V2G)
+    """Adds battery storage (excluding V2G)
 
     Batteries are added as Storage Units
     Here, for PHS the distributions matches the distribution of 
@@ -1160,12 +1160,12 @@ def add_batteries(n, costs=None, opts=[]):
             "capital_cost": costs.at["battery storage", "capital_cost"],
             "marginal_cost": costs.at["battery", "marginal_cost"],
         }
-    
+
     else:
         battery_kwargs = {}
 
     year = snakemake.wildcards.year
-    
+
     nodes = spatial.nodes
     logger.warning(f"Batteries installed at \n {', '.join(nodes)}.")
 
@@ -1442,6 +1442,8 @@ def add_electricity_distribution_grid(n, costs):
     Adds distribution grid bottleneck between transmission level network and loads
     """
 
+    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
+
     cost_factor = snakemake.config["flexibility"]["electricity_distribution_grid_cost_factor"]
 
     nodes = spatial.nodes
@@ -1488,7 +1490,33 @@ def add_electricity_distribution_grid(n, costs):
     regular_flex = n.links.carrier == "regular flex"
     n.links.loc[regular_flex, "bus1"] += " low voltage"
 
-    logger.warning("Home batteries and rooftop solar still missing from distribution level")
+    logger.warning("Adding rooftop solar on the distribution level.")
+
+    solar = n.generators.loc[n.generators.carrier == "solar"]
+    solar = solar.loc[solar.bus.isin(nodes)].index
+
+    n.generators.loc[solar, "capital_cost"] = costs.at["solar-utility", "fixed"]
+    pop_solar = pop_layout.loc[nodes].total.rename(index=lambda x: x + " solar")
+
+    # add max solar rooftop potential assuming 0.1 kW/m2 and 10 m2/person,
+    # i.e. 1 kW/person (population data is in thousands of people) so we get MW
+    # (taken from PyPSA-Eur :scripts/prepare_sector_network.py: lines 952 ff)
+    potential = 0.1 * 10 * pop_solar
+
+    n.madd(
+        "Generator",
+        solar,
+        suffix=" rooftop",
+        bus=n.generators.loc[solar, "bus"] + " low voltage",
+        carrier="solar rooftop",
+        p_nom_extendable=True,
+        p_nom_max=potential,
+        marginal_cost=n.generators.loc[solar, "marginal_cost"],
+        capital_cost=costs.at["solar-rooftop", "fixed"],
+        efficiency=n.generators.loc[solar, "efficiency"],
+        p_max_pu=n.generators_t.p_max_pu[solar],
+        lifetime=costs.at["solar-rooftop", "lifetime"],
+    )
 
 
 def adjust_interconnectors(n, file, year):
