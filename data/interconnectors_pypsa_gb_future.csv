@@ -1,0 +1,20 @@
+name,bus1,bus0,carrier,p_nom,installed date,marginal_cost,bus0 lon,bus0 lat,bus1 lon,bus1 lat,source,on hold
+BritNed,Netherlands,Kemsley,DC,1000,01/01/2020,20,1.144694,51.098389,4.091389,51.9575,wikipedia.org,
+EastWest,Ireland,Deeside,DC,600,01/01/2020,7,-3.072778,53.227222,-6.5675,53.471111,wikipedia.org,
+Moyle,N. Ireland,Neilston,DC,600,01/01/2020,7,-4.431111,55.446944,-5.769722,54.842778,wikipedia.org,
+Nemo,Belgium,Sellindge,DC,1000,01/01/2020,20,1.3466,51.309,3.20861,51.2654,wikipedia.org,
+IFA,France1,Sellindge,DC,2000,01/01/2020,15,0.947222,50.915,1.639167,50.696667,wikipedia.org,
+IFA2,France2,Lovedean,DC,1000,01/01/2020,15,-1.193889,50.818056,-0.262,49.110806,wikipedia.org,
+NSL,Norway,Stella West,DC,1400,01/01/2021,1,-1.542763,55.146265,10.76615,59.948742,wikipedia.org,
+ElecLink,France1,Sellindge,DC,1000,01/01/2022,15,1.144694,51.079167,1.7831574,50.9203,wikipedia.org,
+Viking Link,Denmark,Walpole,DC,1400,01/01/2024,7,-0.220556,52.930278,8.709722,55.523056,wikipedia.org,
+Greenlink,Ireland2,Melksham,DC,500,01/01/2024,7,-4.842222,51.845,-6.75,52.5,wikipedia.org,
+GridLink,France1,Kemsley,DC,1400,01/01/2027,15,0.6131,51.35,2.1931,50.9617,wikipedia.org,
+NeuConnect,Germany,Kemsley,DC,1400,01/01/2028,20,0.7156,51.4554,8.105556,53.528611,wikipedia.org,
+NorthConnect,Norway,Peterhead,DC,1400,01/01/2025,1,-1.7832,57.5091,5.805556,60.402778,wikipedia.org,TRUE
+FAB Link,France2,S.W.Penisula,DC,1250,01/01/2030,15,-3.413889,50.734444, -1.5614,49.4656,wikipedia.org,
+AQUIND,France,Lovedean,DC,2000,01/01/2026,,-1.02731,50.91155,0.99085,49.65576,wikipedia.org,
+Xlinks,Morocco,Cornwall,DC,3600,01/01/2029,,-4.111465,51.007306,-11.1,28.433333,wikipedia.org,TRUE
+Caithness - Moray Link,Blackhillok,Spitta,DC,1200,01/01/2019,,-3.42885,58.46771,-2.948,57.523,wikipedia.org,
+Western HVDC Link,Flintshire Bridge,Hunterston,DC,2250,01/01/2019,,-4.885278,55.721111, -3.032778,53.23166,wikipedia.org,
+Shetland HVDC Connection,Shetland,Caithness,DC,600,01/01/2024,,-3.7525,58.2706,-1.333333,60.333333,wikipedia.org,
