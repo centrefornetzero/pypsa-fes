@@ -527,3 +527,21 @@ def get_electric_heat_demand(scenario, year, base_year=2019):
     # future demand
     future_demand = df.loc[scenario_mapper[scenario], int(year)]
     return base_demand * 1e6, future_demand * 1e6
+
+
+def get_distributed_generation(scenario, year):
+    """Get reference and future value for commercial elecitricity demand"""
+
+    col = string.ascii_uppercase.index("N")
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="ES.22",
+            header=6,
+            index_col=0,
+            nrows=4,
+            usecols=[col+i for i in range(30)],
+            )
+    )
+
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    return df.loc[scenario_mapper[scenario], year] * 1e3

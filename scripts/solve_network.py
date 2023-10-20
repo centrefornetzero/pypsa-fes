@@ -587,6 +587,7 @@ def add_capacity_constraint(n, const, country="GB", carrier="solar"):
         )
 
 
+# remove? Not used...
 def add_interconnector_constraint(n, const):
     
     mask = (
@@ -640,8 +641,8 @@ def extra_functionality(n, snapshots):
 
     if not "100percent" in snakemake.wildcards.opts.split("-"):
 
-        carriers = ["solar", "onwind", "offwind"]
-        pypsa_carriers = ["solar", "onwind",["offwind-ac", "offwind-dc"]]
+        carriers = ["solar", "onwind", "offwind", "solar rooftop"]
+        pypsa_carriers = ["solar", "onwind", ["offwind-ac", "offwind-dc"], "solar rooftop"]
 
         for carrier, pypsa_carrier in zip(carriers, pypsa_carriers):
             value = cc.at[carrier, "value"]
@@ -665,10 +666,10 @@ def extra_functionality(n, snapshots):
         """
 
     
-    if not "ATK" in opts:
-        value = cc.at["DC", "value"]
-        logger.info(f"Fixing p_nom of interconnectors {value*1e-3:.2f} GW.")
-        add_interconnector_constraint(n, value)
+    # if not "ATK" in opts:
+    #     value = cc.at["DC", "value"]
+    #     logger.info(f"Fixing p_nom of interconnectors {value*1e-3:.2f} GW.")
+    #     add_interconnector_constraint(n, value)
 
 
 def solve_network(n, config, opts="", **kwargs):
@@ -719,7 +720,9 @@ def solve_network(n, config, opts="", **kwargs):
 
     value = cc.at["onwind", "value"]
     maybe_adjust_p_nom_max(n, value, country="GB", carrier=["onwind"])
-    
+
+    value = cc.at["solar rooftop", "value"]
+    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["solar rooftop"])
 
     if not n.lines.s_nom_extendable.any():
         skip_iterations = True

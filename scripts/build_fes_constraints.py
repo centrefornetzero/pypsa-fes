@@ -17,7 +17,8 @@ import numpy as np
 
 from _fes_helpers import (
     get_data_point,
-    get_interconnector_capacity
+    get_interconnector_capacity,
+    get_distributed_generation,
     )
 from _helpers import configure_logging
 
@@ -93,6 +94,14 @@ if __name__ == "__main__":
         "attr": "p_nom",
         "value": val,
         "sense": "==",})
+    
+    val = get_distributed_generation(fes, year)
+    caps.loc[len(caps)] = pd.Series({
+        "carrier": "solar rooftop",
+        "attr": "p_nom",
+        "value": val,
+        "sense": "==",})
+    
 
     """
     val = get_data_point("bioenergy_capacity", fes, year)
