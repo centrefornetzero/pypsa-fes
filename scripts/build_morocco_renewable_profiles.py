@@ -17,10 +17,11 @@ import json
 import time
 import atlite
 import numpy as np
+import pandas as pd
 import xarray as xr
 import geopandas as gpd
 from pypsa.geo import haversine
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon
 from shapely.ops import cascaded_union
 from _helpers import configure_logging
 from dask.distributed import Client, LocalCluster
@@ -75,6 +76,9 @@ if __name__ == "__main__":
             index=["MA0"]
         ).set_crs(epsg=4326).rename_axis("bus")
     )
+    regions["country"] = ["MA"]
+    regions[["x", "y"]] = regions.geometry.apply(lambda g: pd.Series(g.centroid.coords[0]))
+
     buses = regions.index
 
     epsg = 32629

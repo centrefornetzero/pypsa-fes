@@ -448,7 +448,11 @@ rule build_morocco_renewable_profiles:
         "data/morocco_shape/Sidi-Ifni.json",
         "data/morocco_shape/Guelmim.json",
         "data/morocco_shape/Assa-Zag.json",
-        cutout="cutouts/" + CDIR + "{morocco_cutout}.nc",
+        cutout="data/morocco-2019-era5.nc"
+        # cutout=lambda w: "morocco_cutouts/"
+        # + CDIR
+        # + config["morocco_renewable"][w.technology]["cutout"]
+        # + ".nc",
     output:
         profile=RESOURCES + "profile_morocco_{technology}.nc",
     log:
