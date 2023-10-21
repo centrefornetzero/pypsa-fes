@@ -57,10 +57,8 @@ if __name__ == "__main__":
     cutout = atlite.Cutout(snakemake.input.cutout)
 
     geoms = list()
-    print(f'files for input: {snakemake.input[:4]}')
 
     for file in snakemake.input[:4]:
-        print(file)
 
         with open(file) as f:
             data = json.load(f)
