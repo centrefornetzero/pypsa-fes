@@ -335,6 +335,22 @@ if config["enable"].get("build_cutout", False):
             "../scripts/build_cutout.py"
 
 
+    rule build_morocco_cutout:
+        output:
+            protected("morocco_cutouts/" + CDIR + "{morocco_cutout}.nc"),
+        log:
+            "logs/" + CDIR + "build_morocco_cutout/{morocco_cutout}.log",
+        benchmark:
+            "benchmarks/" + CDIR + "build_morocco_cutout_{morocco_cutout}"
+        threads: ATLITE_NPROCESSES
+        resources:
+            mem_mb=ATLITE_NPROCESSES * 1000,
+        conda:
+            "../envs/environment.yaml"
+        script:
+            "../scripts/build_morocco_cutout.py"
+
+
 if config["enable"].get("build_natura_raster", False):
 
     rule build_natura_raster:
@@ -424,6 +440,30 @@ rule build_renewable_profiles:
         "../envs/environment.yaml"
     script:
         "../scripts/build_renewable_profiles.py"
+
+
+rule build_morocco_renewable_profiles:
+    input:
+        "data/morocco_shape/Tan-Tan.json",
+        "data/morocco_shape/Sidi-Ifni.json",
+        "data/morocco_shape/Guelmim.json",
+        "data/morocco_shape/Assa-Zag.json",
+        cutout="cutouts/" + CDIR + "{morocco_cutout}.nc",
+    output:
+        profile=RESOURCES + "profile_morocco_{technology}.nc",
+    log:
+        LOGS + "build_morocco_renewable_profile_{technology}.log",
+    benchmark:
+        BENCHMARKS + "build_morocco_renewable_profiles_{technology}"
+    threads: ATLITE_NPROCESSES
+    resources:
+        mem_mb=ATLITE_NPROCESSES * 5000,
+    wildcard_constraints:
+        technology="(?!hydro).*",  # Any technology other than hydro
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_morocco_renewable_profiles.py"
 
 
 rule build_fes_constraints:
@@ -606,7 +646,7 @@ rule build_electricity_demand_gb:
         "../envs/environment.yaml"
     script:
         "../scripts/build_electricity_demand_gb.py"
-    
+
 
 rule prepare_network:
     input:
