@@ -6,7 +6,7 @@
 Implements electricity demand time series for each regions of the
 network, based on the the ESPENI dataset, see
 
-'Calculating Great Britain’s half-hourly electrical demand from publicly
+'Calculating Great Britain`s half-hourly electrical demand from publicly
 available data' by Wilson et al. 2021 
 
 This dataset estimates true electricity demand data in the UK based on the

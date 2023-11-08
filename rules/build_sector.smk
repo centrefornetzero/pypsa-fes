@@ -465,8 +465,6 @@ if not config["sector"]["retrofitting"]["retro_endogen"]:
     build_retro_cost_output = {}
 
 
-
-
 rule build_shipping_demand:
     input:
         ports="data/attributed_ports.json",
