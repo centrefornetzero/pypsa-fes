@@ -206,6 +206,22 @@ def define_spatial(nodes: pd.Index, options):
     return spatial
 
 
+def check_flexopts(opts):
+
+    if isinstance(opts, str):
+        opts = opts.split("-")
+    
+    message_template = "Flex options '{}' and '{}' exclude each other."
+    exclusions = [
+        ('int', 'go'),
+        ('cosy', 'store')
+        ]
+    
+    for ex in exclusions:
+        if ex[0] in opts and ex[1] in opts:
+            raise ValueError(message_template.format(ex[0], ex[1]))
+
+
 def add_co2limit(n, co2limit, Nyears=1.0):
     n.add(
         "GlobalConstraint",
@@ -1658,6 +1674,10 @@ if __name__ == "__main__":
     year = snakemake.wildcards.year
     logger.info(f"Preparing network for {fes} in {year}.")
 
+    flexopts = snakemake.wildcards.flexopts.split("-")
+    logger.info(f"Using Flexibility Options: {flexopts}")
+    check_flexopts(flexopts)
+
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
 
     elec_costs = load_costs(
@@ -1753,10 +1773,6 @@ if __name__ == "__main__":
     if "100percent" in opts:
         logger.info("Adding extendable stores.")
         attach_stores(n, elec_costs)
-
-    flexopts = snakemake.wildcards.flexopts.split("-")
-
-    logger.info(f"Using Flexibility Options: {flexopts}")
 
     if "reg" in flexopts:
         add_event_flex(n, "regular")
