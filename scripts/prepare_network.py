@@ -975,17 +975,17 @@ def add_bev(n, transport_config, flex_config, flexopts):
 
             if bev_flexibility == "int":
                 p_max_pu = 1.
+
             elif bev_flexibility == "go":
-                print("INNN hheeerreeee")
                 p_max_pu = pd.DataFrame(
                     np.zeros((len(n.snapshots), len(spatial.electric_vehicles.nodes))),
                     index=n.snapshots,
                     columns=spatial.nodes,
                 )
-                p_max_pu.loc[p_max_pu.index.hour.isin(range(4)), :] = 1.
 
-                print(p_max_pu)
-                print(spatial.electric_vehicles.nodes)
+                # go tariff: charging during 4 hours at night
+                logger.warning("Go tariff currently does not prevent ")
+                p_max_pu.loc[p_max_pu.index.hour.isin(range(4)), :] = 1.
 
             n.madd(
                 "Link",
