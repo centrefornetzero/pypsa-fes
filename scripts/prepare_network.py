@@ -890,9 +890,6 @@ def add_bev(n, transport_config, flex_config, flexopts):
             * electric_share
         )
 
-        print("p_nom of BEV charging")
-        print(p_nom)
-
         logger.info(f"Assuming BEV charge efficiency of {(eta := flex_config['bev_charge_efficiency'])}")
         n.madd(
             "Link",
