@@ -795,7 +795,7 @@ def add_heat_pump_load(
         )
 
 
-def add_bev(n, transport_config):
+def add_bev(n, transport_config, flex_config, flexopts):
     """
     Adds BEV load and respective stores units;
     adapted from `add_land_transport` method in `scripts/prepare_sector_network.py`
@@ -805,8 +805,13 @@ def add_bev(n, transport_config):
 
     nodes = spatial.nodes
 
-    bev_flexibility = "bev" in snakemake.wildcards.flexopts.split("-")
-
+    if "go" in flexopts:
+        bev_flexibility = "go"
+    elif "int" in flexopts:
+        bev_flexibility = "int"
+    else:
+        bev_flexibility = None
+    
     transport = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
     )
@@ -835,7 +840,11 @@ def add_bev(n, transport_config):
     electric_share = bev_cars / gb_cars_2050
     logger.info(f"EV share: {np.around(electric_share*100, decimals=2)}%")
 
-    if electric_share > 0.0:
+    if not electric_share > 0.0:
+        logger.warning((f"Found electric_share = {electric_share}. \n No electric")
+                       (" vehicles in scenario. Skipping..."))
+
+    else:
 
         logger.info("Adding BEV load and respective storage units.")
 
@@ -895,6 +904,9 @@ def add_bev(n, transport_config):
             snakemake.input.fes_table,
             snakemake.wildcards.fes,
             year)
+        
+        smart_share = flex_config[f"{bev_flexibility}_tariff_share"] or smart_share
+        v2g_share = flex_config[f"{bev_flexibility}_v2g_share"] or v2g_share
 
         if v2g_share > 0. and bev_flexibility:
 
@@ -1764,6 +1776,8 @@ if __name__ == "__main__":
     logger.info("Adding BEV load.")
     add_bev(n,
         snakemake.config["sector"],
+        snakemake.config["flexibility"],
+        flexopts,
     )
 
     logger.info("Adding battery storage.")
