@@ -279,6 +279,7 @@ def get_gb_total_transport_demand(fn):
     return df
 
 
+'''
 def get_gb_total_number_cars(fn, scenario):
     col = string.ascii_uppercase.index("B")
     df = (
@@ -292,6 +293,25 @@ def get_gb_total_number_cars(fn, scenario):
     ).iloc[:4]
 
     return df.loc[scenario_mapper[scenario]]
+'''
+
+
+def get_total_cars(fn, scenario, year):
+    """Total yearly generation of industrial hydrogen"""
+
+    col = string.ascii_uppercase.index("M")
+    df = (
+        pd.read_excel(fn,
+            sheet_name="EC.T.a",
+            header=7,
+            index_col=0,
+            nrows=4,
+            usecols=[col+i for i in range(37)],
+            )
+    )
+
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    return df.loc[scenario_mapper[scenario], year]
 
 
 def get_smart_charge_v2g(fn, scenario, year):

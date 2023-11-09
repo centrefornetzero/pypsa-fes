@@ -77,8 +77,9 @@ from prepare_sector_network import cycling_shift, prepare_costs
 from _fes_helpers import (
     get_data_point,
     scenario_mapper,
-    get_gb_total_number_cars,
     get_gb_total_transport_demand,
+    # get_gb_total_number_cars,
+    get_total_cars,
     get_smart_charge_v2g,
     get_power_generation_emission,
     get_battery_capacity,
@@ -802,6 +803,7 @@ def add_bev(n, transport_config, flex_config, flexopts):
     """
 
     year = int(snakemake.wildcards.year)
+    scenario = snakemake.wildcards.fes
 
     nodes = spatial.nodes
 
@@ -812,9 +814,10 @@ def add_bev(n, transport_config, flex_config, flexopts):
     else:
         bev_flexibility = None
     
-    transport = pd.read_csv(
+    transport_demand = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
     )
+
     number_cars = (
         pd.read_csv(snakemake.input.transport_data, index_col=0)
         .loc[nodes, "number cars"]
@@ -827,22 +830,28 @@ def add_bev(n, transport_config, flex_config, flexopts):
         snakemake.input.dsm_profile, index_col=0, parse_dates=True
     )
 
-    gb_cars_2050 = get_gb_total_number_cars(
-        snakemake.input.fes_table, "FS") * 1e6
+    gb_cars = get_total_cars(
+        snakemake.input.fes_table,
+        scenario,
+        year,
+        )
+    
+    # scaling number of cars
+    number_cars *= gb_cars / number_cars.sum()
 
-    gb_transport_demand = get_gb_total_transport_demand(
-        snakemake.input.fes_table)
+    # gb_transport_demand = get_gb_total_transport_demand(
+    #     snakemake.input.fes_table)
 
     bev_cars = get_data_point("bev_cars_on_road",
         snakemake.wildcards.fes,
         year)
     
-    electric_share = bev_cars / gb_cars_2050
+    electric_share = bev_cars / gb_cars
     logger.info(f"EV share: {np.around(electric_share*100, decimals=2)}%")
 
     if not electric_share > 0.0:
-        logger.warning((f"Found electric_share = {electric_share}. \n No electric")
-                       (" vehicles in scenario. Skipping..."))
+        logger.warning(((f"Found electric_share = {electric_share}. \n No electric")
+                       (" vehicles in scenario. Skipping...")))
 
     else:
 
@@ -851,9 +860,9 @@ def add_bev(n, transport_config, flex_config, flexopts):
         p_set = (
             electric_share
             * (
-                transport[nodes]
-                + cycling_shift(transport[nodes], 1)
-                + cycling_shift(transport[nodes], 2)
+                transport_demand[nodes]
+                + cycling_shift(transport_demand[nodes], 1)
+                + cycling_shift(transport_demand[nodes], 2)
             )
             / 3
         )
@@ -863,7 +872,7 @@ def add_bev(n, transport_config, flex_config, flexopts):
             "Bus",
             spatial.electric_vehicles.nodes,
             location=nodes,
-            carrier="Li ion",
+            carrier="transport",
             unit="MWh_el",
         )
 
@@ -877,12 +886,14 @@ def add_bev(n, transport_config, flex_config, flexopts):
 
         p_nom = (
             number_cars
-            * transport_config.get("bev_charge_rate", 0.011)
+            * flex_config["bev_charge_rate"]
             * electric_share
         )
 
-        # logger.warning("BEV charge efficiency set to 1.")
-        logger.info("Assuming BEV charge efficiency of 0.9")
+        print("p_nom of BEV charging")
+        print(p_nom)
+
+        logger.info(f"Assuming BEV charge efficiency of {(eta := flex_config['bev_charge_efficiency'])}")
         n.madd(
             "Link",
             nodes,
@@ -892,26 +903,23 @@ def add_bev(n, transport_config, flex_config, flexopts):
             p_nom=p_nom,
             carrier="BEV charger",
             p_max_pu=avail_profile[nodes],
-            efficiency=0.9,
-            # efficiency=1.,
-            # These were set non-zero to find LU infeasibility when availability = 0.25
-            # p_nom_extendable=True,
-            # p_nom_min=p_nom,
-            # capital_cost=1e6,  #i.e. so high it only gets built where necessary
+            efficiency=eta,
         )
 
+        # smart stuff
         smart_share, v2g_share = get_smart_charge_v2g(
             snakemake.input.fes_table,
             snakemake.wildcards.fes,
             year)
-        
+
         smart_share = flex_config[f"{bev_flexibility}_tariff_share"] or smart_share
-        v2g_share = flex_config[f"{bev_flexibility}_v2g_share"] or v2g_share
+        v2g_share = flex_config["v2g_share"] or v2g_share
 
-        if v2g_share > 0. and bev_flexibility:
+        if v2g_share > 0 and "v2g" in flexopts:
 
-            logger.info("Assuming V2G efficiency of 0.9")
-            v2g_efficiency = 0.9
+            logger.info(f"Assuming V2G share {v2g_share}.")
+            logger.info(f"Assuming V2G efficiency {(eta := flex_config['v2g_efficiency'])}.")
+
             n.madd(
                 "Link",
                 nodes,
@@ -921,12 +929,26 @@ def add_bev(n, transport_config, flex_config, flexopts):
                 p_nom=p_nom * v2g_share,
                 carrier="V2G",
                 p_max_pu=avail_profile[nodes],
-                efficiency=v2g_efficiency,
+                efficiency=eta,
             )
 
         if smart_share > 0. and bev_flexibility:
-            logger.info("Assuming average ev battery storage capacity of 0.05 MWh")
-            avg_battery_size = 0.05
+
+            logger.info(f"Adding optimizable BEV charging according to {bev_flexibility} tariff.")
+            avg_battery_size = flex_config["bev_battery_capacity"]
+            logger.info(f"Assuming average EV battery storage capacity of {avg_battery_size} MWh.")
+
+            opt_out = flex_config[f"{bev_flexibility}_tariff_opt_out_rate"]
+            logger.info(f"Assuming (daily) opt out rate of {opt_out*100}%.")
+
+            n.madd(
+                "Bus",
+                spatial.electric_vehicle_batteries.nodes,
+                location=nodes,
+                carrier="Li Ion",
+                unit="MWh_el",
+            )
+
             e_nom = (
                 number_cars
                 * avg_battery_size
@@ -935,20 +957,48 @@ def add_bev(n, transport_config, flex_config, flexopts):
             )
 
             e_min_pu = dsm_profile[nodes]
-            e_min_pu.columns = spatial.electric_vehicles.nodes
+            e_min_pu.columns = spatial.electric_vehicle_batteries.nodes
+
+            # availability to intelligently charge based on 
+
             n.madd(
                 "Store",
-                spatial.electric_vehicles.nodes,
-                bus=spatial.electric_vehicles.nodes,
+                spatial.electric_vehicle_batteries.nodes,
+                bus=spatial.electric_vehicle_batteries.nodes,
                 carrier="bev batteries",
                 location=nodes,
                 e_cyclic=True,
-                e_nom=e_nom.reindex(spatial.electric_vehicles.nodes),
+                e_nom=e_nom.reindex(spatial.electric_vehicle_batteries.nodes) * (1. - opt_out),
                 e_max_pu=1.,
                 e_min_pu=e_min_pu,
             )
 
-            # s = n.stores.loc[n.stores.carrier == "battery storage"]
+            if bev_flexibility == "int":
+                p_max_pu = 1.
+            elif bev_flexibility == "go":
+                print("INNN hheeerreeee")
+                p_max_pu = pd.DataFrame(
+                    np.zeros((len(n.snapshots), len(spatial.electric_vehicles.nodes))),
+                    index=n.snapshots,
+                    columns=spatial.nodes,
+                )
+                p_max_pu.loc[p_max_pu.index.hour.isin(range(4)), :] = 1.
+
+                print(p_max_pu)
+                print(spatial.electric_vehicles.nodes)
+
+            n.madd(
+                "Link",
+                nodes,
+                suffix=" car to battery",
+                bus0=spatial.electric_vehicles.nodes,
+                bus1=spatial.electric_vehicle_batteries.nodes,
+                p_nom=p_nom * smart_share * (1. - opt_out),
+                carrier="car to battery",
+                p_max_pu=p_max_pu,
+                p_min_pu=-1.,
+                efficiency=eta,
+            )
 
 
 def add_carbon_tracking(n, net_change_co2):
