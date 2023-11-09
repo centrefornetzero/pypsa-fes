@@ -956,8 +956,6 @@ def add_bev(n, transport_config, flex_config, flexopts):
             e_min_pu = dsm_profile[nodes]
             e_min_pu.columns = spatial.electric_vehicle_batteries.nodes
 
-            # availability to intelligently charge based on 
-
             n.madd(
                 "Store",
                 spatial.electric_vehicle_batteries.nodes,
@@ -970,6 +968,7 @@ def add_bev(n, transport_config, flex_config, flexopts):
                 e_min_pu=e_min_pu,
             )
 
+            # availability to intelligently charge based on 
             if bev_flexibility == "int":
                 p_max_pu = 1.
 
@@ -981,7 +980,7 @@ def add_bev(n, transport_config, flex_config, flexopts):
                 )
 
                 # go tariff: charging during 4 hours at night
-                logger.warning("Go tariff currently does not prevent ")
+                logger.warning("Go tariff currently does not prevent charging directly at time of load")
                 p_max_pu.loc[p_max_pu.index.hour.isin(range(4)), :] = 1.
 
             n.madd(
@@ -994,7 +993,6 @@ def add_bev(n, transport_config, flex_config, flexopts):
                 carrier="car to battery",
                 p_max_pu=p_max_pu,
                 p_min_pu=-1.,
-                efficiency=eta,
             )
 
 
