@@ -591,6 +591,7 @@ def add_heat_pump_load(
     intraday_profile_file,
     scenario,
     year,
+    flexopts,
     ):
 
     year = int(year)
@@ -700,13 +701,13 @@ def add_heat_pump_load(
         [0., 1.]
         )
 
-    heatflex = "heat" in snakemake.wildcards["flexopts"].split("-")
+    heatflex = list(set(flexopts).intersection({"cosy", "tank"}))[0] or False
 
     # add infrastructure for flexibility
     # grid -> house -> link to thermal inertia -> thermal inertia store -> link to house     
-    if share_smart_tariff > 0. and heatflex:
+    if share_smart_tariff > 0. and heatflex == 'cosy':
 
-        logger.info("Adding heat flexibility")
+        logger.info("Adding heat flexibility according to cosy tariff.")
     
         mor_start = snakemake.config["flexibility"]["heat_flex_windows"]["morning"]["start"]
         mor_end = snakemake.config["flexibility"]["heat_flex_windows"]["morning"]["end"]
@@ -793,6 +794,32 @@ def add_heat_pump_load(
             p_nom=p_nom,
             p_max_pu=p_max_pu,
             p_min_pu=p_min_pu,
+        )
+    
+    elif share_smart_tariff > 0. and heatflex == 'tank':
+
+        logger.info("Adding heat flexibility adding a hot water tank.")
+
+        standing_loss = snakemake.config["flexibility"]["water_tank_standing_loss"]
+        max_hours = snakemake.config["flexibility"]["water_tank_max_hours"]
+
+        p_nom = (
+            future_heat_demand
+            .rolling(max_hours)
+            .mean()
+            .max()
+            .set_axis(nodes + ' hot water tanks')
+        )
+
+        n.madd(
+            "StorageUnit",
+            nodes + " hot water tanks",
+            bus=heat_demand_spatial.nodes,
+            carrier="hot water tank",
+            p_nom=p_nom,
+            max_hours=max_hours,
+            e_cyclic=True,
+            standing_loss=standing_loss,
         )
 
 
@@ -1816,6 +1843,7 @@ if __name__ == "__main__":
         snakemake.input["heat_profile"],
         snakemake.wildcards.fes,
         snakemake.wildcards.year,
+        flexopts,
     )
 
     logger.info("Adding BEV load.")

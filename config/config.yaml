@@ -39,7 +39,7 @@ scenario:
   # int:  # intelligent EV charging; centrally optimal charging of EV fleet
   # v2g:  # switches on vehicle to grid
   # cosy: # heat flex cosy-like: Allows shifting of morning and afternoon peaks by 3 hours
-  # store:# simulates the presence of a watertank for increased heat flexibility
+  # tank: # simulates the presence of a watertank for increased heat flexibility
   
   opts: # only relevant for PyPSA-Eur
   - 'morocco' # adds Xlinks project; interconnection to Morocco with renewable generation
@@ -82,6 +82,8 @@ flexibility:
       end: 19
   hourly_heat_loss: 0. # as share between 0 and 1
   battery_ignore_threshold: 1 # GW (ignore battery with less than this GB capacity)
+  water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
+  water_tank_max_hours: 12 # Decision based on Lizana et al. 2023 Fig 12 b1
 
   # EV flexibility parameters
   go_tariff_share: false # share of people on go tariff (if false taken from FES data)
