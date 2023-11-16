@@ -877,8 +877,8 @@ def add_bev(n, transport_config, flex_config, flexopts):
     logger.info(f"EV share: {np.around(electric_share*100, decimals=2)}%")
 
     if not electric_share > 0.0:
-        logger.warning(((f"Found electric_share = {electric_share}. \n No electric")
-                       (" vehicles in scenario. Skipping...")))
+        logger.warning((f"Found electric_share = {electric_share}. \n No electric" + 
+                       " vehicles in scenario. Skipping..."))
 
     else:
 
@@ -1040,14 +1040,19 @@ def add_carbon_tracking(n, net_change_co2):
     nodes = spatial.emissions.nodes
 
     e_max_pu = pd.DataFrame(1., n.snapshots, nodes)
-    e_max_pu.iloc[-1] = (-1.) ** (int(net_change_co2 < 0))
+
+    # problem: if abs(net_change_co2) is small, this unduely constrains the system
+    # -> add 50 MtCO2 wiggle room
+    buffer = 50_000_000
+    e_nom = abs(net_change_co2*1e6) + buffer
+    e_max_pu.iloc[-1] = net_change_co2*1e6 / e_nom
 
     n.madd(
         "Store",
         spatial.emissions.nodes,
         bus=spatial.emissions.nodes,
         carrier="co2",
-        e_nom=abs(net_change_co2*1e6),
+        e_nom=e_nom,
         e_min_pu=-1.,
         e_max_pu=e_max_pu,
     )

@@ -41,9 +41,9 @@ localrules:
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
     ll="(v|c)([0-9\.]+|opt)",
-    flexopts="[-+a-zA-Z0-9\.]*",
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
+    flexopts="[-+a-zA-Z0-9\.]*",
     fes="[A-Z]*",
     year="[0-9]*",
 
