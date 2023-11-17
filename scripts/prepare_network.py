@@ -701,7 +701,7 @@ def add_heat_pump_load(
         [0., 1.]
         )
 
-    heatflex = list(set(flexopts).intersection({"cosy", "tank"}))[0] or False
+    heatflex = (list(set(flexopts).intersection({"cosy", "tank"})) + [None])[0]
 
     # add infrastructure for flexibility
     # grid -> house -> link to thermal inertia -> thermal inertia store -> link to house     
@@ -930,6 +930,9 @@ def add_bev(n, transport_config, flex_config, flexopts):
             efficiency=eta,
         )
 
+        if bev_flexibility is None:
+            return
+
         # smart stuff
         smart_share, v2g_share = get_smart_charge_v2g(
             snakemake.input.fes_table,
@@ -990,7 +993,7 @@ def add_bev(n, transport_config, flex_config, flexopts):
                 carrier="bev batteries",
                 location=nodes,
                 e_cyclic=True,
-                e_nom=e_nom.reindex(spatial.electric_vehicle_batteries.nodes) * (1. - opt_out),
+                e_nom=e_nom.set_axis(spatial.electric_vehicle_batteries.nodes) * (1. - opt_out),
                 e_max_pu=1.,
                 e_min_pu=e_min_pu,
             )
@@ -1683,6 +1686,14 @@ def adjust_interconnectors(n, file, year):
         lambda row: LineString([Point(row["bus0 lon"], row["bus0 lat"]), Point(row["bus1 lon"], row["bus1 lat"])]),
         axis=1
     )
+    
+    links['name'] = links.index
+    links = (
+        links
+        .groupby(['bus0', 'bus1'], as_index=False)
+        .agg({'p_nom': 'sum', 'geometry': 'first', 'name': 'sum'})
+    )
+    links.index = links['name']
 
     n.madd(
         "Link",
@@ -1694,7 +1705,6 @@ def adjust_interconnectors(n, file, year):
         geometry=links["geometry"].astype(str),
         carrier="DC",
     )
-
 
 def add_hydrogen_demand(n, scenario, year, costs):
     """Adding hydrogen as a store that has to be filled by electrolysis to
@@ -1838,7 +1848,7 @@ if __name__ == "__main__":
 
     logger.info("Adding biogas to the system")
     add_biogas(n, other_costs)
-    
+
     logger.info("Adding heat pump load.")
     add_heat_pump_load(
         n,
@@ -1859,7 +1869,6 @@ if __name__ == "__main__":
     )
 
     logger.info("Adding battery storage.")
-    elec_costs.to_csv("costs.csv")
     add_batteries(n, elec_costs, opts=opts)
 
     if "100percent" in opts:
