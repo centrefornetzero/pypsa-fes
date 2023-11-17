@@ -1749,6 +1749,46 @@ def add_hydrogen_demand(n, scenario, year, costs):
     )
 
 
+def add_modular_nuclear(n):
+    """
+    Adding modular nuclear reactors to the system 
+
+    cost assumptions taken from nuclear generators
+    """    
+
+    logger.warning('Taking cost and efficiency assumptions for modular nuclear from nuclear generators.')
+    nodes = spatial.nodes
+
+    idx = n.generators.loc[(n.generators.carrier == "nuclear") & n.generators.bus.isin(nodes)].index
+
+    params = (
+        n.generators
+        .loc[
+            idx,
+            ['efficiency', 'capital_cost', 'marginal_cost', 'p_max_pu']]
+            .mean()
+    )
+    assert params.notna().all(), "Some parameters are missing for modular nuclear."
+
+    n.madd(
+        "Generator",
+        nodes + " modular nuclear",
+        bus=nodes,
+        carrier="modular nuclear",
+        p_max_pu=params['p_max_pu'],
+        efficiency=params['efficiency'],
+        capital_cost=params['capital_cost'],
+        marginal_cost=params['marginal_cost'],
+        p_nom_extendable=True,
+        ramp_limit_up=0.05, # oversimplified but targets realistic baseload operation
+        ramp_limit_down=0.05, # see for instance 
+    )
+    # The benefits of nuclear flexibility in power system operations with renewable energy, 
+    # Jenkins et al, 2018
+
+    n.generators.loc[idx, ['ramp_limit_up', 'ramp_limit_down']] = 0.05
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -1823,6 +1863,9 @@ if __name__ == "__main__":
 
     logger.info(("\n Net change in atmospheric CO2: ",
         f"{np.around(net_change_atmospheric_co2, decimals=2)} MtCO2."))
+
+    logger.info("Adding modular nuclear capacity.")
+    add_modular_nuclear(n)
 
     logger.info("Scaling conventional generators to match FES.")
     scale_generation_capacity(n, snakemake.input.capacity_constraints, opts)

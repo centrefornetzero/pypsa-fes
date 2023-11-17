@@ -582,3 +582,21 @@ def get_industrial_hydrogen_demand(scenario, year):
 
     df.columns = [pd.Timestamp(dt).year for dt in df.columns]
     return df.loc[scenario_mapper[scenario], year] * 1e6
+
+
+def get_modular_nuclear_capacity(scenario, year):
+    """De factor nuclear capcaity in GW"""
+
+    col = string.ascii_uppercase.index("J")
+    df = (
+        pd.read_excel(data_file,
+            sheet_name="ES.20",
+            header=8,
+            index_col=0,
+            nrows=4,
+            usecols=[col+i for i in range(30)],
+            )
+    )
+
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    return df.loc[scenario_mapper[scenario], year] * 1e3

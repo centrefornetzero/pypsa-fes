@@ -624,8 +624,8 @@ def extra_functionality(n, snapshots):
 
     if not "100percent" in snakemake.wildcards.opts.split("-"):
 
-        carriers = ["solar", "onwind", "offwind", "solar rooftop"]
-        pypsa_carriers = ["solar", "onwind", ["offwind-ac", "offwind-dc"], "solar rooftop"]
+        carriers = ["solar", "onwind", "offwind", "solar rooftop", "modular nuclear"]
+        pypsa_carriers = ["solar", "onwind", ["offwind-ac", "offwind-dc"], "solar rooftop", "modular nuclear"]
 
         for carrier, pypsa_carrier in zip(carriers, pypsa_carriers):
             value = cc.at[carrier, "value"]

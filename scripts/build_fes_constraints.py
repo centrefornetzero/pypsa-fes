@@ -19,6 +19,7 @@ from _fes_helpers import (
     get_data_point,
     get_interconnector_capacity,
     get_distributed_generation,
+    get_modular_nuclear_capacity,
     )
 from _helpers import configure_logging
 
@@ -98,6 +99,13 @@ if __name__ == "__main__":
     val = get_distributed_generation(fes, year)
     caps.loc[len(caps)] = pd.Series({
         "carrier": "solar rooftop",
+        "attr": "p_nom",
+        "value": val,
+        "sense": "==",})
+
+    val = get_modular_nuclear_capacity(fes, year)
+    caps.loc[len(caps)] = pd.Series({
+        "carrier": "modular nuclear",
         "attr": "p_nom",
         "value": val,
         "sense": "==",})
