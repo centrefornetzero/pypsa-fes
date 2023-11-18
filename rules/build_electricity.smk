@@ -2,6 +2,24 @@
 #
 # SPDX-License-Identifier: MIT
 
+
+rule prepare_espeni_generation:
+    input:
+        espeni_dataset="data/espeni.csv",
+    output:
+        espeni_generation=RESOURCES + "espeni_generation.csv",
+        espeni_interconnectors=RESOURCES + "espeni_interconnectors.csv",
+    log:
+        LOGS + "prepare_espeni_generation.log",
+    threads: 1
+    resources:
+        mem_mb=1500,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/prepare_espeni_generation.py"
+
+
 if config["enable"].get("prepare_links_p_nom", False):
 
     rule prepare_links_p_nom:

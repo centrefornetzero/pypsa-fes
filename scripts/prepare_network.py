@@ -1754,7 +1754,7 @@ def add_modular_nuclear(n):
     Adding modular nuclear reactors to the system 
 
     cost assumptions taken from nuclear generators
-    """    
+    """
 
     logger.warning('Taking cost and efficiency assumptions for modular nuclear from nuclear generators.')
     nodes = spatial.nodes
@@ -1781,8 +1781,9 @@ def add_modular_nuclear(n):
         marginal_cost=params['marginal_cost'],
         p_nom_extendable=True,
         ramp_limit_up=0.05, # oversimplified but targets realistic baseload operation
-        ramp_limit_down=0.05, # see for instance 
+        ramp_limit_down=0.05,
     )
+    # On the choice of ramp rates see for instance 
     # The benefits of nuclear flexibility in power system operations with renewable energy, 
     # Jenkins et al, 2018
 
