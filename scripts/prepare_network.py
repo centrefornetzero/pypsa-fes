@@ -592,6 +592,7 @@ def add_heat_pump_load(
     scenario,
     year,
     flexopts,
+    flex_config,
     ):
 
     year = int(year)
@@ -694,7 +695,8 @@ def add_heat_pump_load(
         p_nom_extendable=True,
     )
 
-    complete_rollout_year = snakemake.config["flexibility"]["smart_heat_rollout_completion"]
+    complete_rollout_year = flex_config["smart_heat_rollout_completion"]
+
     share_smart_tariff = np.interp(
         year,
         [2023, complete_rollout_year],
@@ -709,14 +711,14 @@ def add_heat_pump_load(
 
         logger.info("Adding heat flexibility according to cosy tariff.")
     
-        mor_start = snakemake.config["flexibility"]["heat_flex_windows"]["morning"]["start"]
-        mor_end = snakemake.config["flexibility"]["heat_flex_windows"]["morning"]["end"]
+        mor_start = flex_config["heat_flex_windows"]["morning"]["start"]
+        mor_end = flex_config["heat_flex_windows"]["morning"]["end"]
 
-        eve_start = snakemake.config["flexibility"]["heat_flex_windows"]["evening"]["start"]
-        eve_end = snakemake.config["flexibility"]["heat_flex_windows"]["evening"]["end"]
+        eve_start = flex_config["heat_flex_windows"]["evening"]["start"]
+        eve_end = flex_config["heat_flex_windows"]["evening"]["end"]
 
-        shift_size = snakemake.config["flexibility"]["heat_shift_size"]
-        standing_loss = snakemake.config["flexibility"]["hourly_heat_loss"]
+        shift_size = flex_config["heat_shift_size"]
+        standing_loss = flex_config["hourly_heat_loss"]
 
         s = n.snapshots
         
@@ -800,8 +802,8 @@ def add_heat_pump_load(
 
         logger.info("Adding heat flexibility adding a hot water tank.")
 
-        standing_loss = snakemake.config["flexibility"]["water_tank_standing_loss"]
-        max_hours = snakemake.config["flexibility"]["water_tank_max_hours"]
+        standing_loss = flex_config["water_tank_standing_loss"]
+        max_hours = flex_config["water_tank_max_hours"]
 
         p_nom = (
             future_heat_demand
@@ -1496,34 +1498,6 @@ def attach_stores(n, costs):
     )
 
 
-def add_gas_shortage(n):
-    """
-    puts a constraint on gas fuel availability, and adds storage units for gas across GB
-    according to GB's gas storage capacity
-    """
-
-    gas_p_nom = n.links.loc[n.links.carrier.isin(["CCGT", "OCGT"])].p_nom.sum()
-    reduction = 1. - snakemake.config["flexibility"]["gas_reduction_factor"]
-    gas_for_power_share = snakemake.config["flexibility"]["gas_for_power_share"]
-
-    assert 0. <= reduction <= 1., f"reduction factor {reduction} must be in [0, 1]"
-
-    logger.info(f"Reducing gas availability by {100*(1 - reduction):.2f}%.")
-
-    n.add(
-        "StorageUnit",
-        "gas shortage",
-        bus="GB_gas_bus",
-        carrier="gas",
-        p_nom=77_000 * gas_for_power_share, # MW from nationalgas Winter Review and Consultation 2023
-        max_hours=11*24, # 11 days of gas storage
-        cyclic_state_of_charge=True,
-        state_of_charge_initial=77_000 * gas_for_power_share * 5.5 * 24, # 50 percent full
-    )
-
-    n.generators.at["GB_gas", "p_nom"] *= reduction
-
-
 def insert_espeni_demand(n):
     """
     Replaces default ENTSO-E demand data for GB with ESPENI data.
@@ -1770,6 +1744,10 @@ def add_modular_nuclear(n):
     )
     assert params.notna().all(), "Some parameters are missing for modular nuclear."
 
+    # On the choice of ramp rates see for instance 
+    # The benefits of nuclear flexibility in power system operations with renewable energy, 
+    # Jenkins et al, 2018
+
     n.madd(
         "Generator",
         nodes + " modular nuclear",
@@ -1783,10 +1761,32 @@ def add_modular_nuclear(n):
         ramp_limit_up=0.05, # oversimplified but targets realistic baseload operation
         ramp_limit_down=0.05,
     )
+
+
+def adjust_nuclear_ramp_rates(n):
+    nodes = spatial.nodes
+
+    idx = n.generators.loc[(n.generators.carrier == "nuclear") & n.generators.bus.isin(nodes)].index
+
     # On the choice of ramp rates see for instance 
     # The benefits of nuclear flexibility in power system operations with renewable energy, 
     # Jenkins et al, 2018
     n.generators.loc[idx, ['ramp_limit_up', 'ramp_limit_down']] = 0.05
+
+
+def prepare_validation(n, config):
+    nodes = spatial.nodes
+
+    if config["include_beis"]:
+        beis_total = (
+            pd.read_csv(
+                snakemake.input.beis_generation, index_col=0)
+                .loc['total']
+        ) * 1e6
+
+        n.loads_t.p_set[nodes] *= beis_total / n.loads_t.p_set[nodes].sum().sum()
+
+        logger.info(f'Scaling total GB demand to {n.loads_t.p_set[nodes].sum().sum()*1e-6} TWh')
 
 
 if __name__ == "__main__":
@@ -1798,24 +1798,26 @@ if __name__ == "__main__":
         )
     configure_logging(snakemake)
 
-    opts = snakemake.wildcards.opts.split("-")
-    if "100percent" in opts:
-        logger.warning("Running 100 percent renewable system.")
-
-    n = pypsa.Network(snakemake.input[0])
-
     gb_nodes = n.buses.index[(n.buses.index.str.contains("GB")) & (n.buses.carrier == "AC")]
     logger.info(f"Preparing GB network with nodes \n {', '.join(gb_nodes.tolist())}.")
 
     spatial = define_spatial(gb_nodes, snakemake.config)
 
+    n = pypsa.Network(snakemake.input[0])
+
     fes = snakemake.wildcards.fes
     year = snakemake.wildcards.year
+
+    opts = snakemake.wildcards.opts.split("-")
     logger.info(f"Preparing network for {fes} in {year}.")
 
     flexopts = snakemake.wildcards.flexopts.split("-")
-    logger.info(f"Using Flexibility Options: {flexopts}")
     check_flexopts(flexopts)
+    logger.info(f"Using Flexibility Options: {flexopts}")
+
+    if "validation" in opts:
+        assert int(year) == 2019, "Validation only implemented for 2019."
+        logger.warning("Running 100 percent renewable system.")
 
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
 
@@ -1836,10 +1838,21 @@ if __name__ == "__main__":
 
     logger.info("Updating DC links for GB based on modelled year.")
     adjust_interconnectors(n, snakemake.input.interconnectors, year)
+    adjust_nuclear_ramp_rates(n)
+    
+    if snakemake.params.flex_config["balance_import_export"]:
+        logger.info("Adding interconnector import/export balance.")
+        add_import_export_balance(n, fes, year)
 
     if snakemake.config["flexibility"]["demand"]["use_espeni"]:
         logger.info("Inserting ESPENI demand data for Great Britain nodes.")
         insert_espeni_demand(n)
+    
+    if "validation" in opts:
+        logger.info("Preparing validation, interrupting prepare_network early.")
+        prepare_validation(n, snakemake.params.elec_config)
+
+        n
 
     logger.info("Scaling electricity load according to scenario and year.")
     scale_load(n, fes, year)
@@ -1902,12 +1915,13 @@ if __name__ == "__main__":
         snakemake.wildcards.fes,
         snakemake.wildcards.year,
         flexopts,
+        snakemake.params.flex_config,
     )
 
     logger.info("Adding BEV load.")
     add_bev(n,
-        snakemake.config["sector"],
-        snakemake.config["flexibility"],
+        snakemake.params.sector_config,
+        snakemake.params.flex_config,
         flexopts,
     )
 
@@ -1924,7 +1938,7 @@ if __name__ == "__main__":
     if "ss" in flexopts:
         add_event_flex(n, "winter")
 
-    if snakemake.config["flexibility"]["electricity_distribution_grid"]:
+    if snakemake.params.flex_config["electricity_distribution_grid"]:
         logger.info("Adding distribution grid to GB.")
         add_electricity_distribution_grid(n, other_costs)
 
@@ -1932,20 +1946,7 @@ if __name__ == "__main__":
     add_hydrogen_demand(n, fes, year, other_costs)
 
     logger.info("Adding transmission limit.")
-    set_line_s_max_pu(n, snakemake.config["lines"]["s_max_pu"])
-    
-    if snakemake.config["flexibility"]["balance_import_export"]:
-        logger.info("Adding interconnector import/export balance.")
-        add_import_export_balance(n, fes, year)
-
-    if "cphase" in opts:
-        logger.info("Adjusting coal price phase out.")
-        assert int(snakemake.wildcards.year) <= 2030, "No coal in the system after 2030."
-        n.generators.loc["GB_coal", "marginal_cost"] = 30 # EUR/MWh
-
-    if "gasshort" in opts:
-        logger.info("Adding infrastructure to test effect of gas shortage.")
-        add_gas_shortage(n)
+    set_line_s_max_pu(n, snakemake.params.lines["s_max_pu"])
 
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)
@@ -1956,32 +1957,8 @@ if __name__ == "__main__":
     for o in opts:
         m = re.match(r"^\d+seg$", o, re.IGNORECASE)
         if m is not None:
-            solver_name = snakemake.config["solving"]["solver"]["name"]
+            solver_name = snakemake.params.solving_config["solver"]["name"]
             n = apply_time_segmentation(n, m.group(0)[:-3], solver_name)
-            break
-
-    for o in opts:
-        if "Co2L" in o:
-            m = re.findall("[0-9]*\.?[0-9]+$", o)
-            if len(m) > 0:
-                co2limit = float(m[0]) * snakemake.config["electricity"]["co2base"]
-                add_co2limit(n, co2limit, Nyears)
-                logger.info("Setting CO2 limit according to wildcard value.")
-            else:
-                add_co2limit(n, snakemake.config["electricity"]["co2limit"], Nyears)
-                logger.info("Setting CO2 limit according to config value.")
-            break
-
-    for o in opts:
-        if "CH4L" in o:
-            m = re.findall("[0-9]*\.?[0-9]+$", o)
-            if len(m) > 0:
-                limit = float(m[0]) * 1e6
-                add_gaslimit(n, limit, Nyears)
-                logger.info("Setting gas usage limit according to wildcard value.")
-            else:
-                add_gaslimit(n, snakemake.config["electricity"].get("gaslimit"), Nyears)
-                logger.info("Setting gas usage limit according to config value.")
             break
 
     for o in opts:
@@ -1992,7 +1969,9 @@ if __name__ == "__main__":
                 add_emission_prices(n, dict(co2=float(m[0])))
             else:
                 logger.info("Setting emission prices according to config value.")
-                add_emission_prices(n, snakemake.config["costs"]["emission_prices"])
+                # add_emission_prices(n, snakemake.config["costs"]["emission_prices"])
+                add_emission_prices(n, snakemake.params.cost_config["emission_prices"])
+
             break
         if "ept" in o:
             logger.info("Setting time dependent emission prices according spot market price")
@@ -2003,8 +1982,8 @@ if __name__ == "__main__":
 
     set_line_nom_max(
         n,
-        s_nom_max_set=snakemake.config["lines"].get("s_nom_max,", np.inf),
-        p_nom_max_set=snakemake.config["links"].get("p_nom_max,", np.inf),
+        s_nom_max_set=snakemake.params.lines.get("s_nom_max,", np.inf),
+        p_nom_max_set=snakemake.params.links.get("p_nom_max,", np.inf),
     )
 
     if "ATK" in opts:

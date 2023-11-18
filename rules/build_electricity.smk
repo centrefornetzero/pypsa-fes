@@ -8,7 +8,7 @@ rule prepare_espeni_generation:
         elec_config=config["electricity"],
     input:
         espeni_dataset="data/espeni.csv",
-        beis_generation_dataset="data/DUKES_5.6.xlxs"
+        beis_generation_dataset="data/DUKES_5.6.xlsx"
         if config["electricity"]["include_beis"]
         else [],
     output:
@@ -682,6 +682,12 @@ rule build_electricity_demand_gb:
 rule prepare_network:
     params:
         elec_config=config["electricity"],
+        flex_config=config["flexibility"],
+        sector_config=config["sector"],
+        solving_config=config["solving"],
+        cost_config=config["costs"],
+        lines=config["lines"],
+        links=config["links"],
     input:
         RESOURCES + "networks/elec_s{simpl}_eso_ec.nc",
         overrides="data/override_component_attrs",
@@ -702,6 +708,9 @@ rule prepare_network:
         dsm_profile=RESOURCES + "dsm_profile_s{simpl}_eso.csv",
         fes_table="data/Data-workbook2022_V006.xlsx",
         fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
+        beis_generation=RESOURCES + "beis_generation.csv"
+        if config["electricity"]["include_beis"]
+        else [],
     output:
         RESOURCES + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
     log:

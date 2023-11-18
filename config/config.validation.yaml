@@ -34,7 +34,6 @@ electricity:
 
   include_beis: true # include BEIS data in the system
 
-
   estimate_renewable_capacities:
     year: 2019
 

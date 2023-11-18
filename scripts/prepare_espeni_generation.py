@@ -116,8 +116,8 @@ if __name__ == '__main__':
     )
 
     if snakemake.params['elec_config']['include_beis']:
-        beis_generation = get_beis_generation(snakemake.input.beis_generation, year)
+        beis_generation = get_beis_generation(snakemake.input.beis_generation_dataset, year)
         beis_generation.to_csv(snakemake.output.beis_generation)
 
-    generation.to_csv(snakemake.output.generation)
-    interconnectors.to_csv(snakemake.output.interconnectors)
+    generation.to_csv(snakemake.output.espeni_generation)
+    interconnectors.to_csv(snakemake.output.espeni_interconnectors)
