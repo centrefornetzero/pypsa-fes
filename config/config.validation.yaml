@@ -32,6 +32,8 @@ electricity:
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
   renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro]
 
+  include_beis: true # include BEIS data in the system
+
 
   estimate_renewable_capacities:
     year: 2019

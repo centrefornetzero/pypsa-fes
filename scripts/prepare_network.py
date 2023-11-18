@@ -1786,7 +1786,6 @@ def add_modular_nuclear(n):
     # On the choice of ramp rates see for instance 
     # The benefits of nuclear flexibility in power system operations with renewable energy, 
     # Jenkins et al, 2018
-
     n.generators.loc[idx, ['ramp_limit_up', 'ramp_limit_down']] = 0.05
 
 

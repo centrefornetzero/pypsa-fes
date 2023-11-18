@@ -4,11 +4,19 @@
 
 
 rule prepare_espeni_generation:
+    params:
+        elec_config=config["electricity"],
     input:
         espeni_dataset="data/espeni.csv",
+        beis_generation_dataset="data/DUKES_5.6.xlxs"
+        if config["electricity"]["include_beis"]
+        else [],
     output:
         espeni_generation=RESOURCES + "espeni_generation.csv",
         espeni_interconnectors=RESOURCES + "espeni_interconnectors.csv",
+        beis_generation=RESOURCES + "beis_generation.csv"
+        if config["electricity"]["include_beis"]
+        else [],
     log:
         LOGS + "prepare_espeni_generation.log",
     threads: 1
@@ -18,6 +26,7 @@ rule prepare_espeni_generation:
         "../envs/environment.yaml"
     script:
         "../scripts/prepare_espeni_generation.py"
+
 
 
 if config["enable"].get("prepare_links_p_nom", False):
@@ -671,6 +680,8 @@ rule build_electricity_demand_gb:
 
 
 rule prepare_network:
+    params:
+        elec_config=config["electricity"],
     input:
         RESOURCES + "networks/elec_s{simpl}_eso_ec.nc",
         overrides="data/override_component_attrs",
