@@ -57,6 +57,14 @@ flexibility:
   winter_months: [10, 11, 12, 1, 2, 3]
   event_start_hour: 17
   event_end_hour: 19
+  completion_smartmeter_rollout: 2030
+  smartmeter_rollout_2023: 17300000 # households
+  household_turndown: 0.00012 # MW; avg reduction per household during saving sessions 
+  smartmeter_rollout_2022: 55 # %
+  regular_opt_in_rate: 33 # %
+  winter_opt_in_rate: 33 # %
+
+  # Heat flexibility parameters
   smart_heat_rollout_completion: 2030 # year where all heat pumps contribute to smart heat
   heat_shift_size: 3 # hours
   heat_flex_windows:
@@ -67,13 +75,24 @@ flexibility:
       start: 17
       end: 19
   hourly_heat_loss: 0. # as share between 0 and 1
-  completion_smartmeter_rollout: 2030
-  smartmeter_rollout_2023: 17300000 # households
-  household_turndown: 0.00012 # MW; avg reduction per household during saving sessions 
-  smartmeter_rollout_2022: 55 # %
-  regular_opt_in_rate: 33 # %
-  winter_opt_in_rate: 33 # %
   battery_ignore_threshold: 1 # GW (ignore battery with less than this GB capacity)
+  water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
+  water_tank_max_hours: 12 # Decision based on Lizana et al. 2023 Fig 12 b1
+
+  # EV flexibility parameters
+  go_tariff_share: false # share of people on go tariff (if false taken from FES data)
+  int_tariff_share: false # share of people on intelligent tariff (if false taken from FES data)
+  v2g_share: false # share of people with v2g (if false taken from FES data)
+  go_tariff_opt_out_rate: 0.1 # share of people not charging during 12 am - 4 am window
+  int_tariff_opt_out_rate: 0.1 # share of people opting out of intelligent charging
+
+  # EV battery parameters
+  bev_battery_capacity: 0.05  #average battery size in MWh
+  bev_charge_rate: 0.011 #3-phase charger with 11 kW
+  bev_avail_max: 0.95
+  bev_avail_mean: 0.8
+  bev_charge_efficiency: 0.9  #BEV (dis-)charging efficiency
+  v2g_efficiency: 0.9  #V2G (dis-)charging efficiency
 
   # whole system parameters 
   coal_phaseout_year_uk: 2026  # assuming no coal capacity in the system after this year
@@ -163,7 +182,7 @@ enable:
   retrieve_databundle: true
   retrieve_sector_databundle: true
   retrieve_cost_data: true
-  build_cutout: true
+  build_cutout: false
   retrieve_cutout: false
   build_natura_raster: false
   retrieve_natura_raster: true
@@ -246,7 +265,50 @@ atlite:
       dx: 0.3
       dy: 0.3
       time: ['2019', '2019']
+    europe-2013-sarah:
+      module: [sarah, era5] # in priority order
+      # x: [-12., 45.]
+      # y: [33., 65.]
+      x: [-16.5, 35.]
+      y: [33., 75.]
+      dx: 0.2
+      dy: 0.2
+      time: ['2013', '2013']
+      sarah_interpolate: false
+      sarah_dir:
+      features: [influx, temperature]
 
+morocco_atlite:
+  morocco-2019-era5:
+    module: era5
+    x: [-12., -8.]
+    y: [27., 30.]
+    dx: 0.3
+    dy: 0.3
+    time: ['2019', '2019']
+
+morocco_renewable:
+  onwind:
+    cutout: morocco-2019-era5
+    resource:
+      method: wind
+      turbine: Vestas_V112_3MW
+    capacity_per_sqkm: 3 # ScholzPhd Tab 4.3.1: 10MW/km^2 and assuming 30% fraction of the already restricted
+    excluder_resolution: 100
+    potential: simple # or conservative
+    clip_p_max_pu: 1.e-2
+  solar:
+    cutout: morocco-2019-era5
+    resource:
+      method: pv
+      panel: CSi
+      orientation:
+        slope: 35.
+        azimuth: 180.
+    capacity_per_sqkm: 1.7 # ScholzPhd Tab 4.3.1: 170 MW/km^2 and assuming 1% of the area can be used for solar PV panels
+    excluder_resolution: 100
+    potential: simple # or conservative
+    clip_p_max_pu: 1.e-2
 
 renewable:
   onwind:
@@ -478,15 +540,10 @@ sector:
   ICE_upper_degree_factor: 1.6
   EV_lower_degree_factor: 0.98
   EV_upper_degree_factor: 0.63
-  bev_dsm: true #turns on EV battery
-  bev_availability: 0.5  #How many cars do smart charging
-  bev_energy: 0.05  #average battery size in MWh
-  bev_charge_efficiency: 0.9  #BEV (dis-)charging efficiency
+  # bev_dsm: true #turns on EV battery
+  # bev_availability: 0.5  #How many cars do smart charging
   bev_plug_to_wheel_efficiency: 0.2 #kWh/km from EPA https://www.fueleconomy.gov/feg/ for Tesla Model S
-  bev_charge_rate: 0.011 #3-phase charger with 11 kW
-  bev_avail_max: 0.95
-  bev_avail_mean: 0.8
-  v2g: true #allows feed-in to grid from EV battery
+  # v2g: true #allows feed-in to grid from EV battery
   #what is not EV or FCEV is oil-fuelled ICE
   land_transport_fuel_cell_share:
     2020: 0
