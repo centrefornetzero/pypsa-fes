@@ -530,6 +530,24 @@ rule build_hydro_profile:
         "../scripts/build_hydro_profile.py"
 
 
+rule build_monthly_prices:
+    input:
+        co2_price_raw="data/validation/emission-spot-primary-market-auction-report-2019-data.xls",
+        fuel_price_raw="data/validation/energy-price-trends-xlsx-5619002.xlsx",
+    output:
+        co2_price=RESOURCES + "co2_price.csv",
+        fuel_price=RESOURCES + "monthly_fuel_price.csv",
+    log:
+        LOGS + "build_monthly_prices.log",
+    threads: 1
+    resources:
+        mem_mb=5000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_monthly_prices.py"
+
+
 rule add_electricity:
     params:
         length_factor=config["lines"]["length_factor"],
@@ -708,6 +726,7 @@ rule prepare_network:
         dsm_profile=RESOURCES + "dsm_profile_s{simpl}_eso.csv",
         fes_table="data/Data-workbook2022_V006.xlsx",
         fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
+        espeni_interconnectors=RESOURCES + "espeni_interconnectors.csv",
         beis_generation=RESOURCES + "beis_generation.csv"
         if config["electricity"]["include_beis"]
         else [],

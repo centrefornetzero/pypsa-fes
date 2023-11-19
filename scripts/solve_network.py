@@ -615,14 +615,9 @@ def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
 
-    # fix generation capacities according to FES
-    logger.warning(f"From opts {snakemake.wildcards.opts}.")
-    logger.warning("Concluding 100percent renewable: ")
-    logger.warning("100percent" in snakemake.wildcards.opts.split("-"))
-
     cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
 
-    if not "100percent" in snakemake.wildcards.opts.split("-"):
+    if not "validation" in snakemake.wildcards.opts.split("-"):
 
         carriers = ["solar", "onwind", "offwind", "solar rooftop", "modular nuclear"]
         pypsa_carriers = ["solar", "onwind", ["offwind-ac", "offwind-dc"], "solar rooftop", "modular nuclear"]
@@ -688,17 +683,18 @@ def solve_network(n, config, opts="", **kwargs):
             # adding +1. feels numerically safer, but does it matter?
             n.generators.loc[index, "p_nom_max"] *= (const + 1.) / pypsa_max
 
-    value = cc.at["solar", "value"]
-    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["solar"])
+    if not "validation" in snakemake.wildcards.opts.split("-"):
+        value = cc.at["solar", "value"]
+        maybe_adjust_p_nom_max(n, value, country="GB", carrier=["solar"])
 
-    value = cc.at["offwind", "value"]
-    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["offwind-ac", "offwind-dc"])
+        value = cc.at["offwind", "value"]
+        maybe_adjust_p_nom_max(n, value, country="GB", carrier=["offwind-ac", "offwind-dc"])
 
-    value = cc.at["onwind", "value"]
-    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["onwind"])
+        value = cc.at["onwind", "value"]
+        maybe_adjust_p_nom_max(n, value, country="GB", carrier=["onwind"])
 
-    value = cc.at["solar rooftop", "value"]
-    maybe_adjust_p_nom_max(n, value, country="GB", carrier=["solar rooftop"])
+        value = cc.at["solar rooftop", "value"]
+        maybe_adjust_p_nom_max(n, value, country="GB", carrier=["solar rooftop"])
 
     if not n.lines.s_nom_extendable.any():
         skip_iterations = True

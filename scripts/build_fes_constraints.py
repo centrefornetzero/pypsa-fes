@@ -12,8 +12,11 @@ Builds constraints for generation capacities based on the FES scenarios
 
 """
 
-import pandas as pd
+import logging
+
+import sys
 import numpy as np
+import pandas as pd
 
 from _fes_helpers import (
     get_data_point,
@@ -22,6 +25,8 @@ from _fes_helpers import (
     get_modular_nuclear_capacity,
     )
 from _helpers import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
@@ -36,6 +41,11 @@ if __name__ == "__main__":
 
     caps = pd.DataFrame(columns=["carrier", "attr", "value", "sense"]) 
     loads = pd.DataFrame(columns=["carrier", "attr", "value", "sense"]) 
+
+    if year < 2020:
+        logger.info("Detected year 2019, saving empty empty capacity constraints.")
+        caps.to_csv(snakemake.output["capacity_constraints"]) 
+        sys.exit()
 
     val = get_data_point("onshore_wind_capacity", fes, year)
     caps.loc[len(caps)] = pd.Series({

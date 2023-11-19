@@ -59,6 +59,7 @@ Description
 
 import logging
 import re
+import sys
 
 import pypsa
 import numpy as np
@@ -1375,12 +1376,24 @@ def add_batteries(n, costs=None, opts=[]):
 def add_import_export_balance(n, fes, year):
 
     logger.warning("New import export balance implementation not yet tested")
-    cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
-    total_p_nom = cc.at["DC", "value"]
-    max_hours = snakemake.config["flexibility"]["balance_link_max_hours"]
 
-    balance = get_import_export_balance(fes, year)
+    if year == '2019':
+        logger.info("Adding import export balance for 2019 from ESPENI dataset.")
+        cc = pd.read_csv(snakemake.input["espeni_interconnectors"], index_col=0, parse_dates=True)
+
+        total_p_nom = cc.abs().sum(axis=1).max()
+        balance = cc.sum().sum()
+    
+    else:
+        logger.info(f"Adding import export balance for {year} from FES.")
+        cc = pd.read_csv(snakemake.input["capacity_constraints"], index_col=1)
+    
+        total_p_nom = cc.at["DC", "value"]
+        balance = get_import_export_balance(fes, year)
+
     e_nom = abs(balance)
+
+    max_hours = snakemake.config["flexibility"]["balance_link_max_hours"]
 
     e_max_pu = pd.DataFrame(1., n.snapshots, spatial.import_export_tracker.nodes) 
     e_min_pu = pd.DataFrame(-1., n.snapshots, spatial.import_export_tracker.nodes) 
@@ -1798,12 +1811,12 @@ if __name__ == "__main__":
         )
     configure_logging(snakemake)
 
+    n = pypsa.Network(snakemake.input[0])
+
     gb_nodes = n.buses.index[(n.buses.index.str.contains("GB")) & (n.buses.carrier == "AC")]
     logger.info(f"Preparing GB network with nodes \n {', '.join(gb_nodes.tolist())}.")
 
     spatial = define_spatial(gb_nodes, snakemake.config)
-
-    n = pypsa.Network(snakemake.input[0])
 
     fes = snakemake.wildcards.fes
     year = snakemake.wildcards.year
@@ -1816,7 +1829,7 @@ if __name__ == "__main__":
     logger.info(f"Using Flexibility Options: {flexopts}")
 
     if "validation" in opts:
-        assert int(year) == 2019, "Validation only implemented for 2019."
+        # assert int(year) == 2019, "Validation only implemented for 2019."
         logger.warning("Running 100 percent renewable system.")
 
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
@@ -1847,12 +1860,56 @@ if __name__ == "__main__":
     if snakemake.config["flexibility"]["demand"]["use_espeni"]:
         logger.info("Inserting ESPENI demand data for Great Britain nodes.")
         insert_espeni_demand(n)
+
+    logger.info("Adding transmission limit.")
+    set_line_s_max_pu(n, snakemake.params.lines["s_max_pu"])
+
+    for o in opts:
+        m = re.match(r"^\d+h$", o, re.IGNORECASE)
+        if m is not None:
+            n = average_every_nhours(n, m.group(0))
+            break
+
+    for o in opts:
+        m = re.match(r"^\d+seg$", o, re.IGNORECASE)
+        if m is not None:
+            solver_name = snakemake.params.solving_config["solver"]["name"]
+            n = apply_time_segmentation(n, m.group(0)[:-3], solver_name)
+            break
+
+    for o in opts:
+        if "Ep" in o:
+            m = re.findall("[0-9]*\.?[0-9]+$", o)
+            if len(m) > 0:
+                logger.info("Setting emission prices according to wildcard value.")
+                add_emission_prices(n, dict(co2=float(m[0])))
+            else:
+                logger.info("Setting emission prices according to config value.")
+                # add_emission_prices(n, snakemake.config["costs"]["emission_prices"])
+                add_emission_prices(n, snakemake.params.cost_config["emission_prices"])
+
+            break
+        if "ept" in o:
+            logger.info("Setting time dependent emission prices according spot market price")
+            add_emission_prices_t(n) 
+
+    ll_type, factor = snakemake.wildcards.ll[0], snakemake.wildcards.ll[1:]
+    set_transmission_limit(n, ll_type, factor, elec_costs, Nyears)
+
+    set_line_nom_max(
+        n,
+        s_nom_max_set=snakemake.params.lines.get("s_nom_max,", np.inf),
+        p_nom_max_set=snakemake.params.links.get("p_nom_max,", np.inf),
+    )
     
     if "validation" in opts:
         logger.info("Preparing validation, interrupting prepare_network early.")
         prepare_validation(n, snakemake.params.elec_config)
 
-        n
+        n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
+        n.export_to_netcdf(snakemake.output[0])
+
+        sys.exit()
 
     logger.info("Scaling electricity load according to scenario and year.")
     scale_load(n, fes, year)
@@ -1944,47 +2001,6 @@ if __name__ == "__main__":
 
     logger.info("Adding hydrogen demand, and electrolysis.")
     add_hydrogen_demand(n, fes, year, other_costs)
-
-    logger.info("Adding transmission limit.")
-    set_line_s_max_pu(n, snakemake.params.lines["s_max_pu"])
-
-    for o in opts:
-        m = re.match(r"^\d+h$", o, re.IGNORECASE)
-        if m is not None:
-            n = average_every_nhours(n, m.group(0))
-            break
-
-    for o in opts:
-        m = re.match(r"^\d+seg$", o, re.IGNORECASE)
-        if m is not None:
-            solver_name = snakemake.params.solving_config["solver"]["name"]
-            n = apply_time_segmentation(n, m.group(0)[:-3], solver_name)
-            break
-
-    for o in opts:
-        if "Ep" in o:
-            m = re.findall("[0-9]*\.?[0-9]+$", o)
-            if len(m) > 0:
-                logger.info("Setting emission prices according to wildcard value.")
-                add_emission_prices(n, dict(co2=float(m[0])))
-            else:
-                logger.info("Setting emission prices according to config value.")
-                # add_emission_prices(n, snakemake.config["costs"]["emission_prices"])
-                add_emission_prices(n, snakemake.params.cost_config["emission_prices"])
-
-            break
-        if "ept" in o:
-            logger.info("Setting time dependent emission prices according spot market price")
-            add_emission_prices_t(n) 
-
-    ll_type, factor = snakemake.wildcards.ll[0], snakemake.wildcards.ll[1:]
-    set_transmission_limit(n, ll_type, factor, elec_costs, Nyears)
-
-    set_line_nom_max(
-        n,
-        s_nom_max_set=snakemake.params.lines.get("s_nom_max,", np.inf),
-        p_nom_max_set=snakemake.params.links.get("p_nom_max,", np.inf),
-    )
 
     if "ATK" in opts:
         enforce_autarky(n)

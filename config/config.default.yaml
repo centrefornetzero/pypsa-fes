@@ -178,6 +178,7 @@ snapshots:
 entsoe_key_file: 'entsoe_api_key.txt' # holds an api token to download from ENTSO-E
 
 enable:
+  retrieve: auto
   prepare_links_p_nom: false
   retrieve_databundle: true
   retrieve_sector_databundle: true

@@ -92,7 +92,7 @@ flexibility:
   go_tariff_opt_out_rate: 0.1 # share of people not charging during 12 am - 4 am window
   int_tariff_opt_out_rate: 0.1 # share of people opting out of intelligent charging
 
-  # EV battery parameters
+  # EV battery parameters (!!! Careful, these are also defined in the sector config !!!)
   bev_battery_capacity: 0.05  #average battery size in MWh
   bev_charge_rate: 0.011 #3-phase charger with 11 kW
   bev_avail_max: 0.95
@@ -184,6 +184,7 @@ snapshots:
 entsoe_key_file: 'entsoe_api_key.txt' # holds an api token to download from ENTSO-E
 
 enable:
+  retrieve: auto
   prepare_links_p_nom: false
   retrieve_databundle: true
   retrieve_sector_databundle: true
@@ -539,6 +540,12 @@ sector:
       2050: 1.0
     district_heating_loss: 0.15
   cluster_heat_buses: false # cluster residential and service heat buses to one to save memory
+  bev_battery_capacity: 0.05  #average battery size in MWh
+  bev_charge_rate: 0.011 #3-phase charger with 11 kW
+  bev_avail_max: 0.95
+  bev_avail_mean: 0.8
+  bev_charge_efficiency: 0.9  #BEV (dis-)charging efficiency
+  v2g_efficiency: 0.9  #V2G (dis-)charging efficiency
   bev_dsm_restriction_value: 0.75  #Set to 0 for no restriction on BEV DSM
   bev_dsm_restriction_time: 7  #Time at which SOC of BEV has to be dsm_restriction_value
   transport_heating_deadband_upper: 20.
