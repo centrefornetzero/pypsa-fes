@@ -1678,7 +1678,11 @@ def adjust_interconnectors(n, file, year):
     links = (
         links
         .groupby(['bus0', 'bus1'], as_index=False)
-        .agg({'p_nom': 'sum', 'geometry': 'first', 'name': 'sum'})
+        .agg({
+            'p_nom': 'sum',
+            'geometry': 'first',
+            'name': 'sum',
+        })
     )
     links.index = links['name']
 

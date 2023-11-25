@@ -581,10 +581,10 @@ if __name__ == "__main__":
             lambda geom: target_regions.loc[target_regions.geometry.intersection(geom).area.argmax(), "name"])
         overlap.index = remainers.bus.values
         
-        logger.warning("Currently commented out hard coded bus assignment!")
-        # logging.warning("Currently hard coded bus assignment!")
-        # overlap.loc["5676"]  = "DK2 0"      
-        # overlap.loc["7429"]  = "DK2 0"      
+        # logger.warning("Currently commented out hard coded bus assignment!")
+        logging.warning("Currently hard coded bus assignment!")
+        overlap.loc["5676"]  = "DK2 0"      
+        overlap.loc["7429"]  = "DK2 0"      
 
         busmap = pd.concat((
             busmap, overlap

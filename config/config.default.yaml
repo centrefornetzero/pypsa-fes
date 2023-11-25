@@ -452,6 +452,7 @@ pypsa_eur:
   - gas
   - coal
   - lignite
+  - import export tracker
   Link:
   - DC
   - coal
