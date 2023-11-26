@@ -18,6 +18,7 @@ gurobi.log
 /logs
 /notebooks
 /data
+/cluster_runs
 /cutouts
 
 doc/_build

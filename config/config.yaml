@@ -42,9 +42,10 @@ scenario:
   # tank: # simulates the presence of a watertank for increased heat flexibility
   
   opts: # only relevant for PyPSA-Eur
-  - 'morocco' # adds Xlinks project; interconnection to Morocco with renewable generation
+  # - 'morocco' # adds Xlinks project; interconnection to Morocco with renewable generation
   # "100percent" # 100% renewable scenario, balancing through intercons, battery storage, no thermal gen
   # morocco # if year is >= 2030 adds Xlinks Morocco to the system
+  - ""
 
   sector_opts: # this is where the main scenario settings are
   - Co2L0-3H-T-H-B-I-A-solar+p3-dist1
