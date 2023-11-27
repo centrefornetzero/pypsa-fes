@@ -662,14 +662,11 @@ def calculate_price_statistics(n, label, price_statistics):
 
 def calculate_flex_statistics(n, label, flex_statistics):
 
-
     nodes = n.buses.index[(n.buses.index.str.contains("GB")) & (n.buses.carrier == "AC")]
     assign_loc = lambda series: series.apply(lambda s: " ".join(s.split(" ")[:2]))
 
     def get_generation_capacity(n):
 
-        print("generation caps")
-        print(n.links.carrier.unique())
         caps = pd.DataFrame(index=nodes)
         for carrier in ["OCGT", "CCGT", "allam", "nuclear", "biomass"]:
 
@@ -687,8 +684,8 @@ def calculate_flex_statistics(n, label, flex_statistics):
 
         mask = n.links.loc[n.links.carrier == "DAC"].index
 
-        df_atmosphere["dac"] = n.links_t.p0[mask].sum().mul(-1).set_axis(nodes)
-        df_co2["dac"] = n.links_t.p1[mask].sum().mul(-1).set_axis(nodes)
+        df_atmosphere["dac_atm"] = n.links_t.p0[mask].sum().mul(-1).set_axis(nodes)
+        df_co2["dac_co2"] = n.links_t.p1[mask].sum().mul(-1).set_axis(nodes)
 
         for carrier in ["OCGT", "CCGT"]:
             mask = n.links.loc[n.links.carrier == carrier].index
@@ -728,10 +725,6 @@ def calculate_flex_statistics(n, label, flex_statistics):
 
 
     def get_carrier_energy(n, carrier):
-        print(label)
-        print(carrier)
-        print("=====================")
-
         
         energy = pd.Series(0, nodes, name=carrier)
 
@@ -740,8 +733,6 @@ def calculate_flex_statistics(n, label, flex_statistics):
             g = n.generators.loc[(n.generators.carrier == carrier) & (n.generators.bus.isin(nodes))].index        
             g = pd.Series(n.generators_t.p[g].sum().values, index=n.generators.loc[g, 'bus'])
 
-            print("in gens")
-            print(g.head())
             energy.loc[g.index] += g
         
         if carrier in n.links.carrier.unique():
@@ -753,15 +744,13 @@ def calculate_flex_statistics(n, label, flex_statistics):
                 index=n.links.loc[g, "bus1"]
             )
 
-            print("in links")
-            print(g.head())
             energy.loc[g.index] += g
 
         return energy
 
     flex_stats = (
         pd.concat([
-            get_carrier_energy(n, carrier).rename(carrier+"_p_nom") for carrier in [
+            get_carrier_energy(n, carrier).rename(carrier+"_energy") for carrier in [
                 "OCGT",
                 "CCGT",
                 "allam",
@@ -789,9 +778,7 @@ def calculate_flex_statistics(n, label, flex_statistics):
         )
     )
 
-    flex_stats.name = label
-    print(flex_statistics.head())
-    print(flex_stats.head())
+    # flex_stats.name = label
     flex_statistics.loc[flex_stats.index, label] = flex_stats
 
     return flex_statistics
@@ -811,14 +798,14 @@ def make_summaries(networks_dict):
         "costs",
         "capacities",
         "curtailment",
-        "energy",
-        "supply",
-        "supply_energy",
-        "prices",
-        "weighted_prices",
-        "price_statistics",
-        "market_values",
-        "metrics",
+        # "energy",
+        # "supply",
+        # "supply_energy",
+        # "prices",
+        # "weighted_prices",
+        # "price_statistics",
+        # "market_values",
+        # "metrics",
     ]
 
     columns = pd.MultiIndex.from_tuples(
@@ -882,7 +869,8 @@ if __name__ == "__main__":
 
     df = make_summaries(networks_dict)
 
-    df["metrics"].loc["total costs"] = df["costs"].sum()
+    if "metrics" in df.columns:
+        df["metrics"].loc["total costs"] = df["costs"].sum()
 
     to_csv(df)
 

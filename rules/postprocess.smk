@@ -10,7 +10,7 @@ localrules:
 
 rule plot_network:
     input:
-        overrides="data/override_component_attrs",
+        # overrides="data/override_component_attrs",
         network=RESULTS + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
         # regions=RESOURCES + "regions_onshore_elec_s{simpl}_{gb_regions}.geojson",
         regions="data/eso_zones.geojson",
@@ -91,14 +91,15 @@ rule make_summary:
         costs=RESULTS + "csvs/costs.csv",
         capacities=RESULTS + "csvs/capacities.csv",
         curtailment=RESULTS + "csvs/curtailment.csv",
-        energy=RESULTS + "csvs/energy.csv",
-        supply=RESULTS + "csvs/supply.csv",
-        supply_energy=RESULTS + "csvs/supply_energy.csv",
-        prices=RESULTS + "csvs/prices.csv",
-        weighted_prices=RESULTS + "csvs/weighted_prices.csv",
-        market_values=RESULTS + "csvs/market_values.csv",
-        price_statistics=RESULTS + "csvs/price_statistics.csv",
-        metrics=RESULTS + "csvs/metrics.csv",
+        # energy=RESULTS + "csvs/energy.csv",
+        # supply=RESULTS + "csvs/supply.csv",
+        # supply_energy=RESULTS + "csvs/supply_energy.csv",
+        # prices=RESULTS + "csvs/prices.csv",
+        # weighted_prices=RESULTS + "csvs/weighted_prices.csv",
+        # market_values=RESULTS + "csvs/market_values.csv",
+        # price_statistics=RESULTS + "csvs/price_statistics.csv",
+        # metrics=RESULTS + "csvs/metrics.csv",
+        flex_statistics=RESULTS + "csvs/flex_statistics.csv",
     threads: 2
     resources:
         mem_mb=10000,
