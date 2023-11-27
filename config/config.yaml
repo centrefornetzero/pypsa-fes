@@ -22,24 +22,29 @@ scenario:
   simpl:
   - ''
   ll:  # allowed transmission line volume expansion, can be any float >= 1.0 with a prefix v|c (today) or "copt"
-  - v1.5
+  - copt
   fes: # Future energy scenario considered (see https://www.nationalgrideso.com/future-energy/future-energy-scenarios)
   # - 'FS' # Falling Short
   - 'LW' # Leading the Way 
   year: # year of Future Energy Scenario modelled
-  - 2040
+  # - 2040
   # - 2025
-  # - 2030
+  - 2030
   # - 2035
   # - 2040
   flexopts:
   - ""
-  # ss:   # one hour events, any weekday in winter, Saving Sessions style
-  # go:   # EVs with go-like tariff
-  # int:  # intelligent EV charging; centrally optimal charging of EV fleet
-  # v2g:  # switches on vehicle to grid
-  # cosy: # heat flex cosy-like: Allows shifting of morning and afternoon peaks by 3 hours
-  # tank: # simulates the presence of a watertank for increased heat flexibility
+  - "ss"
+  - "cosy"  # EVs with go-like tariff
+  - "tank" # intelligent EV charging; centrally optimal charging of EV fleet
+  - "go" # intelligent EV charging; centrally optimal charging of EV fleet
+  - "int-v2g"
+  - "go-cosy"
+  - "int-v2g-tank"
+  - "int-v2g-cosy-ss"
+  - "go-tank-ss"
+  - "int-tank-ss"
+  - "int-tank-ss-v2g"
   
   opts: # only relevant for PyPSA-Eur
   # - 'morocco' # adds Xlinks project; interconnection to Morocco with renewable generation

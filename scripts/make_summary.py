@@ -16,7 +16,7 @@ import sys
 import numpy as np
 import pandas as pd
 import pypsa
-from _helpers import override_component_attrs
+# from _helpers import override_component_attrs
 from prepare_sector_network import prepare_costs
 
 idx = pd.IndexSlice
@@ -660,11 +660,150 @@ def calculate_price_statistics(n, label, price_statistics):
     return price_statistics
 
 
+def calculate_flex_statistics(n, label, flex_statistics):
+
+
+    nodes = n.buses.index[(n.buses.index.str.contains("GB")) & (n.buses.carrier == "AC")]
+    assign_loc = lambda series: series.apply(lambda s: " ".join(s.split(" ")[:2]))
+
+    def get_generation_capacity(n):
+
+        print("generation caps")
+        print(n.links.carrier.unique())
+        caps = pd.DataFrame(index=nodes)
+        for carrier in ["OCGT", "CCGT", "allam", "nuclear", "biomass"]:
+
+            g = n.links.loc[n.links.carrier == carrier, "p_nom_opt"]
+            g.index = assign_loc(pd.Series(g.index))
+
+            caps.loc[g.index, carrier] = g
+        
+        return caps
+
+    def get_co2_balance(n):
+
+        df_atmosphere = pd.DataFrame(index=nodes)
+        df_co2 = pd.DataFrame(index=nodes)
+
+        mask = n.links.loc[n.links.carrier == "DAC"].index
+
+        df_atmosphere["dac"] = n.links_t.p0[mask].sum().mul(-1).set_axis(nodes)
+        df_co2["dac"] = n.links_t.p1[mask].sum().mul(-1).set_axis(nodes)
+
+        for carrier in ["OCGT", "CCGT"]:
+            mask = n.links.loc[n.links.carrier == carrier].index
+
+            emission = n.links_t.p2[mask].sum().mul(-1)   
+            emission.index = assign_loc(pd.Series(emission.index))
+            df_atmosphere.loc[emission.index, carrier] = emission
+
+        bu = n.links.loc[n.links.carrier == "biogas upgrading"].index
+        df_atmosphere["biogas upgrading"] = n.links_t.p2[bu].sum().mul(-1).set_axis(nodes)
+
+        bm = n.links.loc[n.links.carrier == "biomass"].index
+        df_atmosphere["biomass"] = n.links_t.p2[bm].sum().mul(-1).set_axis(nodes)
+
+        allam = n.links.loc[n.links.carrier == "allam"].index
+        df_co2["abated combustion"] = n.links_t.p2[allam].sum().mul(-1).set_axis(nodes)
+
+        return df_co2, df_atmosphere
+
+
+    def get_distribution_capacity(n):
+        l = n.links.loc[n.links.carrier == "electricity distribution grid", "p_nom_opt"]
+        l.index = assign_loc(pd.Series(l.index))
+        return l
+
+
+    def get_transmission_capacity(n):
+        t = (
+            (l := n.lines)
+            .loc[
+                l.bus0.isin(nodes) & l.bus1.isin(nodes),
+                "s_nom_opt"]
+            .sum()
+        )
+
+        return pd.Series(t.sum() / len(nodes), nodes)
+
+
+    def get_carrier_energy(n, carrier):
+        print(label)
+        print(carrier)
+        print("=====================")
+
+        
+        energy = pd.Series(0, nodes, name=carrier)
+
+        if carrier in n.generators.carrier.unique():
+
+            g = n.generators.loc[(n.generators.carrier == carrier) & (n.generators.bus.isin(nodes))].index        
+            g = pd.Series(n.generators_t.p[g].sum().values, index=n.generators.loc[g, 'bus'])
+
+            print("in gens")
+            print(g.head())
+            energy.loc[g.index] += g
+        
+        if carrier in n.links.carrier.unique():
+
+            g = n.links.loc[(n.links.carrier == carrier) & (n.links.bus1.isin(nodes))].index
+            etas = n.links.loc[g, "efficiency"]
+            g = pd.Series(
+                n.links_t.p0[g].mul(etas, axis=1).sum().values,
+                index=n.links.loc[g, "bus1"]
+            )
+
+            print("in links")
+            print(g.head())
+            energy.loc[g.index] += g
+
+        return energy
+
+    flex_stats = (
+        pd.concat([
+            get_carrier_energy(n, carrier).rename(carrier+"_p_nom") for carrier in [
+                "OCGT",
+                "CCGT",
+                "allam",
+                "nuclear",
+                "modular nuclear",
+                "biomass",
+                "solar",
+                "onwind",
+                "offwind-ac",
+                "offwind-dc",
+                "ror"
+            ]] + [
+            get_transmission_capacity(n).rename("transmission_p_nom"), 
+            get_distribution_capacity(n).rename("distribution_p_nom")] +
+            list(get_co2_balance(n)) + [
+            get_generation_capacity(n).rename(columns=lambda s: s+"_p_nom")
+        ], axis=1)
+        .fillna(0)
+        .stack()
+    )
+
+    flex_statistics = flex_statistics.reindex(
+        flex_statistics.index.union(
+            flex_stats.index
+        )
+    )
+
+    flex_stats.name = label
+    print(flex_statistics.head())
+    print(flex_stats.head())
+    flex_statistics.loc[flex_stats.index, label] = flex_stats
+
+    return flex_statistics
+
+
+
 def make_summaries(networks_dict):
     
     logger.warning("Currently not doing nodal capacities")
 
     outputs = [
+        "flex_statistics",
         "nodal_costs",
         # "nodal_capacities",
         "nodal_cfs",
@@ -695,8 +834,9 @@ def make_summaries(networks_dict):
     for label, filename in networks_dict.items():
         logger.info(f"Make summary for scenario {label}, using {filename}")
 
-        overrides = override_component_attrs(snakemake.input.overrides)
-        n = pypsa.Network(filename, override_component_attrs=overrides)
+        # overrides = override_component_attrs(snakemake.input.overrides)
+        # n = pypsa.Network(filename, override_component_attrs=overrides)
+        n = pypsa.Network(filename)
         
         assign_carriers(n)
         assign_locations(n)
