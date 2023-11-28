@@ -29,9 +29,9 @@ scenario:
   year: # year of Future Energy Scenario modelled
   # - 2040
   # - 2025
-  - 2030
+  # - 2030
   # - 2035
-  # - 2040
+  - 2050
   flexopts:
   - ""
   - "ss"

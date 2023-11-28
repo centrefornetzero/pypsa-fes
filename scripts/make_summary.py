@@ -758,6 +758,7 @@ def calculate_flex_statistics(n, label, flex_statistics):
                 "modular nuclear",
                 "biomass",
                 "solar",
+                "solar-rooftop",
                 "onwind",
                 "offwind-ac",
                 "offwind-dc",
