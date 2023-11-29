@@ -870,7 +870,7 @@ if __name__ == "__main__":
 
     df = make_summaries(networks_dict)
 
-    if "metrics" in df.columns:
+    if "metrics" in df:
         df["metrics"].loc["total costs"] = df["costs"].sum()
 
     to_csv(df)

@@ -27,17 +27,17 @@ scenario:
   # - 'FS' # Falling Short
   - 'LW' # Leading the Way 
   year: # year of Future Energy Scenario modelled
-  # - 2040
-  # - 2025
-  # - 2030
-  # - 2035
   - 2050
+  # - 2025
+  - 2030
+  # - 2035
+  - 2040
   flexopts:
   - ""
   - "ss"
-  - "cosy"  # EVs with go-like tariff
-  - "tank" # intelligent EV charging; centrally optimal charging of EV fleet
-  - "go" # intelligent EV charging; centrally optimal charging of EV fleet
+  - "cosy"
+  - "tank"
+  - "go"
   - "int-v2g"
   - "go-cosy"
   - "int-v2g-tank"
