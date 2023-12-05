@@ -485,6 +485,40 @@ def get_industrial_demand(scenario, year):
     return reference, value
 
 
+def get_heating_shares(scenario, year):
+    """Get value for mix of electric heating mix"""
+
+    col = string.ascii_uppercase.index("M")
+
+    df = pd.read_excel(
+        data_file,
+        sheet_name="EC.E",
+        header=7,
+        index_col=col,
+        usecols=list(range(col, col+15)),
+        ).iloc[1:4]
+    df.index = df.iloc[:,0]
+
+    df_2021 = df.iloc[:,1]    
+
+    df_2035 = (
+        df.iloc[:,3:7]
+        [scenario]
+    )
+    df_2050 = (
+        df.iloc[:,8:12]
+        [scenario+'.1']
+    )
+
+    get_val = lambda tech: np.interp(
+        year,
+        [2021, 2035, 2050],
+        [df_2021.loc[tech], df_2035.loc[tech], df_2050.loc[tech]]
+    )
+
+    return pd.Series({tech: get_val(tech) for tech in df_2035.index})
+
+
 def get_commercial_demand(scenario, year):
     """Get reference and future value for commercial elecitricity demand"""
 
