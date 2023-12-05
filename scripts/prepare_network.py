@@ -89,6 +89,7 @@ from _fes_helpers import (
     get_import_export_balance,
     get_electric_heat_demand,
     get_industrial_hydrogen_demand,
+    get_heating_shares,
     )
 
 from pypsa.descriptors import expand_series
@@ -589,7 +590,9 @@ def add_heat_pump_load(
     heat_demand_file,
     ashp_cop_file,
     energy_totals_file,
-    intraday_profile_file,
+    profile_boiler_intraday,
+    profile_air_source,
+    profile_ground_source,
     scenario,
     year,
     flexopts,
@@ -598,7 +601,7 @@ def add_heat_pump_load(
 
     year = int(year)
 
-    intraday_profiles = pd.read_csv(intraday_profile_file, index_col=0)
+    intraday_profiles = pd.read_csv(profile_boiler_intraday, index_col=0)
 
     daily_space_heat_demand = (
         xr.open_dataarray(heat_demand_file)
@@ -645,15 +648,15 @@ def add_heat_pump_load(
         for region in daily_space_heat_demand.columns
     })
 
-    cop = xr.open_dataarray(ashp_cop_file).to_dataframe().iloc[:,0].unstack()
-    cop = cop[nodes]
+    cop_air = xr.open_dataarray(ashp_cop_file).to_dataframe().iloc[:,0].unstack()
+    cop_air = cop_air[nodes]
 
     cop = cop.rename(
         columns={old: [col for col in heat_demand.columns if col in old][0]
         for old in cop.columns}
     )
 
-    # to electricity demand through cop
+    # get electricity demand by dividing heat demand through cop
     heat_demand = heat_demand.divide(cop)
 
     # scale according to scenario
@@ -662,6 +665,8 @@ def add_heat_pump_load(
     hp_load_base, hp_load_future = (
         get_electric_heat_demand(scenario, year, n.snapshots[0].year)
     )
+
+    heat_tech_shares = get_heating_shares(scenario, year)
 
     future_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
     future_heat_demand.columns = heat_demand_spatial.nodes
@@ -1972,7 +1977,9 @@ if __name__ == "__main__":
         snakemake.input["heat_demand"],
         snakemake.input["cop_air_total"],
         snakemake.input["energy_totals"],
-        snakemake.input["heat_profile"],
+        snakemake.input["profile_boiler_heating"],
+        snakemake.input["profile_air_source_heating"],
+        snakemake.input["profile_ground_source_heating"],
         snakemake.wildcards.fes,
         snakemake.wildcards.year,
         flexopts,
