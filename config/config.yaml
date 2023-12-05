@@ -324,6 +324,17 @@ morocco_renewable:
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
 
+# New config info for heating taken from github.com/clairehalloran/GeoHeat-GB
+heating:
+  cutout: europe-2019-era5
+  single_GB_temperature: true
+  heat_sources: [air, ground]
+  heat_pump_sink_T: 55. # Celsius
+  air:
+    share: 0.75
+  ground:
+    share: 0.25
+
 renewable:
   onwind:
     cutout: europe-2019-era5

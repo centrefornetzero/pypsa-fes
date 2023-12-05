@@ -269,6 +269,39 @@ rule build_powerplants:
         "../scripts/build_powerplants.py"
 
 
+rule build_temperature_profiles_halloran:
+    params:
+        atlite=config["atlite"],
+        heating=config["heating"],
+        snapshots=config["snapshots"],
+    input:
+        regions=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
+        population="data/population_layout/GB_residential_population_2011_1_km.tif",
+        # cutout="cutouts/"+ CDIR + config["heating"]["cutout"] + ".nc",
+        cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
+    output:
+        temp_air=RESOURCES + "temp_air_elec_s{simpl}_eso_halloran.nc",
+        temp_ground=RESOURCES + "temp_ground_elec_s{simpl}_eso_halloran.nc"
+    script:
+        "../scripts/build_temperature_profiles_halloran.py"
+
+
+rule build_heating_profiles_halloran:
+    params:
+        snapshots=config["snapshots"],
+        heating=config["heating"],
+    input:
+        regions=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
+        population="data/population_layout/GB_residential_population_2011_1_km.tif",
+        # cutout = "cutouts/"+ CDIR + config["heating"]["cutout"] + ".nc",
+        cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
+    output:
+        profile_air_source_heating=RESOURCES + "load_air_source_heating_elec_s{simpl}_eso.nc",
+        profile_ground_source_heating=RESOURCES + "load_ground_source_heating_elec_s{simpl}_eso.nc"
+    script:
+        "../scripts/build_heating_profiles_halloran.py"
+
+
 rule base_network:
     input:
         eg_buses="data/entsoegridkit/buses.csv",
