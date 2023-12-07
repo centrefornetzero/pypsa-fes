@@ -277,7 +277,6 @@ rule build_temperature_profiles_halloran:
     input:
         regions=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         population="data/population_layout/GB_residential_population_2011_1_km.tif",
-        # cutout="cutouts/"+ CDIR + config["heating"]["cutout"] + ".nc",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
         temp_air=RESOURCES + "temp_air_elec_s{simpl}_eso_halloran.nc",
@@ -293,7 +292,6 @@ rule build_heating_profiles_halloran:
     input:
         regions=RESOURCES + "regions_onshore_elec_s{simpl}_eso.geojson",
         population="data/population_layout/GB_residential_population_2011_1_km.tif",
-        # cutout = "cutouts/"+ CDIR + config["heating"]["cutout"] + ".nc",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
         profile_air_source_heating=RESOURCES + "load_air_source_heating_elec_s{simpl}_eso.nc",
@@ -750,7 +748,7 @@ rule prepare_network:
         capacity_constraints=RESOURCES + "fes_capacity_constraints_{fes}_{year}.csv",
         profile_boiler_heating="data/heat_load_profile_BDEW.csv",
         profile_air_source_heating=RESOURCES + "load_air_source_heating_elec_s{simpl}_eso.nc",
-        profile_ground_source_heating=RESOURCES + "load_ground_source_heating_elec_s{simpl}_eso.nc"
+        profile_ground_source_heating=RESOURCES + "load_ground_source_heating_elec_s{simpl}_eso.nc",
         clustered_pop_layout=RESOURCES + "pop_layout_elec_s{simpl}_eso.csv",
         heat_demand=RESOURCES + "heat_demand_total_elec_s{simpl}_eso.nc",
         cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_eso.nc",

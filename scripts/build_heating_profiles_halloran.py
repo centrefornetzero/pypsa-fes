@@ -254,12 +254,16 @@ if __name__ == "__main__":
     cutout_rio = cutout.data
     cutout_rio = cutout_rio.rio.write_crs('EPSG:4326')
     # transform to same CRS and resolution as cutout
-    population_match = population.rio.reproject_match(cutout_rio,
-                                                      resampling = rasterio.enums.Resampling.sum)
+    population_match = population.rio.reproject_match(
+        cutout_rio,
+        resampling = rasterio.enums.Resampling.sum
+        )
     population_match = population_match.squeeze().drop('band')
     population_match = population_match.where(population_match>0.)
+
     # population_match = population_match.fillna(0.)
     households = population_match/2.4 # England and Wales average household size
+
     # change large negative values to NaN-- may need to change to 0
     households = households.where(households>0.)
     households = households.fillna(0.)

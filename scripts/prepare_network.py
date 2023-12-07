@@ -585,26 +585,17 @@ def add_gas_ccs(n, costs):
 
 
 # adapted from `add_heat` method in `scripts/prepare_sector_network.py`
-def add_heat_pump_load(
-    n,
-    heat_demand_file,
-    ashp_cop_file,
-    energy_totals_file,
-    profile_boiler_intraday,
-    profile_air_source,
-    profile_ground_source,
-    scenario,
-    year,
-    flexopts,
-    flex_config,
-    ):
+def add_heat_pump_load(n, flexopts, costs):
 
-    year = int(year)
+    year = int(snakemake.wildcards.year)
+    scenario = snakemake.wildcards.fes
 
-    intraday_profiles = pd.read_csv(profile_boiler_intraday, index_col=0)
+    flex_config = snakemake.params.flex_config
+
+    intraday_profiles = pd.read_csv(snakemake.input["profile_boiler_heating"], index_col=0)
 
     daily_space_heat_demand = (
-        xr.open_dataarray(heat_demand_file)
+        xr.open_dataarray(snakemake.input["heat_demand"])
         .to_pandas()
         .reindex(index=n.snapshots, method="ffill")
     )
@@ -616,7 +607,7 @@ def add_heat_pump_load(
 
     daily_space_heat_demand = daily_space_heat_demand[nodes]
 
-    pop_weighted_energy_totals = pd.read_csv(energy_totals_file, index_col=0)
+    pop_weighted_energy_totals = pd.read_csv(snakemake.input["energy_totals"], index_col=0)
 
     sectors = ["residential"]
     uses = ["water", "space"]
@@ -648,33 +639,56 @@ def add_heat_pump_load(
         for region in daily_space_heat_demand.columns
     })
 
-    cop_air = xr.open_dataarray(ashp_cop_file).to_dataframe().iloc[:,0].unstack()
-    cop_air = cop_air[nodes]
+    # Assuming that profiles for boilers are the same as for resistive heaters
+    profile_resistive = heat_demand
 
-    cop = cop.rename(
-        columns={old: [col for col in heat_demand.columns if col in old][0]
-        for old in cop.columns}
-    )
+    get_profile = lambda file: xr.open_dataarray(file).to_pandas().transpose()[nodes]
 
-    # get electricity demand by dividing heat demand through cop
-    heat_demand = heat_demand.divide(cop)
+    profile_ashp = get_profile(snakemake.input["profile_air_source_heating"])
+    profile_gshp = get_profile(snakemake.input["profile_ground_source_heating"])
 
-    # scale according to scenario
-    # get number of elec load through residential heating
+    get_cop = lambda f: xr.open_dataarray(f).to_dataframe().iloc[:,0].unstack()[nodes]
 
-    hp_load_base, hp_load_future = (
+    cop_ashp = get_cop(snakemake.input["cop_air_total"])
+    cop_gshp = get_cop(snakemake.input["cop_ground_total"])
+    cop_resistive = costs.at["decentral resistive heater", "efficiency"]
+
+    heat_tech_shares = get_heating_shares(scenario, year)
+    heat_tech_shares /= heat_tech_shares.sum()
+
+    elec_heat_today, elec_heat_future = (
         get_electric_heat_demand(scenario, year, n.snapshots[0].year)
     )
 
-    heat_tech_shares = get_heating_shares(scenario, year)
+    def build_total_profile(profiles, shares, cops, total):
 
-    future_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_future
-    future_heat_demand.columns = heat_demand_spatial.nodes
+        assert np.allclose(sum(shares), 1.), "Heating shares do not sum to 1."
 
-    # estimate demand subsumed in the general electricity demand, and remove it
-    base_heat_demand = heat_demand / heat_demand.sum().sum() * hp_load_base
-    base_heat_demand.columns = nodes
-    n.loads_t.p_set[nodes] -= base_heat_demand.reindex(nodes, axis=1)
+        process = lambda profile, share, cop: (profile / profile.sum().sum() * share).divide(cop)
+        profiles = list(map(process, profiles, shares, cops))
+
+        scale = lambda profile: profile / sum([p.sum().sum() for p in profiles]) * total
+        profiles = list(map(scale, profiles))
+
+        return (p := pd.concat(profiles, axis=1)).T.groupby(p.columns).sum().T
+
+    assert heat_tech_shares.index.tolist() == ["Direct electric", "GSHP", "ASHP"], "Wrong order in heat shares."
+
+    profile_future = build_total_profile(
+        [profile_resistive, profile_gshp, profile_ashp],
+        heat_tech_shares.tolist(),
+        [cop_resistive, cop_gshp, cop_ashp],
+        elec_heat_future,
+    )
+
+    profile_today = build_total_profile(
+        [profile_resistive, profile_gshp, profile_ashp],
+        heat_tech_shares.tolist(),
+        [cop_resistive, cop_gshp, cop_ashp],
+        elec_heat_today,
+    )
+
+    n.loads_t.p_set[nodes] -= profile_today
 
     n.madd(
         "Bus",
@@ -689,7 +703,7 @@ def add_heat_pump_load(
         heat_demand_spatial.nodes,
         bus=heat_demand_spatial.nodes,
         carrier="heat demand",
-        p_set=future_heat_demand,
+        p_set=profile_future.set_axis(heat_demand_spatial.nodes, axis=1),
     )
 
     n.madd(
@@ -697,7 +711,7 @@ def add_heat_pump_load(
         heat_pumps_spatial.nodes,
         bus0=nodes,
         bus1=heat_demand_spatial.nodes,
-        carrier="heat pump",
+        carrier="electric heating",
         p_nom_extendable=True,
     )
 
@@ -749,7 +763,7 @@ def add_heat_pump_load(
         store_use_window = charging_window
 
         daily_p_max = (
-            future_heat_demand 
+            profile_future
             .groupby(pd.Grouper(freq="h"))
             .max()
             .reindex(s, method="ffill")
@@ -762,7 +776,7 @@ def add_heat_pump_load(
         p_min_pu = - (daily_p_max / p_nom).mul(discharging_window, axis=0)
 
         daily_e_max = (
-            future_heat_demand
+            profile_future
             .rolling(shift_size)
             .sum()
             .shift(-shift_size)
@@ -812,7 +826,7 @@ def add_heat_pump_load(
         max_hours = flex_config["water_tank_max_hours"]
 
         p_nom = (
-            future_heat_demand
+            profile_future
             .rolling(max_hours)
             .mean()
             .max()
@@ -831,7 +845,7 @@ def add_heat_pump_load(
         )
 
 
-def add_bev(n, transport_config, flex_config, flexopts):
+def add_bev(n, flexopts):
     """
     Adds BEV load and respective stores units;
     adapted from `add_land_transport` method in `scripts/prepare_sector_network.py`
@@ -839,6 +853,9 @@ def add_bev(n, transport_config, flex_config, flexopts):
 
     year = int(snakemake.wildcards.year)
     scenario = snakemake.wildcards.fes
+
+    transport_config = snakemake.params.sector_config
+    flex_config = snakemake.params.flex_config
 
     nodes = spatial.nodes
 
@@ -1972,26 +1989,10 @@ if __name__ == "__main__":
     add_biogas(n, other_costs)
 
     logger.info("Adding heat pump load.")
-    add_heat_pump_load(
-        n,
-        snakemake.input["heat_demand"],
-        snakemake.input["cop_air_total"],
-        snakemake.input["energy_totals"],
-        snakemake.input["profile_boiler_heating"],
-        snakemake.input["profile_air_source_heating"],
-        snakemake.input["profile_ground_source_heating"],
-        snakemake.wildcards.fes,
-        snakemake.wildcards.year,
-        flexopts,
-        snakemake.params.flex_config,
-    )
+    add_heat_pump_load(n, flexopts, other_costs)
 
     logger.info("Adding BEV load.")
-    add_bev(n,
-        snakemake.params.sector_config,
-        snakemake.params.flex_config,
-        flexopts,
-    )
+    add_bev(n, flexopts)
 
     logger.info("Adding battery storage.")
     add_batteries(n, elec_costs, opts=opts)
