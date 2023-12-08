@@ -29,21 +29,22 @@ scenario:
   year: # year of Future Energy Scenario modelled
   - 2050
   # - 2025
-  - 2030
+  # - 2030
   # - 2035
-  - 2040
+  # - 2040
   flexopts:
   - ""
-  - "ss"
   - "cosy"
   - "tank"
   - "go"
   - "int-v2g"
-  - "go-cosy"
-  - "int-v2g-tank"
-  - "int-v2g-cosy-ss"
-  - "go-tank-ss"
+  - "int"
+  - "int-ss-v2g"
+  - "tank-ss-v2g"
   - "int-tank-ss"
+  - "int-tank-v2g"
+  - "int-cosy-ss-v2g"
+  - "go-tank-ss-v2g"
   - "int-tank-ss-v2g"
   
   opts: # only relevant for PyPSA-Eur

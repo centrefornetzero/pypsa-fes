@@ -726,7 +726,7 @@ def calculate_flex_statistics(n, label, flex_statistics):
 
     def get_carrier_energy(n, carrier):
         
-        energy = pd.Series(0, nodes, name=carrier)
+        energy = pd.Series(0., nodes, name=carrier)
 
         if carrier in n.generators.carrier.unique():
 
@@ -735,7 +735,7 @@ def calculate_flex_statistics(n, label, flex_statistics):
 
             energy.loc[g.index] += g
         
-        if carrier in n.links.carrier.unique():
+        elif carrier in n.links.carrier.unique():
 
             g = n.links.loc[(n.links.carrier == carrier) & (n.links.bus1.isin(nodes))].index
             etas = n.links.loc[g, "efficiency"]
@@ -747,6 +747,7 @@ def calculate_flex_statistics(n, label, flex_statistics):
             energy.loc[g.index] += g
 
         return energy
+
 
     flex_stats = (
         pd.concat([
