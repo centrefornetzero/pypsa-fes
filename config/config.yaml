@@ -27,13 +27,15 @@ scenario:
   # - 'FS' # Falling Short
   - 'LW' # Leading the Way 
   year: # year of Future Energy Scenario modelled
-  - 2050
   # - 2025
-  # - 2030
+  - 2030
   # - 2035
-  # - 2040
+  - 2040
+  # - 2045
+  # - 2050
   flexopts:
   - ""
+  - "ss"
   - "cosy"
   - "tank"
   - "go"
