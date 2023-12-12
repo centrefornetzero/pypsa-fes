@@ -148,7 +148,7 @@ def define_spatial(nodes: pd.Index, options):
 
     # residential heat pumps
     spatial.heat_pumps = SimpleNamespace()
-    spatial.heat_pumps.nodes = nodes + " heat pump"
+    spatial.heat_pumps.nodes = nodes + " electric heating"
     spatial.heat_pumps.locations = nodes
     
     # residential thermal inertia
@@ -1599,8 +1599,8 @@ def add_electricity_distribution_grid(n, costs):
     v2g = n.links.carrier == "V2G"
     n.links.loc[v2g, "bus1"] += " low voltage"
 
-    heat_pumps = n.links.carrier == "heat pump"
-    n.links.loc[heat_pumps, "bus0"] += " low voltage"
+    electric_heating = n.links.carrier == "electric heating"
+    n.links.loc[electric_heating, "bus0"] += " low voltage"
 
     winter_flex = n.links.carrier == "winter flex"
     n.links.loc[winter_flex, "bus1"] += " low voltage"
@@ -2018,6 +2018,8 @@ if __name__ == "__main__":
         enforce_autarky(n)
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
+
+    n.links.to_csv("links.csv")
         
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])
