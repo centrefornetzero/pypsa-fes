@@ -713,15 +713,17 @@ def calculate_flex_statistics(n, label, flex_statistics):
 
 
     def get_transmission_capacity(n):
-        t = (
-            (l := n.lines)
-            .loc[
-                l.bus0.isin(nodes) & l.bus1.isin(nodes),
-                "s_nom_opt"]
-            .sum()
-        )
 
-        return pd.Series(t.sum() / len(nodes), nodes)
+        l = (l := n.lines).loc[l.bus0.isin(nodes) & l.bus1.isin(nodes)]
+        l.loc[:, ["caplength"]] = l["s_nom_opt"].mul(l["length"])
+
+        cap = l["s_nom_opt"].sum()
+        caplength = l["caplength"].sum()
+    
+        return pd.concat((
+            pd.Series(cap / len(nodes), nodes, name="transmission_s_nom"),
+            pd.Series(caplength / len(nodes), nodes, name="transmission_caplength")
+        ), axis=1)
 
 
     def get_carrier_energy(n, carrier):
@@ -765,7 +767,7 @@ def calculate_flex_statistics(n, label, flex_statistics):
                 "offwind-dc",
                 "ror"
             ]] + [
-            get_transmission_capacity(n).rename("transmission_p_nom"), 
+            get_transmission_capacity(n),
             get_distribution_capacity(n).rename("distribution_p_nom")] +
             list(get_co2_balance(n)) + [
             get_generation_capacity(n).rename(columns=lambda s: s+"_p_nom")
