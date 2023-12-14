@@ -671,11 +671,14 @@ def calculate_flex_statistics(n, label, flex_statistics):
         for carrier in ["OCGT", "CCGT", "allam", "nuclear", "biomass"]:
 
             g = n.links.loc[n.links.carrier == carrier, "p_nom_opt"]
+            eta = n.links.loc[n.links.carrier == carrier, "efficiency"]
+
             g.index = assign_loc(pd.Series(g.index))
 
-            caps.loc[g.index, carrier] = g
-        
+            caps.loc[g.index, carrier] = g.mul(eta.set_axis(g.index))
+
         return caps
+
 
     def get_co2_balance(n):
 
