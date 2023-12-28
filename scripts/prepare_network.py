@@ -883,7 +883,7 @@ def add_bev(n, flexopts):
     )
 
     gb_cars = get_total_cars(
-        snakemake.input.fes_table,
+        snakemake.input.fes_table_2022,
         scenario,
         year,
         )
@@ -960,7 +960,7 @@ def add_bev(n, flexopts):
 
         # smart stuff
         smart_share, v2g_share = get_smart_charge_v2g(
-            snakemake.input.fes_table,
+            snakemake.input.fes_table_2022,
             snakemake.wildcards.fes,
             year)
 

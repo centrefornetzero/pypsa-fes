@@ -758,7 +758,7 @@ rule prepare_network:
         transport_data=RESOURCES + "transport_data_s{simpl}_eso.csv",
         avail_profile=RESOURCES + "avail_profile_s{simpl}_eso.csv",
         dsm_profile=RESOURCES + "dsm_profile_s{simpl}_eso.csv",
-        fes_table="data/Data-workbook2022_V006.xlsx",
+        fes_table_2022="data/Data-workbook2022_V006.xlsx",
         fes_table_2023="data/FES 2023 Data Workbook V001.xlsx",
         espeni_interconnectors=RESOURCES + "espeni_interconnectors.csv",
         beis_generation=RESOURCES + "beis_generation.csv"
