@@ -594,6 +594,8 @@ def add_heat_pump_load(n, flexopts, costs):
 
     flex_config = snakemake.params.flex_config
 
+    smart_share = flex_config["heat_smart_tariff_share"]
+
     intraday_profiles = pd.read_csv(snakemake.input["profile_boiler_heating"], index_col=0)
 
     daily_space_heat_demand = (
@@ -804,7 +806,7 @@ def add_heat_pump_load(n, flexopts, costs):
             "Store",
             thermal_inertia_spatial.nodes,
             bus=thermal_inertia_spatial.nodes,
-            e_nom=e_nom,
+            e_nom=e_nom*smart_share,
             e_max_pu=e_max_pu,
             standing_loss=standing_loss,
         )
@@ -815,7 +817,7 @@ def add_heat_pump_load(n, flexopts, costs):
             bus0=heat_demand_spatial.nodes,
             bus1=thermal_inertia_spatial.nodes,
             carrier="thermal inertia",
-            p_nom=p_nom,
+            p_nom=p_nom*smart_share,
             p_max_pu=p_max_pu,
             p_min_pu=p_min_pu,
         )
@@ -840,7 +842,7 @@ def add_heat_pump_load(n, flexopts, costs):
             nodes + " hot water tanks",
             bus=heat_demand_spatial.nodes,
             carrier="hot water tank",
-            p_nom=p_nom,
+            p_nom=p_nom*smart_share,
             max_hours=max_hours,
             e_cyclic=True,
             standing_loss=standing_loss,
@@ -960,18 +962,12 @@ def add_bev(n, flexopts):
         if bev_flexibility is None:
             return
 
-        # smart stuff
-        # smart_share, v2g_share = get_smart_charge_v2g(
-        #     snakemake.input.fes_table_2022,
-        #     snakemake.wildcards.fes,
-        #     year)
-
         logger.info("Assuming smart charging is either off or all cars have it.")
 
         smart_share = 1.
         v2g_share = get_v2g_share(snakemake.wildcards.fes, year)
 
-        smart_share = flex_config[f"{bev_flexibility}_tariff_share"] or smart_share
+        smart_share = flex_config["ev_smart_tariff_share"] or smart_share
         v2g_share = flex_config["v2g_share"] or v2g_share
 
         if v2g_share > 0 and "v2g" in flexopts:

@@ -80,6 +80,7 @@ flexibility:
   winter_opt_in_rate: 33 # %
 
   # Heat flexibility parameters
+  heat_smart_tariff_share: 1. # only considers if either 'heat' or 'tank' is in flexopts
   smart_heat_rollout_completion: 2030 # year where all heat pumps contribute to smart heat
   heat_shift_size: 3 # hours
   heat_flex_windows:
@@ -89,14 +90,13 @@ flexibility:
     evening: 
       start: 17
       end: 19
-  hourly_heat_loss: 0. # as share between 0 and 1
+  hourly_heat_loss: 0.1 # as share between 0 and 1
   battery_ignore_threshold: 1 # GW (ignore battery with less than this GB capacity)
   water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
   water_tank_max_hours: 12 # Decision based on Lizana et al. 2023 Fig 12 b1
 
   # EV flexibility parameters
-  go_tariff_share: false # share of people on go tariff (if false taken from FES data)
-  int_tariff_share: false # share of people on intelligent tariff (if false taken from FES data)
+  ev_smart_tariff_share: false # share of people on smart charging tariff (if 'false' value is taken from FES data)
   v2g_share: false # share of people with v2g (if false taken from FES data)
   go_tariff_opt_out_rate: 0.1 # share of people not charging during 12 am - 4 am window
   int_tariff_opt_out_rate: 0.1 # share of people opting out of intelligent charging
