@@ -634,3 +634,39 @@ def get_modular_nuclear_capacity(scenario, year):
 
     df.columns = [pd.Timestamp(dt).year for dt in df.columns]
     return df.loc[scenario_mapper[scenario], year] * 1e3
+
+
+def get_v2g_share(scenario, year):
+    """Returns in share"""
+    col = string.ascii_uppercase.index("M")
+
+    df = (
+        pd.read_excel(
+            data_file,
+            sheet_name="EC.13",
+            header=7,
+            index_col=0,
+            usecols=[col+i for i in range(32)],
+            )
+    ).iloc[:4]
+
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    return df.loc[scenario_mapper[scenario], year]
+
+
+def get_electrolysis_capacity(scenario, year):
+    """Returns in GW"""
+    col = string.ascii_uppercase.index("O")
+
+    df = (
+        pd.read_excel(
+            data_file,
+            sheet_name="FL.08",
+            header=8,
+            index_col=0,
+            usecols=[col+i for i in range(31)],
+            )
+    ).iloc[:4]
+
+    df.columns = [pd.Timestamp(dt).year for dt in df.columns]
+    return df.loc[scenario_mapper[scenario], year]

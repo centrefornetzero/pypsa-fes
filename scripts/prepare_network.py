@@ -90,6 +90,8 @@ from _fes_helpers import (
     get_electric_heat_demand,
     get_industrial_hydrogen_demand,
     get_heating_shares,
+    get_v2g_share,
+    get_electrolysis_capacity,
     )
 
 from pypsa.descriptors import expand_series
@@ -959,10 +961,15 @@ def add_bev(n, flexopts):
             return
 
         # smart stuff
-        smart_share, v2g_share = get_smart_charge_v2g(
-            snakemake.input.fes_table_2022,
-            snakemake.wildcards.fes,
-            year)
+        # smart_share, v2g_share = get_smart_charge_v2g(
+        #     snakemake.input.fes_table_2022,
+        #     snakemake.wildcards.fes,
+        #     year)
+
+        logger.info("Assuming smart charging is either off or all cars have it.")
+
+        smart_share = 1.
+        v2g_share = get_v2g_share(snakemake.wildcards.fes, year)
 
         smart_share = flex_config[f"{bev_flexibility}_tariff_share"] or smart_share
         v2g_share = flex_config["v2g_share"] or v2g_share
@@ -1736,6 +1743,9 @@ def add_hydrogen_demand(n, scenario, year, costs):
     h2_demand = get_industrial_hydrogen_demand(scenario, int(year))
     logger.info(f"{h2_demand*1e-6:.2f} TWh of hydrogen to produce.")
 
+    elec_capacity = get_electrolysis_capacity(scenario, int(year)) * 1000
+    logger.info(f"{elec_capacity*1e-3:.2f} GW_el of electrolyser capacity.")
+
     e_min_pu = pd.DataFrame(0., n.snapshots, h2.nodes)
     e_min_pu.iloc[-1] = 1.
 
@@ -1755,10 +1765,11 @@ def add_hydrogen_demand(n, scenario, year, costs):
         bus0=nodes,
         bus1=h2.nodes,
         carrier="electrolysis",
-        capital_cost=costs.at["electrolysis", "fixed"],
-        marginal_cost=costs.at["electrolysis", "VOM"],
+        # capital_cost=costs.at["electrolysis", "fixed"],
+        # marginal_cost=costs.at["electrolysis", "VOM"],
+        p_nom=elec_capacity,
         efficiency=costs.at["electrolysis", "efficiency"],
-        p_nom_extendable=True,
+        # p_nom_extendable=True,
     )
 
 
