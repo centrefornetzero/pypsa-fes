@@ -281,7 +281,12 @@ def set_line_s_max_pu(n, s_max_pu=0.7):
 
 
 def set_transmission_limit(n, ll_type, factor, costs, Nyears=1):
-    links_dc_b = n.links.carrier == "DC" if not n.links.empty else pd.Series()
+    # links_dc_b = n.links.carrier == "DC" if not n.links.empty else pd.Series()
+
+    logger.info("Allowing transmission capacity expansion only of lines within GB.")
+
+    # only lines within GB are eligible for expansion
+    gb_mask = n.lines.bus0.str.contains("GB")
 
     _lines_s_nom = (
         np.sqrt(3)
@@ -292,23 +297,21 @@ def set_transmission_limit(n, ll_type, factor, costs, Nyears=1):
     lines_s_nom = n.lines.s_nom.where(n.lines.type == "", _lines_s_nom)
 
     col = "capital_cost" if ll_type == "c" else "length"
-    ref = (
-        lines_s_nom @ n.lines[col]
-        + n.links.loc[links_dc_b, "p_nom"] @ n.links.loc[links_dc_b, col]
-    )
+
+    total_cost = lines_s_nom @ n.lines[col]
+    ref = lines_s_nom.loc[gb_mask] @ n.lines.loc[gb_mask, col]
 
     update_transmission_costs(n, costs)
 
     if factor == "opt" or float(factor) > 1.0:
-        n.lines["s_nom_min"] = lines_s_nom
-        n.lines["s_nom_extendable"] = True
-
-        n.links.loc[links_dc_b, "p_nom_min"] = n.links.loc[links_dc_b, "p_nom"]
-        n.links.loc[links_dc_b, "p_nom_extendable"] = True
+        
+        n.lines.loc[gb_mask, "s_nom_min"] = lines_s_nom
+        n.lines.loc[gb_mask, "s_nom_extendable"] = True
 
     if factor != "opt":
         con_type = "expansion_cost" if ll_type == "c" else "volume_expansion"
-        rhs = float(factor) * ref
+        # rhs = float(factor) * ref
+        rhs = total_cost + (float(factor) - 1.) * ref
         n.add(
             "GlobalConstraint",
             f"l{ll_type}_limit",
