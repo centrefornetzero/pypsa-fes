@@ -280,10 +280,32 @@ def set_line_s_max_pu(n, s_max_pu=0.7):
     logger.info(f"N-1 security margin of lines set to {s_max_pu}")
 
 
-def set_transmission_limit(n, ll_type, factor, costs, Nyears=1):
-    # links_dc_b = n.links.carrier == "DC" if not n.links.empty else pd.Series()
+def set_transmission_limit(n, ll, year, costs):
+    """
+    Upper bounds investment into GB transmission capacity based on the 'll' wildcard.
+    The spending limit is given by the cumulative investment until the modelled year.
 
-    logger.info("Allowing transmission capacity expansion only of lines within GB.")
+    First option is 'hnd': Holistic Network Design, expecting a ramping of yearly investment
+    towards 2030, achieving approx £10bn in 2030. Under 'hnd' we assume this level to persist
+    until 2050.  
+
+    Second option is 'historic': Assumes that future investment remains at current levels
+    of approx £1bn per year.
+
+    Data is based on Figure 3-4 of the FTI consulting report on Locational Marginal Pricing
+    """    
+
+    outlook = pd.read_csv(snakemake.input.transmission_investment_outlook, index_col=0)
+
+    t_scen = "HND" if ll == "hnd" else "Historic"
+
+    investment = outlook.loc[:year, ll].sum() * 1e6
+
+    logger.info(f"Investment limit for transmission expansion set to £{investment*1e-9:.2f}bn")
+    logger.info(f"Assuming {t_scen} transmission investment scenario.")
+    logger.info(f"Assuming Sterling Euro conversion ration 1.15.")
+
+    investment *= 1.15
 
     # only lines within GB are eligible for expansion
     gb_mask = n.lines.bus0.str.contains("GB")
@@ -296,30 +318,23 @@ def set_transmission_limit(n, ll_type, factor, costs, Nyears=1):
     )
     lines_s_nom = n.lines.s_nom.where(n.lines.type == "", _lines_s_nom)
 
-    col = "capital_cost" if ll_type == "c" else "length"
-
-    total_cost = lines_s_nom @ n.lines[col]
-    ref = lines_s_nom.loc[gb_mask] @ n.lines.loc[gb_mask, col]
+    total_cost = lines_s_nom @ n.lines["capital_cost"]
 
     update_transmission_costs(n, costs)
 
-    if factor == "opt" or float(factor) > 1.0:
-        
-        n.lines.loc[gb_mask, "s_nom_min"] = lines_s_nom
-        n.lines.loc[gb_mask, "s_nom_extendable"] = True
+    n.lines.loc[gb_mask, "s_nom_min"] = lines_s_nom
+    n.lines.loc[gb_mask, "s_nom_extendable"] = True
 
-    if factor != "opt":
-        con_type = "expansion_cost" if ll_type == "c" else "volume_expansion"
-        # rhs = float(factor) * ref
-        rhs = total_cost + (float(factor) - 1.) * ref
-        n.add(
-            "GlobalConstraint",
-            f"l{ll_type}_limit",
-            type=f"transmission_{con_type}_limit",
-            sense="<=",
-            constant=rhs,
-            carrier_attribute="AC, DC",
-        )
+    logger.warning("Assuming that n.lines['capital_cost'] is in TEur/MW!")
+    rhs = investment * 1e-3 + total_cost
+    n.add(
+        "GlobalConstraint",
+        f"transmission_expansion_limit",
+        type=f"transmission_expansion_cost_limit",
+        sense="<=",
+        constant=rhs,
+        carrier_attribute="AC",
+    )
 
     return n
 
@@ -1929,8 +1944,9 @@ if __name__ == "__main__":
             logger.info("Setting time dependent emission prices according spot market price")
             add_emission_prices_t(n) 
 
-    ll_type, factor = snakemake.wildcards.ll[0], snakemake.wildcards.ll[1:]
-    set_transmission_limit(n, ll_type, factor, elec_costs, Nyears)
+    # ll_type, factor = snakemake.wildcards.ll[0], snakemake.wildcards.ll[1:]
+    ll = snakemake.wildcards.ll
+    set_transmission_limit(n, ll, year, elec_costs, Nyears)
 
     set_line_nom_max(
         n,

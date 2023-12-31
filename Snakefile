@@ -40,7 +40,7 @@ localrules:
 
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
-    ll="(v|c)([0-9\.]+|opt)",
+    ll="(hnd|historic)",
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
     flexopts="[-+a-zA-Z0-9\.]*",

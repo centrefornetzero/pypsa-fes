@@ -764,6 +764,7 @@ rule prepare_network:
         beis_generation=RESOURCES + "beis_generation.csv"
         if config["electricity"]["include_beis"]
         else [],
+        transmission_investment_outlook="data/transmission_investment_outlook.csv",
     output:
         RESOURCES + "networks/elec_s{simpl}_ec_l{ll}_{opts}_{flexopts}_{fes}_{year}.nc",
     log:
