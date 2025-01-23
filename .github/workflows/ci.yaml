@@ -81,7 +81,7 @@ jobs:
         echo "WEEK=$(date +'%Y%U')" >> $GITHUB_ENV
 
     - name: Cache data and cutouts folders
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           data
@@ -89,7 +89,7 @@ jobs:
         key: data-cutouts-${{ env.WEEK }}-${{ env.DATA_CACHE_NUMBER }}
 
     - name: Create environment cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: cache
       with:
         path: ${{ matrix.prefix }}
@@ -108,7 +108,7 @@ jobs:
         snakemake -call all --configfile config/test/config.myopic.yaml --rerun-triggers=mtime
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: resources-results
         path: |

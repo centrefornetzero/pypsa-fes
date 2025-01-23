@@ -13,13 +13,13 @@ jobs:
           python-version: "3.9"
       - run: pip install pipenv
       - name: Cache virtualenvs
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.local/share/virtualenvs/
           key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
       - run: pipenv sync --dev
       - name: Cache Pre-commit for format checking
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
